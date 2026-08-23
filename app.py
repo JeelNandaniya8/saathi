@@ -1,24 +1,29 @@
 """
 Saathi backend
 ==============
-This server does three jobs:
+This server does four jobs:
 1. Keeps the real AI API key safe on the server (see /chat)
-2. Handles accounts: sign up, log in, log out (see the /api/ routes)
-3. Tracks which plan each user is on: free, plus, or care, so payment
-   (Razorpay) and WhatsApp can be plugged in later without rebuilding
-   anything
+2. Handles accounts with real email verification: sign up sends a one
+   time code to the person's email, they enter it, and only then does
+   the account actually get created
+3. Tracks which plan each user is on: free, plus, or care, ready for
+   Razorpay to plug in later
+4. Sends those verification emails using your own Gmail account, for
+   free, no new service to sign up for
 
 A note on the database: this uses SQLite, a simple, file based database
-that needs no separate installation, perfect for building and testing.
-Render's free tier resets its files on every restart, so accounts made
-right now are for testing the flow, not permanent yet. Moving to a
-permanent hosted database is a small, later step, once real users are
-actually signing up.
+that needs no separate installation. Render's free tier resets its
+files on every restart, so accounts made right now are for testing the
+flow, not permanent yet. Moving to a permanent hosted database is a
+small, later step, once real users are actually signing up.
 """
 
 import os
+import secrets
+import smtplib
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.mime.text import MIMEText
 
 import requests
 from flask import Flask, request, jsonify, send_from_directory, session
@@ -28,12 +33,43 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app, supports_credentials=True)
 
-# A secret key is needed so Flask can safely remember who is logged in.
-# Like the API key, this should be set as an environment variable in
-# Render, never typed directly into this file.
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-change-me")
 
 DB_PATH = "saathi.db"
+
+# --------------------------------------------------------------------
+# EMAIL SETUP
+# Uses your own Gmail account to send OTP codes, for free.
+# GMAIL_ADDRESS: the Gmail address the codes are sent from
+# GMAIL_APP_PASSWORD: a 16 character app password, NOT your normal
+# Gmail password. Generated at myaccount.google.com/apppasswords,
+# after turning on 2-Step Verification on that Google account.
+# --------------------------------------------------------------------
+GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
+
+
+def send_otp_email(to_email, name, otp_code):
+    subject = "Your Saathi verification code"
+    body = (
+        f"Hi {name},\n\n"
+        f"Your verification code is: {otp_code}\n\n"
+        f"This code expires in 10 minutes. If you did not try to sign "
+        f"up for Saathi, you can safely ignore this email.\n\n"
+        f"- Saathi"
+    )
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = GMAIL_ADDRESS
+    msg["To"] = to_email
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+        server.sendmail(GMAIL_ADDRESS, [to_email], msg.as_string())
+
+
+def generate_otp():
+    return "".join(secrets.choice("0123456789") for _ in range(6))
 
 
 # --------------------------------------------------------------------
@@ -41,7 +77,7 @@ DB_PATH = "saathi.db"
 # --------------------------------------------------------------------
 def get_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # lets us access columns by name
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -56,6 +92,17 @@ def init_db():
             plan TEXT NOT NULL DEFAULT 'free',
             plan_status TEXT NOT NULL DEFAULT 'active',
             created_at TEXT NOT NULL
+        )
+    """)
+    # Signups sit here first, unverified, until the right OTP is entered.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pending_verifications (
+            email TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            plan TEXT NOT NULL,
+            otp_code TEXT NOT NULL,
+            expires_at TEXT NOT NULL
         )
     """)
     conn.commit()
@@ -89,7 +136,7 @@ def account_page():
 
 
 # --------------------------------------------------------------------
-# ACCOUNTS
+# SIGN UP, STEP 1: request a code
 # --------------------------------------------------------------------
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -105,6 +152,8 @@ def signup():
         return jsonify({"error": "Please fill in your name, email, and password."}), 400
     if len(password) < 6:
         return jsonify({"error": "Password should be at least 6 characters."}), 400
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        return jsonify({"error": "Email sending is not set up on the server yet. See the README."}), 500
 
     conn = get_db()
     existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
@@ -112,18 +161,63 @@ def signup():
         conn.close()
         return jsonify({"error": "An account with this email already exists. Try logging in instead."}), 400
 
-    # Plan explanation: a free signup is active immediately. Choosing
-    # Plus or Care creates the account, but the plan is marked
-    # "pending_payment" until Razorpay checkout is wired in here later.
-    # This is the exact hook that future payment code will update.
-    plan_status = "active" if desired_plan == "free" else "pending_payment"
-
+    otp_code = generate_otp()
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     password_hash = generate_password_hash(password)
+
+    conn.execute(
+        "INSERT INTO pending_verifications (email, name, password_hash, plan, otp_code, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(email) DO UPDATE SET name=excluded.name, password_hash=excluded.password_hash, "
+        "plan=excluded.plan, otp_code=excluded.otp_code, expires_at=excluded.expires_at",
+        (email, name, password_hash, desired_plan, otp_code, expires_at),
+    )
+    conn.commit()
+    conn.close()
+
+    try:
+        send_otp_email(email, name, otp_code)
+    except Exception as e:
+        return jsonify({"error": f"Could not send the verification email: {e}"}), 500
+
+    return jsonify({"pending": True, "email": email})
+
+
+# --------------------------------------------------------------------
+# SIGN UP, STEP 2: verify the code, actually create the account
+# --------------------------------------------------------------------
+@app.route("/api/verify-otp", methods=["POST"])
+def verify_otp():
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    otp_code = (data.get("otp") or "").strip()
+
+    conn = get_db()
+    pending = conn.execute(
+        "SELECT * FROM pending_verifications WHERE email = ?", (email,)
+    ).fetchone()
+
+    if not pending:
+        conn.close()
+        return jsonify({"error": "No pending signup found for this email. Please sign up again."}), 400
+
+    expires_at = datetime.fromisoformat(pending["expires_at"])
+    if datetime.now(timezone.utc) > expires_at:
+        conn.close()
+        return jsonify({"error": "This code has expired. Please request a new one."}), 400
+
+    if otp_code != pending["otp_code"]:
+        conn.close()
+        return jsonify({"error": "That code is not correct. Please check and try again."}), 400
+
+    plan_status = "active" if pending["plan"] == "free" else "pending_payment"
     conn.execute(
         "INSERT INTO users (name, email, password_hash, plan, plan_status, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?)",
-        (name, email, password_hash, desired_plan, plan_status, datetime.now(timezone.utc).isoformat()),
+        (pending["name"], pending["email"], pending["password_hash"], pending["plan"],
+         plan_status, datetime.now(timezone.utc).isoformat()),
     )
+    conn.execute("DELETE FROM pending_verifications WHERE email = ?", (email,))
     conn.commit()
     user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     conn.close()
@@ -132,6 +226,41 @@ def signup():
     return jsonify({"user": user_to_dict(user)})
 
 
+@app.route("/api/resend-otp", methods=["POST"])
+def resend_otp():
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    conn = get_db()
+    pending = conn.execute(
+        "SELECT * FROM pending_verifications WHERE email = ?", (email,)
+    ).fetchone()
+
+    if not pending:
+        conn.close()
+        return jsonify({"error": "No pending signup found for this email. Please sign up again."}), 400
+
+    otp_code = generate_otp()
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    conn.execute(
+        "UPDATE pending_verifications SET otp_code = ?, expires_at = ? WHERE email = ?",
+        (otp_code, expires_at, email),
+    )
+    conn.commit()
+    name = pending["name"]
+    conn.close()
+
+    try:
+        send_otp_email(email, name, otp_code)
+    except Exception as e:
+        return jsonify({"error": f"Could not send the verification email: {e}"}), 500
+
+    return jsonify({"ok": True})
+
+
+# --------------------------------------------------------------------
+# LOGIN / LOGOUT / WHO AM I
+# --------------------------------------------------------------------
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json(force=True, silent=True) or {}
@@ -171,11 +300,6 @@ def me():
 # --------------------------------------------------------------------
 @app.route("/api/upgrade", methods=["POST"])
 def upgrade():
-    """
-    This is the exact spot where real Razorpay checkout will be added
-    later. Right now it just records which plan someone wants, marked
-    pending, so nothing is silently promised that has not been built.
-    """
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Please log in first."}), 401
@@ -196,8 +320,7 @@ def upgrade():
 
     return jsonify({
         "user": user_to_dict(user),
-        "message": "Payment is not connected yet, so this plan is saved as pending. "
-                    "Once Razorpay is set up, this exact spot becomes real checkout."
+        "message": "Payment is not connected yet, so this plan is saved as pending."
     })
 
 
