@@ -37,7 +37,7 @@ CORS(app)  # allows the browser to call this server from the same site
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash:generateContent"
+    "gemini-3.6-flash:generateContent"
 )
 
 # Saathi's personality lives here, on the server, not in the browser code.
