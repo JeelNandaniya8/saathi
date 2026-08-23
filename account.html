@@ -9,18 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:        #FAF9F5;
-    --surface:   #FFFFFF;
-    --ink:       #1E2320;
-    --muted:     #6B7268;
-    --gold:      #B8912E;
-    --gold-soft: #F1E4C4;
-    --sage:      #4F7469;
-    --sage-soft: #E3ECE6;
-    --border:    #E6E2D6;
-    --danger:    #B4453A;
-    --display: 'Fraunces', serif;
-    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --bg: #FAF9F5; --surface: #FFFFFF; --ink: #1E2320; --muted: #6B7268;
+    --gold: #B8912E; --gold-soft: #F1E4C4; --sage: #4F7469; --sage-soft: #E3ECE6;
+    --border: #E6E2D6; --danger: #B4453A;
+    --display: 'Fraunces', serif; --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
@@ -62,6 +54,7 @@
     font-size:14.5px; outline:none; background:var(--bg);
   }
   input:focus{ border-color:var(--gold); background:var(--surface); }
+  input.otp{ text-align:center; letter-spacing:0.5em; font-size:20px; font-weight:600; }
 
   button.submit{
     margin-top:8px; background:var(--ink); color:var(--bg); border:none; border-radius:100px;
@@ -69,6 +62,12 @@
   }
   button.submit:hover{ opacity:.9; }
   button.submit:disabled{ opacity:.5; cursor:not-allowed; }
+
+  button.link-btn{
+    background:none; border:none; color:var(--gold); font-weight:600; font-size:13.5px;
+    cursor:pointer; font-family:var(--sans); text-align:center; margin-top:4px;
+  }
+  button.link-btn:disabled{ color:var(--muted); cursor:not-allowed; }
 
   .msg{ font-size:13.5px; padding:10px 12px; border-radius:10px; display:none; }
   .msg.error{ background:#FBEAE7; color:var(--danger); display:block; }
@@ -88,13 +87,14 @@
     <div class="plan-chip" id="planChip" style="display:none;"></div>
   </div>
 
-  <div class="tabs">
+  <div class="tabs" id="tabsRow">
     <div class="tab active" id="tabSignup" onclick="switchTab('signup')">Sign up</div>
     <div class="tab" id="tabLogin" onclick="switchTab('login')">Log in</div>
   </div>
 
   <div class="msg" id="message"></div>
 
+  <!-- STEP 1: sign up details -->
   <form id="signupForm">
     <label>Your name</label>
     <input type="text" id="signupName" placeholder="Jeel" required>
@@ -102,9 +102,18 @@
     <input type="email" id="signupEmail" placeholder="you@example.com" required>
     <label>Password</label>
     <input type="password" id="signupPassword" placeholder="At least 6 characters" required>
-    <button type="submit" class="submit" id="signupBtn">Create account</button>
+    <button type="submit" class="submit" id="signupBtn">Send verification code</button>
   </form>
 
+  <!-- STEP 2: enter the emailed code -->
+  <form id="otpForm" style="display:none;">
+    <label id="otpLabel">Enter the 6 digit code we emailed you</label>
+    <input type="text" id="otpInput" class="otp" maxlength="6" placeholder="000000" required>
+    <button type="submit" class="submit" id="otpBtn">Verify and create account</button>
+    <button type="button" class="link-btn" id="resendBtn" onclick="resendCode()">Resend code</button>
+  </form>
+
+  <!-- LOG IN -->
   <form id="loginForm" style="display:none;">
     <label>Email</label>
     <input type="email" id="loginEmail" placeholder="you@example.com" required>
@@ -122,10 +131,9 @@
 </div>
 
 <script>
-  // Read ?plan=plus or ?plan=care from the URL, since the pricing
-  // buttons on the landing page link here with the plan attached.
   const params = new URLSearchParams(window.location.search);
-  const plan = params.get('plan'); // "plus", "care", or null
+  const plan = params.get('plan');
+  let pendingEmail = null;
 
   if (plan === 'plus' || plan === 'care') {
     const chip = document.getElementById('planChip');
@@ -134,17 +142,29 @@
     document.getElementById('planFoot').style.display = 'block';
   }
 
-  function switchTab(which){
-    const isSignup = which === 'signup';
-    document.getElementById('tabSignup').classList.toggle('active', isSignup);
-    document.getElementById('tabLogin').classList.toggle('active', !isSignup);
-    document.getElementById('signupForm').style.display = isSignup ? 'flex' : 'none';
-    document.getElementById('loginForm').style.display = isSignup ? 'none' : 'flex';
-    document.getElementById('heading').textContent = isSignup ? 'Welcome to Saathi' : 'Welcome back';
-    document.getElementById('subtext').textContent = isSignup
-      ? 'Create your account to get started.'
-      : 'Log in to continue your conversations.';
+  function showStep(step){
+    document.getElementById('signupForm').style.display = step === 'signup' ? 'flex' : 'none';
+    document.getElementById('otpForm').style.display = step === 'otp' ? 'flex' : 'none';
+    document.getElementById('loginForm').style.display = step === 'login' ? 'flex' : 'none';
+    document.getElementById('tabsRow').style.display = step === 'otp' ? 'none' : 'flex';
+
+    if (step === 'signup'){
+      document.getElementById('heading').textContent = 'Welcome to Saathi';
+      document.getElementById('subtext').textContent = 'Create your account to get started.';
+    } else if (step === 'otp'){
+      document.getElementById('heading').textContent = 'Check your email';
+      document.getElementById('subtext').textContent = 'We sent a 6 digit code to ' + pendingEmail;
+    } else {
+      document.getElementById('heading').textContent = 'Welcome back';
+      document.getElementById('subtext').textContent = 'Log in to continue your conversations.';
+    }
     hideMessage();
+  }
+
+  function switchTab(which){
+    document.getElementById('tabSignup').classList.toggle('active', which === 'signup');
+    document.getElementById('tabLogin').classList.toggle('active', which === 'login');
+    showStep(which);
   }
 
   function showMessage(text, type){
@@ -153,10 +173,10 @@
     el.className = 'msg ' + type;
   }
   function hideMessage(){
-    const el = document.getElementById('message');
-    el.className = 'msg';
+    document.getElementById('message').className = 'msg';
   }
 
+  // STEP 1: submit signup details, this sends the OTP email
   document.getElementById('signupForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('signupBtn');
@@ -177,8 +197,10 @@
       });
       const data = await res.json();
       if (!res.ok) { showMessage(data.error || 'Something went wrong.', 'error'); return; }
-      showMessage('Account created! Taking you to Saathi...', 'success');
-      setTimeout(() => { window.location.href = '/'; }, 1200);
+
+      pendingEmail = document.getElementById('signupEmail').value.trim().toLowerCase();
+      showStep('otp');
+      showMessage('Code sent! Check your inbox (and spam folder, just in case).', 'success');
     } catch (err) {
       showMessage('Could not reach the server. Try again in a moment.', 'error');
     } finally {
@@ -186,6 +208,56 @@
     }
   });
 
+  // STEP 2: verify the code, this actually creates the account
+  document.getElementById('otpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('otpBtn');
+    btn.disabled = true;
+    hideMessage();
+
+    try {
+      const res = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: pendingEmail,
+          otp: document.getElementById('otpInput').value.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Something went wrong.', 'error'); return; }
+      showMessage('Verified! Taking you to Saathi...', 'success');
+      setTimeout(() => { window.location.href = '/'; }, 1000);
+    } catch (err) {
+      showMessage('Could not reach the server. Try again in a moment.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function resendCode(){
+    const btn = document.getElementById('resendBtn');
+    btn.disabled = true;
+    hideMessage();
+    try {
+      const res = await fetch('/api/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: pendingEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Something went wrong.', 'error'); return; }
+      showMessage('New code sent!', 'success');
+    } catch (err) {
+      showMessage('Could not reach the server. Try again in a moment.', 'error');
+    } finally {
+      setTimeout(() => { btn.disabled = false; }, 15000); // small cooldown
+    }
+  }
+
+  // LOG IN
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
