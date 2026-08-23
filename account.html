@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saathi. Your account</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23B8912E'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:        #FAF9F5;
+    --surface:   #FFFFFF;
+    --ink:       #1E2320;
+    --muted:     #6B7268;
+    --gold:      #B8912E;
+    --gold-soft: #F1E4C4;
+    --sage:      #4F7469;
+    --sage-soft: #E3ECE6;
+    --border:    #E6E2D6;
+    --danger:    #B4453A;
+    --display: 'Fraunces', serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  a{ color:var(--gold); text-decoration:none; font-weight:600; }
+
+  .card{
+    width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border);
+    border-radius:22px; padding:40px 36px;
+  }
+  .top{ text-align:center; margin-bottom:30px; }
+  .orb{ width:44px; height:44px; margin:0 auto 16px; border-radius:50%; }
+  .orb::before{
+    content:''; display:block; width:100%; height:100%; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #E8C56B, var(--gold) 60%, #8a6c1f 100%);
+  }
+  h1{ font-family:var(--display); font-size:24px; font-weight:600; }
+  .sub{ color:var(--muted); font-size:14px; margin-top:6px; }
+
+  .plan-chip{
+    display:inline-block; margin-top:14px; background:var(--sage-soft); color:var(--sage);
+    font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:100px; letter-spacing:0.02em;
+  }
+
+  .tabs{ display:flex; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:24px; }
+  .tab{
+    flex:1; text-align:center; padding:9px; border-radius:9px; font-size:13.5px; font-weight:600;
+    color:var(--muted); cursor:pointer; user-select:none;
+  }
+  .tab.active{ background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+
+  form{ display:flex; flex-direction:column; gap:14px; }
+  label{ font-size:13px; font-weight:600; color:var(--muted); margin-bottom:-8px; }
+  input{
+    border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-family:var(--sans);
+    font-size:14.5px; outline:none; background:var(--bg);
+  }
+  input:focus{ border-color:var(--gold); background:var(--surface); }
+
+  button.submit{
+    margin-top:8px; background:var(--ink); color:var(--bg); border:none; border-radius:100px;
+    padding:14px; font-weight:600; font-size:15px; cursor:pointer; font-family:var(--sans);
+  }
+  button.submit:hover{ opacity:.9; }
+  button.submit:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .msg{ font-size:13.5px; padding:10px 12px; border-radius:10px; display:none; }
+  .msg.error{ background:#FBEAE7; color:var(--danger); display:block; }
+  .msg.success{ background:var(--sage-soft); color:var(--sage); display:block; }
+
+  .foot{ text-align:center; margin-top:22px; font-size:13px; color:var(--muted); }
+  .back{ display:block; text-align:center; margin-top:16px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="top">
+    <div class="orb"></div>
+    <h1 id="heading">Welcome to Saathi</h1>
+    <p class="sub" id="subtext">Create your account to get started.</p>
+    <div class="plan-chip" id="planChip" style="display:none;"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabSignup" onclick="switchTab('signup')">Sign up</div>
+    <div class="tab" id="tabLogin" onclick="switchTab('login')">Log in</div>
+  </div>
+
+  <div class="msg" id="message"></div>
+
+  <form id="signupForm">
+    <label>Your name</label>
+    <input type="text" id="signupName" placeholder="Jeel" required>
+    <label>Email</label>
+    <input type="email" id="signupEmail" placeholder="you@example.com" required>
+    <label>Password</label>
+    <input type="password" id="signupPassword" placeholder="At least 6 characters" required>
+    <button type="submit" class="submit" id="signupBtn">Create account</button>
+  </form>
+
+  <form id="loginForm" style="display:none;">
+    <label>Email</label>
+    <input type="email" id="loginEmail" placeholder="you@example.com" required>
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="Your password" required>
+    <button type="submit" class="submit" id="loginBtn">Log in</button>
+  </form>
+
+  <div class="foot" id="planFoot" style="display:none;">
+    Payments are not connected yet. Your chosen plan will be saved as
+    pending, and this becomes real checkout once Razorpay is set up.
+  </div>
+
+  <a href="/" class="back">&larr; Back to Saathi</a>
+</div>
+
+<script>
+  // Read ?plan=plus or ?plan=care from the URL, since the pricing
+  // buttons on the landing page link here with the plan attached.
+  const params = new URLSearchParams(window.location.search);
+  const plan = params.get('plan'); // "plus", "care", or null
+
+  if (plan === 'plus' || plan === 'care') {
+    const chip = document.getElementById('planChip');
+    chip.textContent = plan === 'plus' ? 'Signing up for Plus' : 'Signing up for Care';
+    chip.style.display = 'inline-block';
+    document.getElementById('planFoot').style.display = 'block';
+  }
+
+  function switchTab(which){
+    const isSignup = which === 'signup';
+    document.getElementById('tabSignup').classList.toggle('active', isSignup);
+    document.getElementById('tabLogin').classList.toggle('active', !isSignup);
+    document.getElementById('signupForm').style.display = isSignup ? 'flex' : 'none';
+    document.getElementById('loginForm').style.display = isSignup ? 'none' : 'flex';
+    document.getElementById('heading').textContent = isSignup ? 'Welcome to Saathi' : 'Welcome back';
+    document.getElementById('subtext').textContent = isSignup
+      ? 'Create your account to get started.'
+      : 'Log in to continue your conversations.';
+    hideMessage();
+  }
+
+  function showMessage(text, type){
+    const el = document.getElementById('message');
+    el.textContent = text;
+    el.className = 'msg ' + type;
+  }
+  function hideMessage(){
+    const el = document.getElementById('message');
+    el.className = 'msg';
+  }
+
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signupBtn');
+    btn.disabled = true;
+    hideMessage();
+
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: document.getElementById('signupName').value,
+          email: document.getElementById('signupEmail').value,
+          password: document.getElementById('signupPassword').value,
+          plan: plan || 'free'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Something went wrong.', 'error'); return; }
+      showMessage('Account created! Taking you to Saathi...', 'success');
+      setTimeout(() => { window.location.href = '/'; }, 1200);
+    } catch (err) {
+      showMessage('Could not reach the server. Try again in a moment.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    hideMessage();
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: document.getElementById('loginEmail').value,
+          password: document.getElementById('loginPassword').value
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Something went wrong.', 'error'); return; }
+      showMessage('Welcome back! Taking you to Saathi...', 'success');
+      setTimeout(() => { window.location.href = '/'; }, 1000);
+    } catch (err) {
+      showMessage('Could not reach the server. Try again in a moment.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
