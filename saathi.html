@@ -368,7 +368,7 @@
           <li>One daily reflection prompt</li>
           <li>One active check in reminder</li>
         </ul>
-        <button class="btn-ghost" onclick="openChat()">Start free</button>
+        <button class="btn-ghost" onclick="window.location.href='/account'">Start free</button>
       </div>
       <div class="plan featured">
         <div class="badge">MOST CHOSEN</div>
@@ -382,7 +382,7 @@
           <li>Mood and habit tracking dashboard</li>
           <li>Personalized study planner</li>
         </ul>
-        <button class="btn-primary" onclick="openChat()">Get Plus</button>
+        <button class="btn-primary" onclick="window.location.href='/account?plan=plus'">Get Plus</button>
       </div>
       <div class="plan">
         <h3>Care</h3>
@@ -394,7 +394,7 @@
           <li>Missed check in alerts to caregivers</li>
           <li>A gentler, more frequent check in cadence</li>
         </ul>
-        <button class="btn-ghost" onclick="openChat()">Get Care</button>
+        <button class="btn-ghost" onclick="window.location.href='/account?plan=care'">Get Care</button>
       </div>
     </div>
   </div>
@@ -486,7 +486,22 @@
   });
 
   const overlay = document.getElementById('overlay');
-  function openChat(){ overlay.classList.add('open'); document.getElementById('chatInput').focus(); }
+  async function openChat(){
+    // Check whether someone is actually logged in before showing the chat.
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      const data = await res.json();
+      if (!data.user) {
+        window.location.href = '/account';
+        return;
+      }
+    } catch (err) {
+      window.location.href = '/account';
+      return;
+    }
+    overlay.classList.add('open');
+    document.getElementById('chatInput').focus();
+  }
   function closeChat(){ overlay.classList.remove('open'); }
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeChat(); });
 
@@ -543,10 +558,15 @@
       const response = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ messages: conversation })
       });
       const data = await response.json();
       hideTyping();
+      if (data.login_required) {
+        window.location.href = '/account';
+        return;
+      }
       if (data.error) throw new Error(data.error);
       const reply = data.reply || "Sorry, I did not catch that. Could you try again?";
       addBubble('ai', reply);
