@@ -1,15 +1,16 @@
 """
 Saathi backend
 ==============
-This server does four jobs:
+This server does five jobs:
 1. Keeps the real AI API key safe on the server (see /chat)
-2. Handles accounts with real email verification: sign up sends a one
-   time code to the person's email, they enter it, and only then does
-   the account actually get created
-3. Tracks which plan each user is on: free, plus, or care, ready for
+2. Handles accounts with real email verification, sign up sends a one
+   time code to the person's email, they enter it, only then is the
+   account actually created
+3. Validates names, usernames, and passwords with real rules, and
+   checks whether a chosen username is already taken, in real time
+4. Tracks which plan each user is on: free, plus, or care, ready for
    Razorpay to plug in later
-4. Sends those verification emails using your own Gmail account, for
-   free, no new service to sign up for
+5. Sends verification emails using a Gmail account, for free
 
 A note on the database: this uses SQLite, a simple, file based database
 that needs no separate installation. Render's free tier resets its
@@ -19,6 +20,7 @@ small, later step, once real users are actually signing up.
 """
 
 import os
+import re
 import secrets
 import smtplib
 import sqlite3
@@ -37,13 +39,44 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-change-me")
 
 DB_PATH = "saathi.db"
 
+
 # --------------------------------------------------------------------
-# EMAIL SETUP
-# Uses your own Gmail account to send OTP codes, for free.
-# GMAIL_ADDRESS: the Gmail address the codes are sent from
-# GMAIL_APP_PASSWORD: a 16 character app password, NOT your normal
-# Gmail password. Generated at myaccount.google.com/apppasswords,
-# after turning on 2-Step Verification on that Google account.
+# VALIDATION RULES
+# Checked on the server no matter what the browser already checked,
+# since anyone can bypass frontend code, the server is the real gate.
+# --------------------------------------------------------------------
+NAME_RE = re.compile(r"^[A-Za-z\u0A80-\u0AFF ]{2,50}$")            # letters (incl. Gujarati) and spaces only
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")                   # letters, numbers, underscore only
+PASSWORD_ALLOWED_RE = re.compile(r"^[A-Za-z0-9!@#$%^&*()_\-+=]{8,64}$")
+PASSWORD_HAS_LETTER_RE = re.compile(r"[A-Za-z]")
+PASSWORD_HAS_DIGIT_RE = re.compile(r"[0-9]")
+
+
+def validate_name(name):
+    if not NAME_RE.match(name):
+        return "Name should be 2 to 50 letters and spaces only, no numbers or symbols."
+    return None
+
+
+def validate_username(username):
+    if not USERNAME_RE.match(username):
+        return "Username should be 3 to 20 characters: letters, numbers, and underscore only."
+    return None
+
+
+def validate_password(password):
+    if not PASSWORD_ALLOWED_RE.match(password):
+        return ("Password should be 8 to 64 characters, using letters, numbers, "
+                "and only these symbols: ! @ # $ % ^ & * ( ) _ - + =")
+    if not PASSWORD_HAS_LETTER_RE.search(password):
+        return "Password needs at least one letter."
+    if not PASSWORD_HAS_DIGIT_RE.search(password):
+        return "Password needs at least one number."
+    return None
+
+
+# --------------------------------------------------------------------
+# EMAIL SETUP (your own Gmail account, free)
 # --------------------------------------------------------------------
 GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
@@ -87,6 +120,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL DEFAULT 'free',
@@ -94,11 +128,11 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
-    # Signups sit here first, unverified, until the right OTP is entered.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS pending_verifications (
             email TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL,
             otp_code TEXT NOT NULL,
@@ -116,10 +150,17 @@ def user_to_dict(row):
     return {
         "id": row["id"],
         "name": row["name"],
+        "username": row["username"],
         "email": row["email"],
         "plan": row["plan"],
         "plan_status": row["plan_status"],
     }
+
+
+def username_taken(conn, username):
+    in_users = conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone()
+    in_pending = conn.execute("SELECT 1 FROM pending_verifications WHERE username = ?", (username,)).fetchone()
+    return bool(in_users or in_pending)
 
 
 # --------------------------------------------------------------------
@@ -136,41 +177,73 @@ def account_page():
 
 
 # --------------------------------------------------------------------
-# SIGN UP, STEP 1: request a code
+# LIVE USERNAME CHECK
+# --------------------------------------------------------------------
+@app.route("/api/check-username")
+def check_username():
+    username = (request.args.get("username") or "").strip().lower()
+    if not username:
+        return jsonify({"available": False, "error": "Enter a username."})
+
+    err = validate_username(username)
+    if err:
+        return jsonify({"available": False, "error": err})
+
+    conn = get_db()
+    taken = username_taken(conn, username)
+    conn.close()
+
+    if taken:
+        return jsonify({"available": False, "error": "That username is already taken."})
+    return jsonify({"available": True})
+
+
+# --------------------------------------------------------------------
+# SIGN UP, STEP 1: validate everything, send the code
 # --------------------------------------------------------------------
 @app.route("/api/signup", methods=["POST"])
 def signup():
     data = request.get_json(force=True, silent=True) or {}
     name = (data.get("name") or "").strip()
+    username = (data.get("username") or "").strip().lower()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
     desired_plan = data.get("plan") or "free"
     if desired_plan not in ("free", "plus", "care"):
         desired_plan = "free"
 
-    if not name or not email or not password:
-        return jsonify({"error": "Please fill in your name, email, and password."}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password should be at least 6 characters."}), 400
+    if not name or not username or not email or not password:
+        return jsonify({"error": "Please fill in every field."}), 400
+
+    for err in (validate_name(name), validate_username(username), validate_password(password)):
+        if err:
+            return jsonify({"error": err}), 400
+
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return jsonify({"error": "Email sending is not set up on the server yet. See the README."}), 500
 
     conn = get_db()
-    existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if existing:
+
+    existing_email = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if existing_email:
         conn.close()
         return jsonify({"error": "An account with this email already exists. Try logging in instead."}), 400
+
+    if username_taken(conn, username):
+        conn.close()
+        return jsonify({"error": "That username is already taken."}), 400
 
     otp_code = generate_otp()
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     password_hash = generate_password_hash(password)
 
     conn.execute(
-        "INSERT INTO pending_verifications (email, name, password_hash, plan, otp_code, expires_at) "
-        "VALUES (?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(email) DO UPDATE SET name=excluded.name, password_hash=excluded.password_hash, "
-        "plan=excluded.plan, otp_code=excluded.otp_code, expires_at=excluded.expires_at",
-        (email, name, password_hash, desired_plan, otp_code, expires_at),
+        "INSERT INTO pending_verifications (email, name, username, password_hash, plan, otp_code, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(email) DO UPDATE SET name=excluded.name, username=excluded.username, "
+        "password_hash=excluded.password_hash, plan=excluded.plan, otp_code=excluded.otp_code, "
+        "expires_at=excluded.expires_at",
+        (email, name, username, password_hash, desired_plan, otp_code, expires_at),
     )
     conn.commit()
     conn.close()
@@ -210,12 +283,16 @@ def verify_otp():
         conn.close()
         return jsonify({"error": "That code is not correct. Please check and try again."}), 400
 
+    if username_taken(conn, pending["username"]):
+        conn.close()
+        return jsonify({"error": "That username was taken while you were verifying. Please sign up again with a different one."}), 400
+
     plan_status = "active" if pending["plan"] == "free" else "pending_payment"
     conn.execute(
-        "INSERT INTO users (name, email, password_hash, plan, plan_status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (pending["name"], pending["email"], pending["password_hash"], pending["plan"],
-         plan_status, datetime.now(timezone.utc).isoformat()),
+        "INSERT INTO users (name, username, email, password_hash, plan, plan_status, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (pending["name"], pending["username"], pending["email"], pending["password_hash"],
+         pending["plan"], plan_status, datetime.now(timezone.utc).isoformat()),
     )
     conn.execute("DELETE FROM pending_verifications WHERE email = ?", (email,))
     conn.commit()
