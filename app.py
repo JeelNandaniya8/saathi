@@ -5,29 +5,29 @@ This server does six jobs:
 1. Keeps the real AI API key safe on the server (see /chat)
 2. Handles accounts with real email verification (OTP by email)
 3. Validates names, usernames, and passwords, and checks username
-   availability in real time
+   availability in real time, enforced permanently by the database
 4. Tracks which plan each user is on: free, plus, or care, ready for
    Razorpay to plug in later
 5. Sends verification emails using a Gmail account, for free
-6. Remembers every conversation per account, so Saathi actually
-   remembers you between visits, not just within one open tab
+6. Remembers every conversation per account, permanently
 
-A note on the database: this uses SQLite, a simple, file based database
-that needs no separate installation. Render's free tier resets its
-files on every restart, so accounts and history made right now are for
-testing the flow, not permanent yet. Moving to a permanent hosted
-database is a small, later step, once real users are actually signing
-up and this needs to survive restarts.
+This now uses real PostgreSQL (hosted for free on Neon), not SQLite.
+The database enforces "one email per account" and "one username per
+account" itself, at the data layer, so it holds even under concurrent
+signups, this is a hard guarantee, not just an app level check.
+Requires a DATABASE_URL environment variable, the connection string
+from your Neon project.
 """
 
 import os
 import re
 import secrets
 import smtplib
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 
+import psycopg2
+import psycopg2.extras
 import requests
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
@@ -38,7 +38,7 @@ CORS(app, supports_credentials=True)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-change-me")
 
-DB_PATH = "saathi.db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 # --------------------------------------------------------------------
@@ -105,29 +105,30 @@ def generate_otp():
 
 
 # --------------------------------------------------------------------
-# DATABASE SETUP
+# DATABASE SETUP (real PostgreSQL, permanent)
 # --------------------------------------------------------------------
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
 
 
 def init_db():
     conn = get_db()
-    conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL DEFAULT 'free',
             plan_status TEXT NOT NULL DEFAULT 'active',
-            created_at TEXT NOT NULL
+            created_at TIMESTAMPTZ NOT NULL
         )
     """)
-    conn.execute("""
+    # Signups sit here first, unverified, until the right OTP is entered.
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_verifications (
             email TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -135,24 +136,25 @@ def init_db():
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL,
             otp_code TEXT NOT NULL,
-            expires_at TEXT NOT NULL
+            expires_at TIMESTAMPTZ NOT NULL
         )
     """)
-    conn.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
             role TEXT NOT NULL,
             content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            created_at TIMESTAMPTZ NOT NULL
         )
     """)
     conn.commit()
+    cur.close()
     conn.close()
 
 
-init_db()
+if DATABASE_URL:
+    init_db()
 
 
 def user_to_dict(row):
@@ -163,23 +165,27 @@ def user_to_dict(row):
         "email": row["email"],
         "plan": row["plan"],
         "plan_status": row["plan_status"],
-        "created_at": row["created_at"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
 
 
-def username_taken(conn, username):
-    in_users = conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone()
-    in_pending = conn.execute("SELECT 1 FROM pending_verifications WHERE username = ?", (username,)).fetchone()
+def username_taken(cur, username):
+    cur.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+    in_users = cur.fetchone()
+    cur.execute("SELECT 1 FROM pending_verifications WHERE username = %s", (username,))
+    in_pending = cur.fetchone()
     return bool(in_users or in_pending)
 
 
 def save_message(user_id, role, content):
     conn = get_db()
-    conn.execute(
-        "INSERT INTO messages (user_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-        (user_id, role, content, datetime.now(timezone.utc).isoformat()),
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO messages (user_id, role, content, created_at) VALUES (%s, %s, %s, %s)",
+        (user_id, role, content, datetime.now(timezone.utc)),
     )
     conn.commit()
+    cur.close()
     conn.close()
 
 
@@ -215,7 +221,9 @@ def check_username():
         return jsonify({"available": False, "error": err})
 
     conn = get_db()
-    taken = username_taken(conn, username)
+    cur = conn.cursor()
+    taken = username_taken(cur, username)
+    cur.close()
     conn.close()
 
     if taken:
@@ -248,29 +256,39 @@ def signup():
         return jsonify({"error": "Email sending is not set up on the server yet. See the README."}), 500
 
     conn = get_db()
+    cur = conn.cursor()
 
-    existing_email = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if existing_email:
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    if cur.fetchone():
+        cur.close()
         conn.close()
         return jsonify({"error": "An account with this email already exists. Try logging in instead."}), 400
 
-    if username_taken(conn, username):
+    if username_taken(cur, username):
+        cur.close()
         conn.close()
         return jsonify({"error": "That username is already taken."}), 400
 
     otp_code = generate_otp()
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     password_hash = generate_password_hash(password)
 
-    conn.execute(
-        "INSERT INTO pending_verifications (email, name, username, password_hash, plan, otp_code, expires_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(email) DO UPDATE SET name=excluded.name, username=excluded.username, "
-        "password_hash=excluded.password_hash, plan=excluded.plan, otp_code=excluded.otp_code, "
-        "expires_at=excluded.expires_at",
+    cur.execute(
+        """
+        INSERT INTO pending_verifications (email, name, username, password_hash, plan, otp_code, expires_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (email) DO UPDATE SET
+            name = EXCLUDED.name,
+            username = EXCLUDED.username,
+            password_hash = EXCLUDED.password_hash,
+            plan = EXCLUDED.plan,
+            otp_code = EXCLUDED.otp_code,
+            expires_at = EXCLUDED.expires_at
+        """,
         (email, name, username, password_hash, desired_plan, otp_code, expires_at),
     )
     conn.commit()
+    cur.close()
     conn.close()
 
     try:
@@ -291,37 +309,55 @@ def verify_otp():
     otp_code = (data.get("otp") or "").strip()
 
     conn = get_db()
-    pending = conn.execute(
-        "SELECT * FROM pending_verifications WHERE email = ?", (email,)
-    ).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM pending_verifications WHERE email = %s", (email,))
+    pending = cur.fetchone()
 
     if not pending:
+        cur.close()
         conn.close()
         return jsonify({"error": "No pending signup found for this email. Please sign up again."}), 400
 
-    expires_at = datetime.fromisoformat(pending["expires_at"])
-    if datetime.now(timezone.utc) > expires_at:
+    if datetime.now(timezone.utc) > pending["expires_at"]:
+        cur.close()
         conn.close()
         return jsonify({"error": "This code has expired. Please request a new one."}), 400
 
     if otp_code != pending["otp_code"]:
+        cur.close()
         conn.close()
         return jsonify({"error": "That code is not correct. Please check and try again."}), 400
 
-    if username_taken(conn, pending["username"]):
+    if username_taken(cur, pending["username"]):
+        cur.close()
         conn.close()
         return jsonify({"error": "That username was taken while you were verifying. Please sign up again with a different one."}), 400
 
     plan_status = "active" if pending["plan"] == "free" else "pending_payment"
-    conn.execute(
-        "INSERT INTO users (name, username, email, password_hash, plan, plan_status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (pending["name"], pending["username"], pending["email"], pending["password_hash"],
-         pending["plan"], plan_status, datetime.now(timezone.utc).isoformat()),
-    )
-    conn.execute("DELETE FROM pending_verifications WHERE email = ?", (email,))
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO users (name, username, email, password_hash, plan, plan_status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (pending["name"], pending["username"], pending["email"], pending["password_hash"],
+             pending["plan"], plan_status, datetime.now(timezone.utc)),
+        )
+        user = cur.fetchone()
+    except psycopg2.errors.UniqueViolation:
+        # A real, database-level guarantee: even if two people somehow
+        # verify the same email or username at the exact same moment,
+        # only one account can ever be created.
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({"error": "That email or username was just taken. Please try again."}), 400
+
+    cur.execute("DELETE FROM pending_verifications WHERE email = %s", (email,))
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    cur.close()
     conn.close()
 
     session["user_id"] = user["id"]
@@ -334,22 +370,24 @@ def resend_otp():
     email = (data.get("email") or "").strip().lower()
 
     conn = get_db()
-    pending = conn.execute(
-        "SELECT * FROM pending_verifications WHERE email = ?", (email,)
-    ).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM pending_verifications WHERE email = %s", (email,))
+    pending = cur.fetchone()
 
     if not pending:
+        cur.close()
         conn.close()
         return jsonify({"error": "No pending signup found for this email. Please sign up again."}), 400
 
     otp_code = generate_otp()
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-    conn.execute(
-        "UPDATE pending_verifications SET otp_code = ?, expires_at = ? WHERE email = ?",
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    cur.execute(
+        "UPDATE pending_verifications SET otp_code = %s, expires_at = %s WHERE email = %s",
         (otp_code, expires_at, email),
     )
     conn.commit()
     name = pending["name"]
+    cur.close()
     conn.close()
 
     try:
@@ -370,7 +408,10 @@ def login():
     password = data.get("password") or ""
 
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    cur.close()
     conn.close()
 
     if not user or not check_password_hash(user["password_hash"], password):
@@ -392,7 +433,10 @@ def me():
     if not user_id:
         return jsonify({"user": None})
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    cur.close()
     conn.close()
     return jsonify({"user": user_to_dict(user) if user else None})
 
@@ -406,10 +450,13 @@ def history():
     if not user_id:
         return jsonify({"messages": []})
     conn = get_db()
-    rows = conn.execute(
-        "SELECT role, content FROM messages WHERE user_id = ? ORDER BY id ASC LIMIT 200",
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT role, content FROM messages WHERE user_id = %s ORDER BY id ASC LIMIT 200",
         (user_id,),
-    ).fetchall()
+    )
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
     return jsonify({"messages": [{"role": r["role"], "content": r["content"]} for r in rows]})
 
@@ -429,12 +476,14 @@ def upgrade():
         return jsonify({"error": "Not a valid plan."}), 400
 
     conn = get_db()
-    conn.execute(
-        "UPDATE users SET plan = ?, plan_status = 'pending_payment' WHERE id = ?",
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET plan = %s, plan_status = 'pending_payment' WHERE id = %s RETURNING *",
         (desired_plan, user_id),
     )
+    user = cur.fetchone()
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    cur.close()
     conn.close()
 
     return jsonify({
@@ -554,7 +603,6 @@ def chat():
         result = response.json()
         reply = result["candidates"][0]["content"]["parts"][0]["text"]
 
-        # Save this exchange to the account's permanent history.
         if messages and messages[-1].get("role") == "user":
             save_message(user_id, "user", messages[-1].get("content", ""))
         save_message(user_id, "assistant", reply)
