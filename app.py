@@ -333,7 +333,11 @@ def verify_otp():
         conn.close()
         return jsonify({"error": "That code is not correct. Please check and try again."}), 400
 
-    if username_taken(cur, pending["username"]):
+    # Only check against confirmed accounts here, not other pending
+    # signups, since checking pending rows would incorrectly match
+    # this very signup against itself.
+    cur.execute("SELECT 1 FROM users WHERE username = %s", (pending["username"],))
+    if cur.fetchone():
         cur.close()
         conn.close()
         return jsonify({"error": "That username was taken while you were verifying. Please sign up again with a different one."}), 400
