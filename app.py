@@ -22,9 +22,7 @@ from your Neon project.
 import os
 import re
 import secrets
-import smtplib
 from datetime import datetime, timedelta, timezone
-from email.mime.text import MIMEText
 
 import psycopg2
 import psycopg2.extras
@@ -75,29 +73,36 @@ def validate_password(password):
 
 
 # --------------------------------------------------------------------
-# EMAIL SETUP (your own Gmail account, free)
+# EMAIL SETUP (Brevo, free, works over HTTPS so Render's free tier
+# SMTP port block does not affect it at all)
 # --------------------------------------------------------------------
-GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
 
 
 def send_otp_email(to_email, name, otp_code):
-    subject = "Your Saathi verification code"
-    body = (
-        f"Hi {name},\n\n"
-        f"Your verification code is: {otp_code}\n\n"
-        f"This code expires in 10 minutes. If you did not try to sign "
-        f"up for Saathi, you can safely ignore this email.\n\n"
-        f"- Saathi"
+    response = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        json={
+            "sender": {"name": "Saathi", "email": BREVO_SENDER_EMAIL},
+            "to": [{"email": to_email, "name": name}],
+            "subject": "Your Saathi verification code",
+            "textContent": (
+                f"Hi {name},\n\n"
+                f"Your verification code is: {otp_code}\n\n"
+                f"This code expires in 10 minutes. If you did not try to "
+                f"sign up for Saathi, you can safely ignore this email.\n\n"
+                f"- Saathi"
+            ),
+        },
+        timeout=15,
     )
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = GMAIL_ADDRESS
-    msg["To"] = to_email
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        server.sendmail(GMAIL_ADDRESS, [to_email], msg.as_string())
+    response.raise_for_status()
 
 
 def generate_otp():
@@ -252,7 +257,7 @@ def signup():
         if err:
             return jsonify({"error": err}), 400
 
-    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
         return jsonify({"error": "Email sending is not set up on the server yet. See the README."}), 500
 
     conn = get_db()
