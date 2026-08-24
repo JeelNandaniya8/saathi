@@ -1,22 +1,23 @@
 """
 Saathi backend
 ==============
-This server does five jobs:
+This server does six jobs:
 1. Keeps the real AI API key safe on the server (see /chat)
-2. Handles accounts with real email verification, sign up sends a one
-   time code to the person's email, they enter it, only then is the
-   account actually created
-3. Validates names, usernames, and passwords with real rules, and
-   checks whether a chosen username is already taken, in real time
+2. Handles accounts with real email verification (OTP by email)
+3. Validates names, usernames, and passwords, and checks username
+   availability in real time
 4. Tracks which plan each user is on: free, plus, or care, ready for
    Razorpay to plug in later
 5. Sends verification emails using a Gmail account, for free
+6. Remembers every conversation per account, so Saathi actually
+   remembers you between visits, not just within one open tab
 
 A note on the database: this uses SQLite, a simple, file based database
 that needs no separate installation. Render's free tier resets its
-files on every restart, so accounts made right now are for testing the
-flow, not permanent yet. Moving to a permanent hosted database is a
-small, later step, once real users are actually signing up.
+files on every restart, so accounts and history made right now are for
+testing the flow, not permanent yet. Moving to a permanent hosted
+database is a small, later step, once real users are actually signing
+up and this needs to survive restarts.
 """
 
 import os
@@ -42,11 +43,9 @@ DB_PATH = "saathi.db"
 
 # --------------------------------------------------------------------
 # VALIDATION RULES
-# Checked on the server no matter what the browser already checked,
-# since anyone can bypass frontend code, the server is the real gate.
 # --------------------------------------------------------------------
-NAME_RE = re.compile(r"^[A-Za-z\u0A80-\u0AFF ]{2,50}$")            # letters (incl. Gujarati) and spaces only
-USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")                   # letters, numbers, underscore only
+NAME_RE = re.compile(r"^[A-Za-z\u0A80-\u0AFF ]{2,50}$")
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 PASSWORD_ALLOWED_RE = re.compile(r"^[A-Za-z0-9!@#$%^&*()_\-+=]{8,64}$")
 PASSWORD_HAS_LETTER_RE = re.compile(r"[A-Za-z]")
 PASSWORD_HAS_DIGIT_RE = re.compile(r"[0-9]")
@@ -139,6 +138,16 @@ def init_db():
             expires_at TEXT NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -154,6 +163,7 @@ def user_to_dict(row):
         "email": row["email"],
         "plan": row["plan"],
         "plan_status": row["plan_status"],
+        "created_at": row["created_at"],
     }
 
 
@@ -161,6 +171,16 @@ def username_taken(conn, username):
     in_users = conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone()
     in_pending = conn.execute("SELECT 1 FROM pending_verifications WHERE username = ?", (username,)).fetchone()
     return bool(in_users or in_pending)
+
+
+def save_message(user_id, role, content):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO messages (user_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+        (user_id, role, content, datetime.now(timezone.utc).isoformat()),
+    )
+    conn.commit()
+    conn.close()
 
 
 # --------------------------------------------------------------------
@@ -174,6 +194,11 @@ def home():
 @app.route("/account")
 def account_page():
     return send_from_directory(".", "account.html")
+
+
+@app.route("/dashboard")
+def dashboard_page():
+    return send_from_directory(".", "dashboard.html")
 
 
 # --------------------------------------------------------------------
@@ -199,7 +224,7 @@ def check_username():
 
 
 # --------------------------------------------------------------------
-# SIGN UP, STEP 1: validate everything, send the code
+# SIGN UP, STEP 1
 # --------------------------------------------------------------------
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -257,7 +282,7 @@ def signup():
 
 
 # --------------------------------------------------------------------
-# SIGN UP, STEP 2: verify the code, actually create the account
+# SIGN UP, STEP 2
 # --------------------------------------------------------------------
 @app.route("/api/verify-otp", methods=["POST"])
 def verify_otp():
@@ -373,6 +398,23 @@ def me():
 
 
 # --------------------------------------------------------------------
+# CHAT HISTORY
+# --------------------------------------------------------------------
+@app.route("/api/history")
+def history():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"messages": []})
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT role, content FROM messages WHERE user_id = ? ORDER BY id ASC LIMIT 200",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify({"messages": [{"role": r["role"], "content": r["content"]} for r in rows]})
+
+
+# --------------------------------------------------------------------
 # UPGRADE (placeholder until Razorpay is connected)
 # --------------------------------------------------------------------
 @app.route("/api/upgrade", methods=["POST"])
@@ -473,7 +515,8 @@ SYSTEM_PROMPT = (
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    if not session.get("user_id"):
+    user_id = session.get("user_id")
+    if not user_id:
         return jsonify({"error": "Please log in to talk with Saathi.", "login_required": True}), 401
 
     if not GEMINI_API_KEY:
@@ -510,6 +553,12 @@ def chat():
         response.raise_for_status()
         result = response.json()
         reply = result["candidates"][0]["content"]["parts"][0]["text"]
+
+        # Save this exchange to the account's permanent history.
+        if messages and messages[-1].get("role") == "user":
+            save_message(user_id, "user", messages[-1].get("content", ""))
+        save_message(user_id, "assistant", reply)
+
         return jsonify({"reply": reply})
 
     except requests.exceptions.HTTPError:
