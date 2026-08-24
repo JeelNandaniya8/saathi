@@ -240,7 +240,7 @@
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
     </div>
-    <button class="navcta" onclick="openChat()">Try Saathi</button>
+    <button class="navcta" onclick="openChat()" id="navCta">Try Saathi</button>
     <button class="menu-toggle" onclick="toggleMobileMenu()" aria-label="Open menu">☰</button>
   </div>
   <div class="mobile-menu" id="mobileMenu">
@@ -251,6 +251,23 @@
     <a href="#faq" onclick="toggleMobileMenu()">FAQ</a>
   </div>
 </nav>
+
+<script>
+  // Personalize the nav button the moment the page loads, if someone is logged in.
+  (async function checkLoginForNav(){
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      const data = await res.json();
+      const cta = document.getElementById('navCta');
+      if (data.user){
+        cta.textContent = 'Hi, ' + data.user.name.split(' ')[0];
+        cta.onclick = () => { window.location.href = '/dashboard'; };
+      }
+    } catch (err) {
+      console.error('Login check failed:', err);
+    }
+  })();
+</script>
 
 <header class="hero">
   <div class="wrap">
@@ -487,7 +504,6 @@
 
   const overlay = document.getElementById('overlay');
   async function openChat(){
-    // Check whether someone is actually logged in before showing the chat.
     try {
       const res = await fetch('/api/me', { credentials: 'include' });
       const data = await res.json();
@@ -501,9 +517,30 @@
     }
     overlay.classList.add('open');
     document.getElementById('chatInput').focus();
+    loadHistory();
   }
   function closeChat(){ overlay.classList.remove('open'); }
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeChat(); });
+
+  let historyLoaded = false;
+  async function loadHistory(){
+    if (historyLoaded) return; // only load once per page visit
+    historyLoaded = true;
+    try {
+      const res = await fetch('/api/history', { credentials: 'include' });
+      const data = await res.json();
+      if (data.messages && data.messages.length > 0){
+        chatLog.innerHTML = ''; // clear the default greeting, real history replaces it
+        conversation = [];
+        data.messages.forEach(m => {
+          addBubble(m.role === 'user' ? 'user' : 'ai', m.content);
+          conversation.push({ role: m.role, content: m.content });
+        });
+      }
+    } catch (err) {
+      console.error('Could not load history:', err);
+    }
+  }
 
   let conversation = [];
   const chatLog = document.getElementById('chatLog');
