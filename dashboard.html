@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saathi. Your dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23B8912E'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF9F5; --surface: #FFFFFF; --ink: #1E2320; --muted: #6B7268;
+    --gold: #B8912E; --gold-soft: #F1E4C4; --sage: #4F7469; --sage-soft: #E3ECE6;
+    --border: #E6E2D6;
+    --display: 'Fraunces', serif; --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:840px; margin:0 auto; padding:0 24px; }
+
+  nav{
+    position:sticky; top:0; z-index:20; background:rgba(250,249,245,0.85); backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+  }
+  nav .wrap{ display:flex; align-items:center; justify-content:space-between; height:68px; }
+  .brand{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-size:20px; font-weight:600; }
+  .orb{ width:16px; height:16px; border-radius:50%; }
+  .orb::before{
+    content:''; display:block; width:100%; height:100%; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #E8C56B, var(--gold) 60%, #8a6c1f 100%);
+  }
+  .navlinks{ display:flex; align-items:center; gap:18px; font-size:14px; }
+  .navlinks a{ color:var(--muted); }
+  .navlinks a:hover{ color:var(--ink); }
+  .logout-btn{
+    background:none; border:1px solid var(--border); color:var(--ink); padding:8px 16px;
+    border-radius:100px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:var(--sans);
+  }
+  .logout-btn:hover{ border-color:var(--ink); }
+
+  main{ padding:48px 0 80px; }
+
+  .hello{ margin-bottom:36px; }
+  .hello .eyebrow{ font-size:13px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .hello h1{ font-family:var(--display); font-size:clamp(28px,4vw,38px); font-weight:500; margin-top:8px; }
+
+  .grid{ display:grid; grid-template-columns:1.1fr 1fr; gap:20px; }
+  @media(max-width:720px){ .grid{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px; }
+  .panel h2{ font-family:var(--display); font-size:18px; font-weight:600; margin-bottom:18px; }
+
+  .profile-row{ display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+  .avatar{
+    width:56px; height:56px; border-radius:50%; background:var(--gold-soft); color:var(--gold);
+    display:flex; align-items:center; justify-content:center; font-family:var(--display);
+    font-size:22px; font-weight:600; flex-shrink:0;
+  }
+  .profile-row .name{ font-family:var(--display); font-size:18px; font-weight:600; }
+  .profile-row .username{ color:var(--muted); font-size:13.5px; margin-top:2px; }
+
+  .info-row{ display:flex; justify-content:space-between; padding:11px 0; border-top:1px solid var(--border); font-size:14px; }
+  .info-row:first-of-type{ border-top:none; }
+  .info-row .label{ color:var(--muted); }
+  .info-row .value{ font-weight:600; }
+
+  .plan-badge{
+    display:inline-flex; align-items:center; gap:6px; background:var(--sage-soft); color:var(--sage);
+    padding:6px 14px; border-radius:100px; font-size:13px; font-weight:700; text-transform:capitalize;
+  }
+  .plan-badge.pending{ background:var(--gold-soft); color:var(--gold); }
+  .plan-note{ font-size:13px; color:var(--muted); margin-top:14px; line-height:1.6; }
+
+  .upgrade-row{ display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+  .btn-ghost{
+    background:transparent; color:var(--ink); padding:10px 18px; border-radius:100px;
+    font-weight:600; font-size:13.5px; border:1px solid var(--border); cursor:pointer; font-family:var(--sans);
+  }
+  .btn-ghost:hover{ border-color:var(--ink); }
+  .btn-primary{
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:100px;
+    font-weight:600; font-size:13.5px; border:none; cursor:pointer; font-family:var(--sans);
+  }
+
+  .chat-cta{
+    background:var(--ink); color:var(--bg); border-radius:20px; padding:28px; text-align:center;
+    grid-column:1 / -1;
+  }
+  .chat-cta h2{ font-family:var(--display); font-size:20px; font-weight:600; margin-bottom:8px; }
+  .chat-cta p{ color:#C7CBC3; font-size:14px; margin-bottom:18px; }
+  .chat-cta button{
+    background:var(--gold); color:#241C05; border:none; padding:12px 26px; border-radius:100px;
+    font-weight:700; font-size:14px; cursor:pointer; font-family:var(--sans);
+  }
+
+  .loading{ text-align:center; padding:80px 0; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="orb"></span> Saathi</div>
+    <div class="navlinks">
+      <a href="/">Chat</a>
+      <button class="logout-btn" onclick="logout()">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="loading" id="loadingState">Loading your dashboard...</div>
+
+<main class="wrap" id="dashboardContent" style="display:none;">
+  <div class="hello">
+    <div class="eyebrow">Your account</div>
+    <h1 id="greeting">Hey there</h1>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Profile</h2>
+      <div class="profile-row">
+        <div class="avatar" id="avatarLetter">?</div>
+        <div>
+          <div class="name" id="profileName">-</div>
+          <div class="username" id="profileUsername">@-</div>
+        </div>
+      </div>
+      <div class="info-row"><span class="label">Email</span><span class="value" id="profileEmail">-</span></div>
+      <div class="info-row"><span class="label">Member since</span><span class="value" id="profileSince">-</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Your plan</h2>
+      <div class="plan-badge" id="planBadge">Free</div>
+      <p class="plan-note" id="planNote"></p>
+      <div class="upgrade-row" id="upgradeRow"></div>
+    </div>
+
+    <div class="chat-cta">
+      <h2>Pick up where you left off</h2>
+      <p>Saathi remembers your past conversations on this account.</p>
+      <button onclick="window.location.href='/'">Open Saathi</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  async function loadDashboard(){
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      const data = await res.json();
+      if (!data.user){
+        window.location.href = '/account';
+        return;
+      }
+      renderUser(data.user);
+    } catch (err) {
+      console.error('Could not load account:', err);
+      document.getElementById('loadingState').textContent = 'Could not load your account. Try refreshing.';
+    }
+  }
+
+  function renderUser(user){
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'block';
+
+    document.getElementById('greeting').textContent = 'Hey, ' + user.name.split(' ')[0];
+    document.getElementById('avatarLetter').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('profileName').textContent = user.name;
+    document.getElementById('profileUsername').textContent = '@' + user.username;
+    document.getElementById('profileEmail').textContent = user.email;
+
+    const since = new Date(user.created_at);
+    document.getElementById('profileSince').textContent = since.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const badge = document.getElementById('planBadge');
+    const note = document.getElementById('planNote');
+    const upgradeRow = document.getElementById('upgradeRow');
+
+    badge.textContent = user.plan;
+    if (user.plan_status === 'pending_payment'){
+      badge.classList.add('pending');
+      note.textContent = 'This plan is saved but payment is not connected yet, so it is not active. Real checkout is coming soon.';
+    } else if (user.plan === 'free'){
+      note.textContent = 'You are on the Free plan. Upgrade for long term memory, unlimited check ins, and more.';
+      upgradeRow.innerHTML = `
+        <button class="btn-primary" onclick="window.location.href='/account?plan=plus'">Upgrade to Plus</button>
+        <button class="btn-ghost" onclick="window.location.href='/account?plan=care'">Upgrade to Care</button>
+      `;
+    } else {
+      note.textContent = 'Your plan is active. Thank you for supporting Saathi.';
+    }
+  }
+
+  async function logout(){
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+    window.location.href = '/account';
+  }
+
+  loadDashboard();
+</script>
+
+</body>
+</html>
