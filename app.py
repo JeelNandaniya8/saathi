@@ -1,8 +1,8 @@
 """
 Saathi backend
 ==============
-This server does six jobs:
-1. Keeps the real AI API key safe on the server (see /chat)
+This server does seven jobs:
+1. Keeps the Gemini API key safe on the server (see /chat)
 2. Handles accounts with real email verification (OTP by email)
 3. Validates names, usernames, and passwords, and checks username
    availability in real time, enforced permanently by the database
@@ -10,6 +10,7 @@ This server does six jobs:
    Razorpay to plug in later
 5. Sends verification emails using a Gmail account, for free
 6. Remembers every conversation per account, permanently
+7. Stores user-created reminders for routines, study, and medicine
 
 This now uses real PostgreSQL (hosted for free on Neon), not SQLite.
 The database enforces "one email per account" and "one username per
@@ -28,13 +29,15 @@ import psycopg2
 import psycopg2.extras
 import requests
 from flask import Flask, request, jsonify, send_from_directory, session
-from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder=".", static_url_path="")
-CORS(app, supports_credentials=True)
-
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-change-me")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "true").lower() == "true",
+)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -44,6 +47,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 # --------------------------------------------------------------------
 NAME_RE = re.compile(r"^[A-Za-z\u0A80-\u0AFF ]{2,50}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 PASSWORD_ALLOWED_RE = re.compile(r"^[A-Za-z0-9!@#$%^&*()_\-+=]{8,64}$")
 PASSWORD_HAS_LETTER_RE = re.compile(r"[A-Za-z]")
 PASSWORD_HAS_DIGIT_RE = re.compile(r"[0-9]")
@@ -153,6 +157,22 @@ def init_db():
             created_at TIMESTAMPTZ NOT NULL
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS reminders (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            next_run_at TIMESTAMPTZ NOT NULL,
+            recurrence TEXT NOT NULL DEFAULT 'once',
+            active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS reminders_user_next_idx
+        ON reminders (user_id, next_run_at)
+    """)
     conn.commit()
     cur.close()
     conn.close()
@@ -252,6 +272,9 @@ def signup():
 
     if not name or not username or not email or not password:
         return jsonify({"error": "Please fill in every field."}), 400
+
+    if len(email) > 200 or not EMAIL_RE.match(email):
+        return jsonify({"error": "Enter a valid email address."}), 400
 
     for err in (validate_name(name), validate_username(username), validate_password(password)):
         if err:
@@ -471,6 +494,153 @@ def history():
 
 
 # --------------------------------------------------------------------
+# USER-CONTROLLED REMINDERS
+# --------------------------------------------------------------------
+def reminder_to_dict(row):
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "note": row["note"],
+        "next_run_at": row["next_run_at"].isoformat(),
+        "recurrence": row["recurrence"],
+        "active": row["active"],
+        "created_at": row["created_at"].isoformat(),
+    }
+
+
+def require_user_id():
+    return session.get("user_id")
+
+
+@app.route("/api/reminders", methods=["GET", "POST"])
+def reminders():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    if request.method == "GET":
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM reminders WHERE user_id = %s ORDER BY active DESC, next_run_at ASC",
+            (user_id,),
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({"reminders": [reminder_to_dict(row) for row in rows]})
+
+    data = request.get_json(force=True, silent=True) or {}
+    title = (data.get("title") or "").strip()
+    note = (data.get("note") or "").strip()
+    recurrence = data.get("recurrence") or "once"
+    next_run_raw = data.get("next_run_at") or ""
+
+    if not title or len(title) > 160:
+        return jsonify({"error": "Reminder title should be between 1 and 160 characters."}), 400
+    if len(note) > 500:
+        return jsonify({"error": "Reminder note should be 500 characters or less."}), 400
+    if recurrence not in ("once", "daily", "weekly"):
+        return jsonify({"error": "Choose once, daily, or weekly."}), 400
+    try:
+        next_run_at = datetime.fromisoformat(next_run_raw.replace("Z", "+00:00"))
+        if next_run_at.tzinfo is None:
+            next_run_at = next_run_at.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Choose a valid reminder date and time."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO reminders (user_id, title, note, next_run_at, recurrence, active, created_at)
+        VALUES (%s, %s, %s, %s, %s, TRUE, %s)
+        RETURNING *
+        """,
+        (user_id, title, note, next_run_at, recurrence, datetime.now(timezone.utc)),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"reminder": reminder_to_dict(row)}), 201
+
+
+@app.route("/api/reminders/<int:reminder_id>", methods=["PATCH", "DELETE"])
+def reminder_detail(reminder_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM reminders WHERE id = %s AND user_id = %s",
+        (reminder_id, user_id),
+    )
+    reminder = cur.fetchone()
+    if not reminder:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Reminder not found."}), 404
+
+    if request.method == "DELETE":
+        cur.execute("DELETE FROM reminders WHERE id = %s AND user_id = %s", (reminder_id, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+
+    data = request.get_json(force=True, silent=True) or {}
+    action = data.get("action")
+    if action == "toggle":
+        cur.execute(
+            "UPDATE reminders SET active = NOT active WHERE id = %s AND user_id = %s RETURNING *",
+            (reminder_id, user_id),
+        )
+    elif action == "snooze":
+        try:
+            minutes = min(max(int(data.get("minutes") or 30), 5), 1440)
+        except (TypeError, ValueError):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Choose a valid snooze time."}), 400
+        cur.execute(
+            "UPDATE reminders SET next_run_at = %s, active = TRUE WHERE id = %s AND user_id = %s RETURNING *",
+            (datetime.now(timezone.utc) + timedelta(minutes=minutes), reminder_id, user_id),
+        )
+    elif action == "complete":
+        now = datetime.now(timezone.utc)
+        if reminder["recurrence"] == "daily":
+            next_run = reminder["next_run_at"]
+            while next_run <= now:
+                next_run += timedelta(days=1)
+            active = True
+        elif reminder["recurrence"] == "weekly":
+            next_run = reminder["next_run_at"]
+            while next_run <= now:
+                next_run += timedelta(days=7)
+            active = True
+        else:
+            next_run = reminder["next_run_at"]
+            active = False
+        cur.execute(
+            "UPDATE reminders SET next_run_at = %s, active = %s WHERE id = %s AND user_id = %s RETURNING *",
+            (next_run, active, reminder_id, user_id),
+        )
+    else:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Choose toggle, snooze, or complete."}), 400
+
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"reminder": reminder_to_dict(updated)})
+
+
+# --------------------------------------------------------------------
 # UPGRADE (placeholder until Razorpay is connected)
 # --------------------------------------------------------------------
 @app.route("/api/upgrade", methods=["POST"])
@@ -585,11 +755,14 @@ def chat():
 
     body = request.get_json(force=True, silent=True) or {}
     messages = body.get("messages", [])
+    if not isinstance(messages, list):
+        return jsonify({"error": "Messages must be a list."}), 400
+    messages = messages[-30:]
 
     contents = []
     for m in messages:
         role = "user" if m.get("role") == "user" else "model"
-        text = m.get("content", "")
+        text = str(m.get("content", ""))[:5000]
         if text:
             contents.append({"role": role, "parts": [{"text": text}]})
 
@@ -619,14 +792,16 @@ def chat():
         return jsonify({"reply": reply})
 
     except requests.exceptions.HTTPError:
+        app.logger.exception("Gemini request was rejected")
         return jsonify({
-            "error": f"The AI provider rejected the request. "
-                     f"Details: {response.status_code} {response.text[:300]}"
+            "error": "The AI provider could not answer this request. Please try again shortly."
         }), 502
-    except Exception as e:
-        return jsonify({"error": f"Something went wrong: {e}"}), 500
+    except Exception:
+        app.logger.exception("Saathi chat failed")
+        return jsonify({"error": "Something went wrong while preparing the reply."}), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug)
