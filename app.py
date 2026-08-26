@@ -84,7 +84,7 @@ BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
 
 
-def send_otp_email(to_email, name, otp_code):
+def send_email(to_email, name, subject, text):
     response = requests.post(
         "https://api.brevo.com/v3/smtp/email",
         headers={
@@ -95,18 +95,41 @@ def send_otp_email(to_email, name, otp_code):
         json={
             "sender": {"name": "Saathi", "email": BREVO_SENDER_EMAIL},
             "to": [{"email": to_email, "name": name}],
-            "subject": "Your Saathi verification code",
-            "textContent": (
-                f"Hi {name},\n\n"
-                f"Your verification code is: {otp_code}\n\n"
-                f"This code expires in 10 minutes. If you did not try to "
-                f"sign up for Saathi, you can safely ignore this email.\n\n"
-                f"- Saathi"
-            ),
+            "subject": subject,
+            "textContent": text,
         },
         timeout=15,
     )
     response.raise_for_status()
+
+
+def send_otp_email(to_email, name, otp_code):
+    send_email(
+        to_email, name,
+        "Your Saathi verification code",
+        (
+            f"Hi {name},\n\n"
+            f"Your verification code is: {otp_code}\n\n"
+            f"This code expires in 10 minutes. If you did not try to "
+            f"sign up for Saathi, you can safely ignore this email.\n\n"
+            f"- Saathi"
+        ),
+    )
+
+
+def send_reset_email(to_email, name, otp_code):
+    send_email(
+        to_email, name,
+        "Reset your Saathi password",
+        (
+            f"Hi {name},\n\n"
+            f"Your password reset code is: {otp_code}\n\n"
+            f"This code expires in 10 minutes. If you did not ask to "
+            f"reset your Saathi password, you can safely ignore this "
+            f"email, your password has not been changed.\n\n"
+            f"- Saathi"
+        ),
+    )
 
 
 def generate_otp():
@@ -155,6 +178,13 @@ def init_db():
             role TEXT NOT NULL,
             content TEXT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            email TEXT PRIMARY KEY,
+            otp_code TEXT NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL
         )
     """)
     cur.execute("""
@@ -471,6 +501,97 @@ def me():
     cur.close()
     conn.close()
     return jsonify({"user": user_to_dict(user) if user else None})
+
+
+# --------------------------------------------------------------------
+# FORGOT PASSWORD
+# --------------------------------------------------------------------
+@app.route("/api/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email or not EMAIL_RE.match(email):
+        return jsonify({"error": "Enter a valid email address."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+
+    # Always respond the same way whether or not the account exists,
+    # so this endpoint cannot be used to check which emails have
+    # accounts on Saathi.
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+
+    otp_code = generate_otp()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    cur.execute(
+        """
+        INSERT INTO password_resets (email, otp_code, expires_at)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (email) DO UPDATE SET
+            otp_code = EXCLUDED.otp_code,
+            expires_at = EXCLUDED.expires_at
+        """,
+        (email, otp_code, expires_at),
+    )
+    conn.commit()
+    name = user["name"]
+    cur.close()
+    conn.close()
+
+    try:
+        send_reset_email(email, name, otp_code)
+    except Exception:
+        app.logger.exception("Could not send password reset email")
+        return jsonify({"error": "Could not send the reset email. Please try again shortly."}), 500
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    otp_code = (data.get("otp") or "").strip()
+    new_password = data.get("password") or ""
+
+    err = validate_password(new_password)
+    if err:
+        return jsonify({"error": err}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM password_resets WHERE email = %s", (email,))
+    pending = cur.fetchone()
+
+    if not pending:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "No password reset was requested for this email. Please request a new code."}), 400
+
+    if datetime.now(timezone.utc) > pending["expires_at"]:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "This code has expired. Please request a new one."}), 400
+
+    if otp_code != pending["otp_code"]:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "That code is not correct. Please check and try again."}), 400
+
+    password_hash = generate_password_hash(new_password)
+    cur.execute("UPDATE users SET password_hash = %s WHERE email = %s", (password_hash, email))
+    cur.execute("DELETE FROM password_resets WHERE email = %s", (email,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"ok": True})
 
 
 # --------------------------------------------------------------------
