@@ -41,6 +41,7 @@ def test_checkout_is_disabled(client):
     assert data["checkout_enabled"] is False
     assert data["plans"]["plus"]["status"] == "coming_soon"
     assert data["plans"]["family"]["status"] == "coming_soon"
+    assert data["attachment_entitlements"]["free"]["attachments_enabled"] is True
 
 
 def test_csrf_required_for_authenticated_mutations(client):
@@ -82,4 +83,14 @@ def test_daily_tool_and_preferences_routes_are_registered(client):
         "/api/journal/<int:entry_id>",
         "/api/trusted-contacts",
         "/api/preferences",
+        "/api/attachments/<int:attachment_id>",
     } <= routes
+
+
+def test_attachment_download_requires_login(client):
+    with client.session_transaction() as session:
+        session.clear()
+    response = client.get("/api/attachments/99")
+    assert response.status_code == 401
+    assert response.get_json()["login_required"] is True
+    assert response.headers["Cache-Control"] == "no-store"

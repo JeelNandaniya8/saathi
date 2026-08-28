@@ -42,6 +42,17 @@ def test_dashboard_has_real_daily_tools_and_localised_navigation():
     assert "X-CSRF-Token" in text
 
 
+def test_chat_has_working_attachment_controls_and_multipart_flow():
+    text = (ROOT / "chat.html").read_text(encoding="utf-8")
+    for marker in (
+        'id="attachButton"', 'id="fileInput"', 'id="attachmentTray"',
+        "new FormData()", "body.append('attachments'", "instanceof FormData",
+        "message.attachments",
+    ):
+        assert marker in text
+    assert "application/pdf,image/jpeg,image/png,image/webp" in text
+
+
 def test_only_gemini_provider_and_no_committed_secrets():
     source_files = [
         path for path in ROOT.rglob("*")
@@ -59,3 +70,14 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
+
+
+def test_launch_readiness_files_are_wired():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    render = (ROOT / "render.yaml").read_text(encoding="utf-8")
+    smoke = (ROOT / "scripts" / "smoke_test.py").read_text(encoding="utf-8")
+    assert "pytest -q" in workflow
+    assert "scripts/check_javascript.sh" in workflow
+    assert "healthCheckPath: /api/health" in render
+    assert "sync: false" in render
+    assert '"/app.py"' in smoke and '"/api/health"' in smoke

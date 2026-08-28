@@ -1,0 +1,43 @@
+name: Saathi checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Compile backend and smoke checker
+        run: python -m py_compile app.py scripts/smoke_test.py
+
+      - name: Run backend and security tests
+        run: pytest -q
+
+      - name: Check browser JavaScript
+        run: bash scripts/check_javascript.sh
+
+      - name: Check patch whitespace
+        run: git diff --check

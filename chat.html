@@ -120,6 +120,12 @@ a{color:inherit;text-decoration:none}
 .message-name{margin:0 0 8px;font-size:10px;font-weight:800}
 .message-content{margin:0;color:var(--ink);font-size:14px;line-height:1.72;white-space:pre-wrap;overflow-wrap:anywhere}
 .message.user .message-content{color:color-mix(in srgb,var(--ink) 86%,var(--muted))}
+.message-attachments{margin:0 0 10px;display:flex;flex-wrap:wrap;gap:8px}
+.message-attachment{max-width:250px;min-height:42px;padding:7px 10px;border:1px solid var(--line);border-radius:12px;background:var(--canvas);display:flex;align-items:center;gap:8px;color:var(--ink)}
+.message-attachment:hover{border-color:var(--line-strong);background:var(--paper)}
+.message-attachment img{width:64px;height:48px;border-radius:8px;object-fit:cover;background:var(--sidebar)}
+.attachment-icon{width:29px;height:29px;flex:none;border-radius:8px;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;font-size:8px;font-weight:850}
+.attachment-copy{min-width:0}.attachment-copy b,.attachment-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-copy b{font-size:9px}.attachment-copy small{margin-top:3px;color:var(--soft);font-size:8px}
 .message-tools{min-height:26px;margin-top:10px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
 .message:hover .message-tools,.message:focus-within .message-tools{opacity:1}
 .message-tool{height:26px;padding:0 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--soft);font-size:9px}
@@ -141,10 +147,17 @@ a{color:inherit;text-decoration:none}
 .prompt:hover{border-color:var(--line-strong);background:var(--paper);box-shadow:0 9px 25px rgba(33,37,30,.06);transform:translateY(-2px)}
 .prompt span{color:var(--gold);font-size:13px}.prompt b{font-size:10px}.prompt small{color:var(--soft);font-size:9px}
 .composer-zone{position:absolute;z-index:15;left:0;right:0;bottom:0;padding:50px 22px max(15px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--paper) 33%,var(--paper))}
-.composer{position:relative;width:min(800px,100%);margin:auto;padding:9px 10px 9px 16px;border:1px solid var(--line-strong);border-radius:19px;background:var(--paper);box-shadow:0 14px 42px rgba(31,35,29,.1);display:grid;grid-template-columns:minmax(0,1fr) 39px;align-items:end}
+.composer{position:relative;width:min(800px,100%);margin:auto;padding:9px 10px;border:1px solid var(--line-strong);border-radius:19px;background:var(--paper);box-shadow:0 14px 42px rgba(31,35,29,.1);display:grid;grid-template-columns:39px minmax(0,1fr) 39px;align-items:end}
 .composer:focus-within{border-color:color-mix(in srgb,var(--gold) 55%,var(--line));box-shadow:0 16px 48px rgba(31,35,29,.13),0 0 0 3px rgba(158,119,36,.07)}
 .composer textarea{width:100%;max-height:160px;min-height:31px;padding:6px 8px 5px 0;resize:none;overflow-y:auto;border:0;outline:0;background:transparent;color:var(--ink);font-size:13px;line-height:1.5}
 .composer textarea::placeholder{color:var(--soft)}
+.attach{width:37px;height:37px;padding:0;border:0;border-radius:12px;background:transparent;color:var(--muted);display:grid;place-items:center}
+.attach:hover:not(:disabled){background:var(--canvas);color:var(--ink)}.attach:disabled{opacity:.3;cursor:not-allowed}.attach svg{width:18px;height:18px}
+.file-input{display:none}
+.attachment-tray{grid-column:1/-1;margin:0 1px 8px;padding:0 0 8px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:7px}
+.attachment-tray[hidden]{display:none}
+.selected-file{max-width:280px;height:37px;padding:0 6px 0 10px;border:1px solid var(--line);border-radius:11px;background:var(--canvas);display:flex;align-items:center;gap:7px}
+.selected-file span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:700}.selected-file small{color:var(--soft);font-size:8px;white-space:nowrap}.selected-file button{width:25px;height:25px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--soft)}.selected-file button:hover{background:var(--danger-soft);color:var(--danger)}
 .send{width:37px;height:37px;border:0;border-radius:12px;background:var(--ink);color:var(--paper);display:grid;place-items:center;transition:.18s}
 .send:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 16px rgba(26,29,25,.18)}
 .send:disabled{opacity:.24;cursor:not-allowed}
@@ -166,7 +179,7 @@ dialog::backdrop{background:rgba(13,15,12,.45);backdrop-filter:blur(3px)}
 @media(max-width:820px){
   .app{display:block}.sidebar{position:fixed;inset:0 auto 0 0;width:min(310px,88vw);transform:translateX(-103%);box-shadow:var(--shadow);transition:transform .24s ease}.sidebar.open{transform:none}.sidebar-scrim.show{display:block}.main{width:100%}.mobile-menu{display:grid}.topbar{height:61px;padding:0 11px;grid-template-columns:42px minmax(0,1fr) 42px}.top-actions .top-pill{display:none}.message-list{width:min(100% - 26px,720px);padding-top:28px}.composer-zone{padding-left:12px;padding-right:12px}.prompts{grid-template-columns:1fr}.prompt:nth-child(n+4){display:none}.empty{padding-top:30px}.empty h2{font-size:36px}.empty>div>p{font-size:11px}.shortcut{display:none}
 }
-@media(max-width:520px){.message{grid-template-columns:28px minmax(0,1fr);gap:10px}.message-avatar{width:27px;height:27px;border-radius:9px}.message-content{font-size:13px;line-height:1.65}.message-list{padding-bottom:154px}.empty{min-height:calc(100dvh - 220px)}.empty-orb{margin-bottom:20px}.empty h2{font-size:33px}.prompt{min-height:72px}.composer-meta{font-size:7px}.topbar{padding-left:8px;padding-right:8px}}
+@media(max-width:520px){.message{grid-template-columns:28px minmax(0,1fr);gap:10px}.message-avatar{width:27px;height:27px;border-radius:9px}.message-content{font-size:13px;line-height:1.65}.message-attachment{max-width:100%}.message-list{padding-bottom:154px}.empty{min-height:calc(100dvh - 220px)}.empty-orb{margin-bottom:20px}.empty h2{font-size:33px}.prompt{min-height:72px}.composer-meta{font-size:7px}.topbar{padding-left:8px;padding-right:8px}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -204,11 +217,16 @@ dialog::backdrop{background:rgba(13,15,12,.45);backdrop-filter:blur(3px)}
 
     <div class="composer-zone">
       <form class="composer" id="composer">
+        <div class="attachment-tray" id="attachmentTray" hidden></div>
+        <button class="attach" id="attachButton" type="button" aria-label="Attach a photo or PDF" title="Attach a photo or PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 12.5 14.9 5.6a3.5 3.5 0 0 1 5 5L10.7 19.8a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2"></path></svg>
+        </button>
+        <input class="file-input" id="fileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
         <textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi" aria-label="Message Saathi"></textarea>
         <span class="char-count" id="charCount">0 / 5000</span>
         <button class="send" id="sendButton" type="submit" aria-label="Send message" disabled>↑</button>
       </form>
-      <div class="composer-meta">Saathi is AI and can make mistakes. Check important health, legal and financial information with a qualified person.</div>
+      <div class="composer-meta" id="composerMeta">Add a photo or PDF for Saathi to explain. AI can make mistakes, so check important information.</div>
     </div>
   </main>
 </div>
@@ -226,12 +244,13 @@ dialog::backdrop{background:rgba(13,15,12,.45);backdrop-filter:blur(3px)}
 <dialog id="deleteDialog"><div class="dialog-body"><h2>Delete this conversation?</h2><p>This removes its messages from your account permanently. This action cannot be undone.</p><div class="dialog-actions"><button type="button" data-close="deleteDialog">Cancel</button><button class="danger" id="confirmDelete" type="button">Delete conversation</button></div></div></dialog>
 
 <script>
-const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null};
+const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,per_day:5}};
 const el={
   sidebar:document.getElementById('sidebar'),scrim:document.getElementById('sidebarScrim'),history:document.getElementById('history'),
   search:document.getElementById('searchInput'),searchWrap:document.getElementById('searchWrap'),chatTitle:document.getElementById('chatTitle'),
   messages:document.getElementById('messages'),list:document.getElementById('messageList'),input:document.getElementById('chatInput'),
   composer:document.getElementById('composer'),send:document.getElementById('sendButton'),charCount:document.getElementById('charCount'),
+  attach:document.getElementById('attachButton'),fileInput:document.getElementById('fileInput'),attachmentTray:document.getElementById('attachmentTray'),composerMeta:document.getElementById('composerMeta'),
   scrollBottom:document.getElementById('scrollBottom'),toast:document.getElementById('toast'),conversationMenu:document.getElementById('conversationMenu'),
   accountMenu:document.getElementById('accountMenu'),renameDialog:document.getElementById('renameDialog'),renameInput:document.getElementById('renameInput'),
   deleteDialog:document.getElementById('deleteDialog')
@@ -239,7 +258,8 @@ const el={
 
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method);
-  const response=await fetch(url,{credentials:'include',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
+  const isForm=options.body instanceof FormData;
+  const response=await fetch(url,{credentials:'include',...options,headers:{...(options.body&&!isForm?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
   let data={};
   try{data=await response.json()}catch(error){data={error:'The server returned an unreadable response.'}}
   if(response.status===401||data.login_required){location.href='/account';throw new Error('Please log in first.')}
@@ -252,8 +272,12 @@ function showToast(message){clearTimeout(toastTimer);el.toast.textContent=messag
 function closeSide(){el.sidebar.classList.remove('open');el.scrim.classList.remove('show')}
 function openSide(){el.sidebar.classList.add('open');el.scrim.classList.add('show')}
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
-function setBusy(busy){state.sending=busy;el.input.disabled=busy;updateComposer()}
-function updateComposer(){const length=el.input.value.length;el.send.disabled=state.sending||!length||!state.activeId;el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
+function setBusy(busy){state.sending=busy;el.input.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled;el.fileInput.disabled=el.attach.disabled;updateComposer()}
+function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0;el.send.disabled=state.sending||(!length&&!hasFile)||!state.activeId;el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
+function readableSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return Math.ceil(bytes/1024)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
+function renderSelectedFiles(){el.attachmentTray.replaceChildren();el.attachmentTray.hidden=!state.selectedFiles.length;state.selectedFiles.forEach((file,index)=>{const chip=document.createElement('div');chip.className='selected-file';const name=document.createElement('span');name.textContent=file.name;const size=document.createElement('small');size.textContent=readableSize(file.size);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove ${file.name}`);remove.addEventListener('click',()=>{state.selectedFiles.splice(index,1);renderSelectedFiles();updateComposer()});chip.append(name,size,remove);el.attachmentTray.append(chip)})}
+function chooseFiles(fileList){const allowed=['application/pdf','image/jpeg','image/png','image/webp'],extensions=['.pdf','.jpg','.jpeg','.png','.webp'],incoming=Array.from(fileList||[]);for(const file of incoming){if(state.selectedFiles.length>=state.attachmentLimits.per_message){showToast(`You can attach up to ${state.attachmentLimits.per_message} file(s) in one message.`);break}if(!allowed.includes(file.type)&&!extensions.some(ext=>file.name.toLowerCase().endsWith(ext))){showToast('Use a PDF, JPG, PNG or WebP file.');continue}if(file.size>state.attachmentLimits.max_bytes){showToast(`Each file can be up to ${readableSize(state.attachmentLimits.max_bytes)}.`);continue}state.selectedFiles.push(file)}el.fileInput.value='';renderSelectedFiles();updateComposer()}
+function clearSelectedFiles(){state.selectedFiles=[];el.fileInput.value='';renderSelectedFiles();updateComposer()}
 function formatDateGroup(dateString){
   const date=new Date(dateString),now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),day=new Date(date.getFullYear(),date.getMonth(),date.getDate());
   const days=Math.round((today-day)/86400000);
@@ -299,6 +323,7 @@ async function createConversation(){
 
 async function selectConversation(id){
   if(state.sending&&id!==state.activeId){showToast('Wait for the current reply before switching chats.');return}
+  if(id!==state.activeId&&state.selectedFiles.length)clearSelectedFiles();
   state.activeId=id;const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
   el.list.innerHTML='<div class="history-state">Loading conversation…</div>';
   try{const data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;state.messages=data.messages||[];state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=data.conversation.title;renderMessages();scrollToLatest(false);el.input.focus()}
@@ -321,8 +346,9 @@ function emptyView(){
 function messageElement(message,index){
   const article=document.createElement('article');const assistant=message.role==='assistant';article.className=`message ${assistant?'assistant':'user'}${message.failed?' failed':''}`;
   const avatar=document.createElement('div');avatar.className='message-avatar';avatar.textContent=assistant?'S':(state.user?.name?.charAt(0)||'Y').toUpperCase();
-  const body=document.createElement('div');body.className='message-body';const name=document.createElement('p');name.className='message-name';name.textContent=assistant?'Saathi':'You';
-  const content=document.createElement('p');content.className='message-content';content.textContent=message.content;body.append(name,content);
+  const body=document.createElement('div');body.className='message-body';const name=document.createElement('p');name.className='message-name';name.textContent=assistant?'Saathi':'You';body.append(name);
+  if(message.attachments?.length){const files=document.createElement('div');files.className='message-attachments';message.attachments.forEach(attachment=>{const link=document.createElement('a');link.className='message-attachment';link.href=attachment.url||'#';if(!attachment.local){link.target='_blank';link.rel='noopener'}else link.addEventListener('click',event=>event.preventDefault());if(attachment.mime_type?.startsWith('image/')){const preview=document.createElement('img');preview.src=attachment.url;preview.alt=attachment.name;preview.loading='lazy';link.append(preview)}else{const icon=document.createElement('span');icon.className='attachment-icon';icon.textContent='PDF';link.append(icon)}const copy=document.createElement('span');copy.className='attachment-copy';const title=document.createElement('b');title.textContent=attachment.name;const detail=document.createElement('small');detail.textContent=readableSize(attachment.size_bytes);copy.append(title,detail);link.append(copy);files.append(link)});body.append(files)}
+  const content=document.createElement('p');content.className='message-content';content.textContent=message.content;body.append(content);
   const tools=document.createElement('div');tools.className='message-tools';
   const copy=document.createElement('button');copy.className='message-tool';copy.type='button';copy.textContent='Copy';copy.addEventListener('click',()=>copyMessage(message.content));tools.append(copy);
   if(message.failed){const retry=document.createElement('button');retry.className='message-tool';retry.type='button';retry.textContent='Try again';retry.addEventListener('click',retryFailed);tools.append(retry)}
@@ -346,12 +372,16 @@ async function loadOlderMessages(){
 async function copyMessage(text){try{await navigator.clipboard.writeText(text);showToast('Copied to clipboard.')}catch(error){showToast('Could not copy this message.') }}
 function scrollToLatest(smooth=true){el.messages.scrollTo({top:el.messages.scrollHeight,behavior:smooth?'smooth':'auto'})}
 
-async function sendContent(content){
-  if(state.sending||!state.activeId||!content.trim())return;
-  const text=content.trim();const temporary={id:'temporary-'+Date.now(),role:'user',content:text,created_at:new Date().toISOString()};
-  state.messages.push(temporary);el.input.value='';setBusy(true);renderMessages(true);scrollToLatest();
+function releaseLocalPreviews(message){(message?.attachments||[]).forEach(item=>{if(item.local&&item.url)URL.revokeObjectURL(item.url)})}
+async function sendContent(content,retryFiles=null){
+  const files=retryFiles||state.selectedFiles.slice();if(state.sending||!state.activeId||(!content.trim()&&!files.length))return;
+  const text=content.trim()||(files.length===1?'Please explain the attached file.':'Please explain the attached files.');
+  const temporary={id:'temporary-'+Date.now(),role:'user',content:text,created_at:new Date().toISOString(),local_files:files,attachments:files.map((file,index)=>({id:'local-'+index,name:file.name,mime_type:file.type,size_bytes:file.size,url:file.type.startsWith('image/')?URL.createObjectURL(file):'',local:true}))};
+  state.messages.push(temporary);el.input.value='';state.selectedFiles=[];renderSelectedFiles();setBusy(true);renderMessages(true);scrollToLatest();
   try{
-    const data=await api(`/api/conversations/${state.activeId}/messages`,{method:'POST',body:JSON.stringify({content:text})});
+    let body;if(files.length){body=new FormData();body.append('content',text);files.forEach(file=>body.append('attachments',file,file.name))}else body=JSON.stringify({content:text});
+    const data=await api(`/api/conversations/${state.activeId}/messages`,{method:'POST',body});
+    releaseLocalPreviews(temporary);
     state.messages=state.messages.filter(message=>message!==temporary);state.messages.push(data.user_message,data.assistant_message);
     const conversation=data.conversation;state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation}:item);state.conversations.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
   }catch(error){state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:error.message||'I could not prepare a reply. Please try again.',failed:true});renderMessages();scrollToLatest();}
@@ -360,7 +390,7 @@ async function sendContent(content){
 
 async function retryFailed(){
   if(state.sending)return;const failedIndex=state.messages.findIndex(message=>message.failed);if(failedIndex<1)return;const previous=state.messages[failedIndex-1];
-  state.messages.splice(failedIndex-1,2);renderMessages();await sendContent(previous.content);
+  const retryFiles=previous.local_files||[];releaseLocalPreviews(previous);state.messages.splice(failedIndex-1,2);renderMessages();await sendContent(previous.content,retryFiles);
 }
 
 async function regenerateReply(){
@@ -378,7 +408,7 @@ function openRename(){const conversation=state.conversations.find(item=>item.id=
 async function renameConversation(event){event.preventDefault();const id=state.menuId,title=el.renameInput.value.trim();if(!id||!title)return;try{const data=await api(`/api/conversations/${id}`,{method:'PATCH',body:JSON.stringify({title})});state.conversations=state.conversations.map(item=>item.id===id?{...item,...data.conversation}:item);if(state.activeId===id)el.chatTitle.textContent=data.conversation.title;renderConversations();el.renameDialog.close();showToast('Conversation renamed.')}catch(error){showToast(error.message)}}
 async function updateConversationFlag(flag){const id=state.menuId,conversation=state.conversations.find(item=>item.id===id);if(!conversation)return;closeConversationMenu();try{const data=await api(`/api/conversations/${id}`,{method:'PATCH',body:JSON.stringify({[flag]:!conversation[flag]})});state.conversations=state.conversations.filter(item=>item.id!==id);if(state.activeId===id){state.activeId=null;state.messages=[];state.hasMore=false}renderConversations();await loadConversations(el.search.value.trim());showToast(flag==='is_pinned'?(data.conversation.is_pinned?'Conversation pinned.':'Conversation unpinned.'):(data.conversation.is_archived?'Conversation archived.':'Conversation restored.'))}catch(error){showToast(error.message)}}
 async function exportConversation(){
-  const conversation=state.conversations.find(item=>item.id===state.menuId);if(!conversation)return;closeConversationMenu();try{let all=[],before=null,more=true;while(more){const suffix=before?`&before_id=${before}`:'';const data=await api(`/api/conversations/${conversation.id}/messages?limit=100${suffix}`);all=[...(data.messages||[]),...all];more=Boolean(data.has_more);before=data.next_before_id}const text=[conversation.title,'Exported from Saathi on '+new Date().toLocaleString(),''].concat(all.map(message=>`${message.role==='user'?'You':'Saathi'}\n${message.content}\n`)).join('\n');const blob=new Blob([text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=(conversation.title.replace(/[^a-z0-9_-]+/gi,'-').replace(/^-|-$/g,'')||'saathi-conversation')+'.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){showToast(error.message)}
+  const conversation=state.conversations.find(item=>item.id===state.menuId);if(!conversation)return;closeConversationMenu();try{let all=[],before=null,more=true;while(more){const suffix=before?`&before_id=${before}`:'';const data=await api(`/api/conversations/${conversation.id}/messages?limit=100${suffix}`);all=[...(data.messages||[]),...all];more=Boolean(data.has_more);before=data.next_before_id}const text=[conversation.title,'Exported from Saathi on '+new Date().toLocaleString(),''].concat(all.map(message=>{const files=(message.attachments||[]).map(file=>`Attachment: ${file.name} (${readableSize(file.size_bytes)})`).join('\n');return`${message.role==='user'?'You':'Saathi'}\n${files?files+'\n':''}${message.content}\n`})).join('\n');const blob=new Blob([text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=(conversation.title.replace(/[^a-z0-9_-]+/gi,'-').replace(/^-|-$/g,'')||'saathi-conversation')+'.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){showToast(error.message)}
 }
 async function deleteConversation(){
   const id=state.menuId;if(!id)return;document.getElementById('confirmDelete').disabled=true;
@@ -392,6 +422,7 @@ function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark
 
 document.getElementById('newChat').addEventListener('click',createConversation);document.getElementById('topNewChat').addEventListener('click',createConversation);
 document.getElementById('openSidebar').addEventListener('click',openSide);document.getElementById('closeSidebar').addEventListener('click',closeSide);el.scrim.addEventListener('click',closeSide);
+el.attach.addEventListener('click',()=>el.fileInput.click());el.fileInput.addEventListener('change',()=>chooseFiles(el.fileInput.files));
 el.composer.addEventListener('submit',event=>{event.preventDefault();sendContent(el.input.value)});el.input.addEventListener('input',updateComposer);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();el.composer.requestSubmit()}});
 el.search.addEventListener('input',()=>{el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
@@ -405,7 +436,7 @@ el.messages.addEventListener('scroll',()=>{const distance=el.messages.scrollHeig
 
 async function init(){
   applyTheme(localStorage.getItem('saathi-theme')||'light');
-  try{const data=await api('/api/me');if(!data.user){location.href='/account';return}state.user=data.user;state.csrf=data.csrf_token||'';document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=`${data.user.plan} plan`;document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();await loadConversations();updateComposer();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  try{const data=await api('/api/me');if(!data.user){location.href='/account';return}state.user=data.user;state.csrf=data.csrf_token||'';state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=`${data.user.plan} plan`;document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;el.composerMeta.textContent=`Photos and PDFs: ${state.attachmentLimits.per_message} per message, ${maxMb} MB each. AI can make mistakes.`;await loadConversations();updateComposer();setBusy(false);if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();

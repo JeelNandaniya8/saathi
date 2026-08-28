@@ -20,15 +20,18 @@ import re
 import secrets
 import hashlib
 import json
+import base64
 from datetime import date, datetime, timedelta, timezone
+from io import BytesIO
 from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
 import requests
-from flask import Flask, request, jsonify, send_from_directory, session, Response, g
+from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 # Do not expose the repository root as Flask's static directory.  The previous
 # configuration made files such as app.py, README.md, and requirements.txt
@@ -42,7 +45,9 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "true").lower() == "true",
     PERMANENT_SESSION_LIFETIME=timedelta(days=30),
-    MAX_CONTENT_LENGTH=1024 * 1024,
+    # Large enough for the highest attachment entitlement plus multipart
+    # overhead. Per-file, per-message and daily limits are checked separately.
+    MAX_CONTENT_LENGTH=26 * 1024 * 1024,
 )
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -52,6 +57,40 @@ CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
     "/api/cron/reminders",
+}
+
+ALLOWED_ATTACHMENT_TYPES = {
+    "application/pdf": ".pdf",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+# This is the single product-limit source used by the upload API and returned
+# to the signed-in browser. Free users receive a useful beta so the feature can
+# be tested before checkout exists; paid plans remain Coming Soon.
+PLAN_ENTITLEMENTS = {
+    "free": {
+        "attachments_enabled": True,
+        "attachments_beta": True,
+        "attachments_per_message": 1,
+        "attachment_max_bytes": 5 * 1024 * 1024,
+        "attachments_per_day": 5,
+    },
+    "plus": {
+        "attachments_enabled": True,
+        "attachments_beta": False,
+        "attachments_per_message": 3,
+        "attachment_max_bytes": 8 * 1024 * 1024,
+        "attachments_per_day": 50,
+    },
+    "family": {
+        "attachments_enabled": True,
+        "attachments_beta": False,
+        "attachments_per_message": 3,
+        "attachment_max_bytes": 8 * 1024 * 1024,
+        "attachments_per_day": 50,
+    },
 }
 
 
@@ -78,7 +117,7 @@ def add_security_headers(response):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
-        "img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
         "script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'"
     )
     if request.path.startswith("/api/") or (request.path == "/chat" and request.method == "POST"):
@@ -1057,7 +1096,20 @@ def me():
         return jsonify({"user": None})
     if not session.get("csrf_token"):
         session["csrf_token"] = secrets.token_urlsafe(32)
-    return jsonify({"user": user_to_dict(user), "csrf_token": session["csrf_token"]})
+    plan = user["plan"] if user["plan_status"] == "active" else "free"
+    entitlement = PLAN_ENTITLEMENTS.get(plan, PLAN_ENTITLEMENTS["free"])
+    return jsonify({
+        "user": user_to_dict(user),
+        "csrf_token": session["csrf_token"],
+        "chat_attachments": {
+            "enabled": entitlement["attachments_enabled"],
+            "beta": entitlement["attachments_beta"],
+            "per_message": entitlement["attachments_per_message"],
+            "max_bytes": entitlement["attachment_max_bytes"],
+            "per_day": entitlement["attachments_per_day"],
+            "accepted_types": list(ALLOWED_ATTACHMENT_TYPES),
+        },
+    })
 
 
 # --------------------------------------------------------------------
@@ -1218,13 +1270,96 @@ def conversation_to_dict(row):
     }
 
 
-def message_to_dict(row):
+def attachment_to_dict(row):
     return {
+        "id": row["id"],
+        "name": row["original_name"],
+        "mime_type": row["mime_type"],
+        "size_bytes": row["size_bytes"],
+        "url": f"/api/attachments/{row['id']}",
+    }
+
+
+def message_to_dict(row, attachments=None):
+    result = {
         "id": row["id"],
         "role": row["role"],
         "content": row["content"],
         "created_at": row["created_at"].isoformat(),
     }
+    result["attachments"] = [attachment_to_dict(item) for item in (attachments or [])]
+    return result
+
+
+def load_attachment_metadata(cur, message_ids, user_id):
+    grouped = {message_id: [] for message_id in message_ids}
+    if not message_ids:
+        return grouped
+    cur.execute(
+        """
+        SELECT id, message_id, original_name, mime_type, size_bytes
+        FROM chat_attachments
+        WHERE user_id = %s AND message_id = ANY(%s)
+        ORDER BY id ASC
+        """,
+        (user_id, list(message_ids)),
+    )
+    for row in cur.fetchall():
+        grouped.setdefault(row["message_id"], []).append(row)
+    return grouped
+
+
+def detect_attachment_type(content):
+    if content.startswith(b"%PDF-"):
+        return "application/pdf"
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def prepare_chat_attachments(uploaded_files, entitlement):
+    files = [item for item in uploaded_files if item and item.filename]
+    maximum_count = entitlement["attachments_per_message"]
+    if len(files) > maximum_count:
+        raise ValueError(f"You can attach up to {maximum_count} file(s) in one message.")
+
+    prepared = []
+    maximum_bytes = entitlement["attachment_max_bytes"]
+    for uploaded in files:
+        # Read one byte past the limit so an oversized file is rejected before
+        # it can be sent to Gemini or written to PostgreSQL.
+        content = uploaded.stream.read(maximum_bytes + 1)
+        if not content:
+            raise ValueError("Empty files cannot be attached.")
+        if len(content) > maximum_bytes:
+            maximum_mb = maximum_bytes // (1024 * 1024)
+            raise ValueError(f"Each attachment can be up to {maximum_mb} MB.")
+        mime_type = detect_attachment_type(content)
+        if mime_type not in ALLOWED_ATTACHMENT_TYPES:
+            raise ValueError("Use a PDF, JPG, PNG or WebP file.")
+
+        safe_stem = Path(secure_filename(uploaded.filename)).stem[:80] or "attachment"
+        safe_name = safe_stem + ALLOWED_ATTACHMENT_TYPES[mime_type]
+        prepared.append({
+            "name": safe_name,
+            "mime_type": mime_type,
+            "size_bytes": len(content),
+            "content": content,
+        })
+    return prepared
+
+
+def active_plan_entitlement(cur, user_id):
+    cur.execute("SELECT plan, plan_status FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    plan = user["plan"] if user and user["plan_status"] == "active" else "free"
+    if plan not in PLAN_ENTITLEMENTS:
+        plan = "free"
+    return plan, PLAN_ENTITLEMENTS[plan]
 
 
 def make_conversation_title(text):
@@ -1407,11 +1542,17 @@ def conversation_messages(conversation_id):
         page_rows = descending_rows[:limit]
         next_before_id = page_rows[-1]["id"] if has_more and page_rows else None
         rows = list(reversed(page_rows))
+        attachments_by_message = load_attachment_metadata(
+            cur, [row["id"] for row in rows], user_id
+        )
         cur.close()
         conn.close()
         return jsonify({
             "conversation": conversation_to_dict(conversation),
-            "messages": [message_to_dict(row) for row in rows],
+            "messages": [
+                message_to_dict(row, attachments_by_message.get(row["id"]))
+                for row in rows
+            ],
             "has_more": has_more,
             "next_before_id": next_before_id,
         })
@@ -1419,12 +1560,42 @@ def conversation_messages(conversation_id):
     limit_response = limited("chat_message", str(user_id), 30, 5)
     if limit_response:
         return limit_response
-    data = request.get_json(force=True, silent=True) or {}
+    if request.mimetype == "multipart/form-data":
+        data = request.form
+        uploaded_files = request.files.getlist("attachments")
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        uploaded_files = []
+
+    _plan, entitlement = active_plan_entitlement(cur, user_id)
+    try:
+        attachments = prepare_chat_attachments(uploaded_files, entitlement)
+    except ValueError as error:
+        cur.close()
+        conn.close()
+        return jsonify({"error": str(error)}), 400
+
+    if attachments:
+        day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        cur.execute(
+            "SELECT COUNT(*) AS count FROM chat_attachments WHERE user_id = %s AND created_at >= %s",
+            (user_id, day_start),
+        )
+        used_today = cur.fetchone()["count"]
+        if used_today + len(attachments) > entitlement["attachments_per_day"]:
+            cur.close()
+            conn.close()
+            return jsonify({
+                "error": "You have reached today's attachment limit. Try again tomorrow."
+            }), 429
+
     content = str(data.get("content") or "").strip()
+    if not content and attachments:
+        content = "Please explain the attached file." if len(attachments) == 1 else "Please explain the attached files."
     if not content:
         cur.close()
         conn.close()
-        return jsonify({"error": "Write a message first."}), 400
+        return jsonify({"error": "Write a message or attach a file first."}), 400
     if len(content) > 5000:
         cur.close()
         conn.close()
@@ -1446,7 +1617,11 @@ def conversation_messages(conversation_id):
 
     is_first_user_message = not any(row["role"] == "user" for row in recent)
     context = [{"role": row["role"], "content": row["content"]} for row in recent]
-    context.append({"role": "user", "content": content})
+    context.append({
+        "role": "user",
+        "content": content,
+        "attachments": attachments,
+    })
 
     try:
         reply = generate_gemini_reply(
@@ -1475,6 +1650,24 @@ def conversation_messages(conversation_id):
         (user_id, conversation_id, content, now),
     )
     user_message = cur.fetchone()
+    saved_attachments = []
+    for attachment in attachments:
+        cur.execute(
+            """
+            INSERT INTO chat_attachments (
+                user_id, conversation_id, message_id, original_name,
+                mime_type, size_bytes, content, created_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, message_id, original_name, mime_type, size_bytes
+            """,
+            (
+                user_id, conversation_id, user_message["id"], attachment["name"],
+                attachment["mime_type"], attachment["size_bytes"],
+                psycopg2.Binary(attachment["content"]), now,
+            ),
+        )
+        saved_attachments.append(cur.fetchone())
     cur.execute(
         """
         INSERT INTO messages (user_id, conversation_id, role, content, created_at)
@@ -1499,7 +1692,7 @@ def conversation_messages(conversation_id):
     conn.close()
     return jsonify({
         "conversation": conversation_to_dict(updated_conversation),
-        "user_message": message_to_dict(user_message),
+        "user_message": message_to_dict(user_message, saved_attachments),
         "assistant_message": message_to_dict(assistant_message),
     })
 
@@ -1545,6 +1738,25 @@ def regenerate_conversation_reply(conversation_id):
         {"role": row["role"], "content": row["content"]}
         for row in rows[:last_user_index + 1]
     ]
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT mime_type, content
+        FROM chat_attachments
+        WHERE message_id = %s AND user_id = %s AND conversation_id = %s
+        ORDER BY id ASC
+        """,
+        (last_user_id, user_id, conversation_id),
+    )
+    stored_attachments = [
+        {"mime_type": row["mime_type"], "content": bytes(row["content"])}
+        for row in cur.fetchall()
+    ]
+    cur.close()
+    conn.close()
+    if stored_attachments:
+        context[-1]["attachments"] = stored_attachments
     try:
         reply = generate_gemini_reply(
             context, load_active_memories(user_id), load_user_language(user_id)
@@ -1597,6 +1809,38 @@ def regenerate_conversation_reply(conversation_id):
     cur.close()
     conn.close()
     return jsonify({"assistant_message": message_to_dict(assistant_message)})
+
+
+@app.route("/api/attachments/<int:attachment_id>")
+def chat_attachment(attachment_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT original_name, mime_type, content
+        FROM chat_attachments
+        WHERE id = %s AND user_id = %s
+        """,
+        (attachment_id, user_id),
+    )
+    attachment = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not attachment:
+        return jsonify({"error": "Attachment not found."}), 404
+    return send_file(
+        BytesIO(bytes(attachment["content"])),
+        mimetype=attachment["mime_type"],
+        download_name=attachment["original_name"],
+        # Images can render in the chat. PDFs download instead of running as
+        # same-origin active documents in the browser.
+        as_attachment=attachment["mime_type"] == "application/pdf",
+        max_age=0,
+        conditional=True,
+    )
 
 
 # --------------------------------------------------------------------
@@ -2844,6 +3088,15 @@ def export_data():
     conversations_rows = cur.fetchall()
     cur.execute("SELECT id, conversation_id, role, content, created_at FROM messages WHERE user_id = %s ORDER BY id", (user_id,))
     message_rows = cur.fetchall()
+    cur.execute(
+        """
+        SELECT id, conversation_id, message_id, original_name, mime_type,
+               size_bytes, created_at
+        FROM chat_attachments WHERE user_id = %s ORDER BY id
+        """,
+        (user_id,),
+    )
+    attachment_rows = cur.fetchall()
     cur.execute("SELECT * FROM reminders WHERE user_id = %s ORDER BY created_at", (user_id,))
     reminder_rows = cur.fetchall()
     cur.execute("SELECT * FROM reminder_deliveries WHERE user_id = %s ORDER BY created_at", (user_id,))
@@ -2885,6 +3138,10 @@ def export_data():
         "account": clean(user, ("password_hash",)),
         "conversations": [clean(row) for row in conversations_rows],
         "messages": [clean(row) for row in message_rows],
+        "chat_attachments": [
+            {**clean(row), "download_url": f"/api/attachments/{row['id']}"}
+            for row in attachment_rows
+        ],
         "reminders": [clean(row) for row in reminder_rows],
         "reminder_deliveries": [clean(row) for row in reminder_delivery_rows],
         "tasks": [clean(row) for row in task_rows],
@@ -2943,6 +3200,7 @@ PLAN_CATALOG = {
         "benefits": [
             "Saved conversations",
             "Basic study planner and reminders",
+            "Limited photo and PDF study uploads during beta",
             "Privacy, export and deletion controls",
         ],
     },
@@ -2956,7 +3214,7 @@ PLAN_CATALOG = {
             "standard": {"currency": "USD", "amount": 7.99},
         },
         "benefits": [
-            "Study from notes, images and PDFs",
+            "More notes, image and PDF study uploads",
             "Adaptive plans, quizzes and weekly review",
             "Higher fair-use chat, memory and routine limits",
         ],
@@ -2985,6 +3243,7 @@ def plan_catalog():
         "checkout_enabled": False,
         "billing_status": "coming_soon",
         "plans": PLAN_CATALOG,
+        "attachment_entitlements": PLAN_ENTITLEMENTS,
         "note": "Prices are planned and may change before verified checkout launches.",
     })
 
@@ -3077,12 +3336,24 @@ def generate_gemini_reply(messages, memory_context="", language="en"):
         if not isinstance(message, dict):
             continue
         text = str(message.get("content", ""))[:5000].strip()
-        if not text:
+        message_attachments = []
+        for attachment in message.get("attachments", []):
+            if not isinstance(attachment, dict):
+                continue
+            mime_type = attachment.get("mime_type")
+            content = attachment.get("content")
+            if mime_type in ALLOWED_ATTACHMENT_TYPES and isinstance(content, (bytes, bytearray)):
+                message_attachments.append({"mime_type": mime_type, "content": bytes(content)})
+        if not text and not message_attachments:
             continue
         text = text[:remaining_characters]
-        if not text:
+        if not text and not message_attachments:
             break
-        selected.append({"role": message.get("role"), "content": text})
+        selected.append({
+            "role": message.get("role"),
+            "content": text,
+            "attachments": message_attachments,
+        })
         remaining_characters -= len(text)
         if remaining_characters <= 0:
             break
@@ -3091,14 +3362,29 @@ def generate_gemini_reply(messages, memory_context="", language="en"):
     for message in reversed(selected):
         role = "user" if message.get("role") == "user" else "model"
         text = message["content"]
-        if not text or (not contents and role == "model"):
+        attachments = message.get("attachments", []) if role == "user" else []
+        if (not text and not attachments) or (not contents and role == "model"):
             continue
+        parts = []
+        if text:
+            parts.append({"text": text})
+        for attachment in attachments:
+            parts.append({
+                "inlineData": {
+                    "mimeType": attachment["mime_type"],
+                    "data": base64.b64encode(attachment["content"]).decode("ascii"),
+                }
+            })
         # Gemini expects alternating turns. Merge any consecutive messages
         # of the same role instead of sending an invalid sequence.
         if contents and contents[-1]["role"] == role:
-            contents[-1]["parts"][0]["text"] += "\n\n" + text
+            if text and contents[-1]["parts"] and "text" in contents[-1]["parts"][0]:
+                contents[-1]["parts"][0]["text"] += "\n\n" + text
+                contents[-1]["parts"].extend(parts[1:])
+            else:
+                contents[-1]["parts"].extend(parts)
         else:
-            contents.append({"role": role, "parts": [{"text": text}]})
+            contents.append({"role": role, "parts": parts})
 
     if not contents:
         raise RuntimeError("Write a message first.")

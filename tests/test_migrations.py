@@ -71,5 +71,14 @@ def test_legacy_history_migration_is_preserving_and_idempotent():
 def test_daily_tools_and_delivery_schema_present():
     root = Path(__file__).parents[1]
     combined = "\n".join(path.read_text(encoding="utf-8").lower() for path in (root / "migrations").glob("*.sql"))
-    for table in ("habits", "habit_entries", "journal_entries", "trusted_contacts", "reminder_deliveries"):
+    for table in ("habits", "habit_entries", "journal_entries", "trusted_contacts", "reminder_deliveries", "chat_attachments"):
         assert f"create table if not exists {table}" in combined
+
+
+def test_attachment_migration_has_private_ownership_and_cascades():
+    root = Path(__file__).parents[1]
+    sql = (root / "migrations" / "007_chat_attachments.sql").read_text(encoding="utf-8").lower()
+    assert "user_id integer not null references users(id) on delete cascade" in sql
+    assert "conversation_id integer not null references conversations(id) on delete cascade" in sql
+    assert "message_id integer not null references messages(id) on delete cascade" in sql
+    assert "content bytea not null" in sql
