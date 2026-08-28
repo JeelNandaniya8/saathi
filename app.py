@@ -1,23 +1,18 @@
 """
 Saathi backend
 ==============
-This server does seven jobs:
-1. Keeps the Gemini API key safe on the server (see /chat)
-2. Handles accounts with real email verification (OTP by email)
-3. Validates names, usernames, and passwords, and checks username
-   availability in real time, enforced permanently by the database
-4. Tracks which plan each user is on: free, plus, or care, ready for
-   Razorpay to plug in later
-5. Sends verification emails using a Gmail account, for free
-6. Remembers every conversation per account, permanently
-7. Stores user-created reminders for routines, study, and medicine
+This server keeps Gemini and Brevo credentials on the backend, handles
+email-verified accounts, runs numbered PostgreSQL migrations, and serves
+the private conversation, planner, reminder, habit, journal, check-in,
+memory, language, trusted-contact, export, deletion, and support APIs.
+
+Paid checkout is intentionally disabled. Plus and Family are only an
+honest Coming Soon catalogue until an adult-owned, verified payment and
+legal setup exists.
 
 This now uses real PostgreSQL (hosted for free on Neon), not SQLite.
-The database enforces "one email per account" and "one username per
-account" itself, at the data layer, so it holds even under concurrent
-signups, this is a hard guarantee, not just an app level check.
-Requires a DATABASE_URL environment variable, the connection string
-from your Neon project.
+The database enforces one email and username per account. DATABASE_URL
+must be a PostgreSQL connection string such as a Neon URL.
 """
 
 import os
@@ -25,16 +20,21 @@ import re
 import secrets
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
 import requests
-from flask import Flask, request, jsonify, send_from_directory, session, Response
+from flask import Flask, request, jsonify, send_from_directory, session, Response, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+# Do not expose the repository root as Flask's static directory.  The previous
+# configuration made files such as app.py, README.md, and requirements.txt
+# publicly downloadable.  Public assets are now served only by the explicit
+# allow-listed routes below.
+app = Flask(__name__, static_folder=None)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 app.config.update(
@@ -46,6 +46,13 @@ app.config.update(
 )
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
+PROJECT_ROOT = Path(__file__).resolve().parent
+CSRF_EXEMPT_PATHS = {
+    "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
+    "/api/forgot-password", "/api/reset-password", "/api/support",
+    "/api/cron/reminders",
+}
 
 
 @app.before_request
@@ -55,6 +62,11 @@ def verify_same_origin():
     origin = request.headers.get("Origin")
     if origin and origin.rstrip("/") != request.host_url.rstrip("/"):
         return jsonify({"error": "This request was blocked for your security."}), 403
+    if session.get("user_id") and request.path not in CSRF_EXEMPT_PATHS:
+        expected = session.get("csrf_token") or ""
+        provided = request.headers.get("X-CSRF-Token") or ""
+        if not expected or not secrets.compare_digest(expected, provided):
+            return jsonify({"error": "Your security token expired. Refresh the page and try again."}), 403
     return None
 
 
@@ -71,6 +83,8 @@ def add_security_headers(response):
     )
     if request.path.startswith("/api/") or (request.path == "/chat" and request.method == "POST"):
         response.headers["Cache-Control"] = "no-store"
+    if request.path.startswith("/api/") or request.path in ("/account", "/dashboard", "/chat"):
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if request.is_secure:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -121,6 +135,7 @@ def validate_password(password):
 # --------------------------------------------------------------------
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
+CRON_SECRET = os.environ.get("CRON_SECRET")
 
 
 def send_email(to_email, name, subject, text):
@@ -244,8 +259,13 @@ def init_db():
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL DEFAULT 'free',
             plan_status TEXT NOT NULL DEFAULT 'active',
+            session_version INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMPTZ NOT NULL
         )
+    """)
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 1
     """)
     # Signups sit here first, unverified, until the right OTP is entered.
     cur.execute("""
@@ -256,8 +276,13 @@ def init_db():
             password_hash TEXT NOT NULL,
             plan TEXT NOT NULL,
             otp_code TEXT NOT NULL,
+            otp_hash TEXT,
             expires_at TIMESTAMPTZ NOT NULL
         )
+    """)
+    cur.execute("""
+        ALTER TABLE pending_verifications
+        ADD COLUMN IF NOT EXISTS otp_hash TEXT
     """)
     cur.execute("""
         ALTER TABLE pending_verifications
@@ -337,8 +362,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS password_resets (
             email TEXT PRIMARY KEY,
             otp_code TEXT NOT NULL,
+            otp_hash TEXT,
             expires_at TIMESTAMPTZ NOT NULL
         )
+    """)
+    cur.execute("""
+        ALTER TABLE password_resets
+        ADD COLUMN IF NOT EXISTS otp_hash TEXT
     """)
     cur.execute("""
         ALTER TABLE password_resets
@@ -348,6 +378,10 @@ def init_db():
         ALTER TABLE password_resets
         ADD COLUMN IF NOT EXISTS last_sent_at TIMESTAMPTZ
     """)
+    # Raw legacy OTP rows are short-lived and are deliberately invalidated.
+    # New rows store only a password hash of the one-time code.
+    cur.execute("DELETE FROM pending_verifications WHERE otp_hash IS NULL")
+    cur.execute("DELETE FROM password_resets WHERE otp_hash IS NULL")
     cur.execute("""
         CREATE TABLE IF NOT EXISTS reminders (
             id SERIAL PRIMARY KEY,
@@ -422,13 +456,75 @@ def init_db():
         CREATE INDEX IF NOT EXISTS request_attempts_lookup_idx
         ON request_attempts (action, identifier_hash, created_at DESC)
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS feedback_submissions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            feedback_type TEXT NOT NULL,
+            email TEXT NOT NULL DEFAULT '',
+            message TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'new',
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS feedback_submissions_created_idx
+        ON feedback_submissions (created_at DESC)
+    """)
     conn.commit()
     cur.close()
     conn.close()
 
 
+def run_migrations():
+    """Apply every numbered SQL migration once, in its own transaction."""
+    migrations_dir = PROJECT_ROOT / "migrations"
+    migration_files = sorted(migrations_dir.glob("*.sql"))
+    if not migration_files:
+        raise RuntimeError("No database migrations were found.")
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT pg_advisory_lock(837284717)")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TIMESTAMPTZ NOT NULL
+            )
+        """)
+        conn.commit()
+        cur.execute("SELECT version FROM schema_migrations")
+        applied = {row["version"] for row in cur.fetchall()}
+
+        for migration_file in migration_files:
+            version = migration_file.stem
+            if version in applied:
+                continue
+            sql = migration_file.read_text(encoding="utf-8")
+            try:
+                cur.execute(sql)
+                cur.execute(
+                    "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s)",
+                    (version, datetime.now(timezone.utc)),
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                app.logger.exception("Database migration %s failed", version)
+                raise
+    finally:
+        try:
+            cur.execute("SELECT pg_advisory_unlock(837284717)")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        cur.close()
+        conn.close()
+
+
 if DATABASE_URL:
-    init_db()
+    run_migrations()
 
 
 def user_to_dict(row):
@@ -439,6 +535,7 @@ def user_to_dict(row):
         "email": row["email"],
         "plan": row["plan"],
         "plan_status": row["plan_status"],
+        "language": row.get("language", "en"),
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
 
@@ -507,9 +604,15 @@ def get_or_create_recent_conversation(user_id, first_message=""):
 # --------------------------------------------------------------------
 # PAGES
 # --------------------------------------------------------------------
+def public_file_response(filename, mimetype="text/html"):
+    text = (PROJECT_ROOT / filename).read_text(encoding="utf-8")
+    base_url = APP_BASE_URL or request.url_root.rstrip("/")
+    return Response(text.replace("{{BASE_URL}}", base_url), mimetype=mimetype)
+
+
 @app.route("/")
 def home():
-    return send_from_directory(".", "saathi.html")
+    return public_file_response("saathi.html")
 
 
 @app.route("/account")
@@ -527,6 +630,78 @@ def chat_page():
     return send_from_directory(".", "chat.html")
 
 
+@app.route("/offline.html")
+def offline_page():
+    return send_from_directory(".", "offline.html")
+
+
+@app.route("/manifest.webmanifest")
+def web_manifest():
+    return send_from_directory(".", "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    response = send_from_directory(".", "service-worker.js", mimetype="text/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/saathi-icon.svg")
+def saathi_icon():
+    return send_from_directory(".", "saathi-icon.svg", mimetype="image/svg+xml")
+
+
+@app.route("/public.css")
+def public_styles():
+    return send_from_directory(".", "public.css", mimetype="text/css")
+
+
+@app.route("/privacy")
+def privacy_page():
+    return public_file_response("privacy.html")
+
+
+@app.route("/terms")
+def terms_page():
+    return public_file_response("terms.html")
+
+
+@app.route("/limitations")
+def limitations_page():
+    return public_file_response("limitations.html")
+
+
+@app.route("/support")
+def support_page():
+    return public_file_response("support.html")
+
+
+@app.route("/robots.txt")
+def robots():
+    return public_file_response("robots.txt", "text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    return public_file_response("sitemap.xml", "application/xml")
+
+
+@app.errorhandler(404)
+def page_not_found(_error):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "This endpoint does not exist."}), 404
+    return public_file_response("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(_error):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "The server could not complete this request."}), 500
+    return public_file_response("500.html"), 500
+
+
 @app.route("/api/health")
 def health():
     if not DATABASE_URL:
@@ -541,6 +716,47 @@ def health():
     except Exception:
         app.logger.exception("Health check failed")
         return jsonify({"status": "unavailable"}), 503
+
+
+@app.route("/api/support", methods=["POST"])
+def submit_support():
+    data = request.get_json(force=True, silent=True) or {}
+    feedback_type = str(data.get("type") or "").strip().lower()
+    email = str(data.get("email") or "").strip().lower()
+    message = str(data.get("message") or "").strip()
+
+    if feedback_type not in ("technical", "feature", "general", "privacy"):
+        return jsonify({"error": "Choose a valid feedback type."}), 400
+    if email and (len(email) > 200 or not EMAIL_RE.match(email)):
+        return jsonify({"error": "Enter a valid reply email or leave it blank."}), 400
+    if not message or len(message) > 2000:
+        return jsonify({"error": "Feedback should be between 1 and 2,000 characters."}), 400
+
+    identity = email or "anonymous"
+    limit_response = limited("support", identity, 5, 60)
+    if limit_response:
+        return limit_response
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO feedback_submissions
+            (user_id, feedback_type, email, message, status, created_at)
+        VALUES (%s, %s, %s, %s, 'new', %s)
+        """,
+        (
+            require_user_id(),
+            feedback_type,
+            email,
+            message,
+            datetime.now(timezone.utc),
+        ),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"ok": True}), 201
 
 
 # --------------------------------------------------------------------
@@ -577,9 +793,9 @@ def signup():
     username = (data.get("username") or "").strip().lower()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    desired_plan = data.get("plan") or "free"
-    if desired_plan not in ("free", "plus", "care"):
-        desired_plan = "free"
+    # Paid checkout is not active.  New accounts always begin on Free even if
+    # a caller edits the request manually.
+    desired_plan = "free"
 
     if not name or not username or not email or not password:
         return jsonify({"error": "Please fill in every field."}), 400
@@ -613,25 +829,28 @@ def signup():
         return jsonify({"error": "That username is already taken."}), 400
 
     otp_code = generate_otp()
+    otp_hash = generate_password_hash(otp_code)
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     password_hash = generate_password_hash(password)
 
     cur.execute(
         """
         INSERT INTO pending_verifications
-            (email, name, username, password_hash, plan, otp_code, expires_at, attempt_count, last_sent_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 0, %s)
+            (email, name, username, password_hash, plan, otp_code, otp_hash,
+             expires_at, attempt_count, last_sent_at)
+        VALUES (%s, %s, %s, %s, %s, 'hashed', %s, %s, 0, %s)
         ON CONFLICT (email) DO UPDATE SET
             name = EXCLUDED.name,
             username = EXCLUDED.username,
             password_hash = EXCLUDED.password_hash,
             plan = EXCLUDED.plan,
-            otp_code = EXCLUDED.otp_code,
+            otp_code = 'hashed',
+            otp_hash = EXCLUDED.otp_hash,
             expires_at = EXCLUDED.expires_at,
             attempt_count = 0,
             last_sent_at = EXCLUDED.last_sent_at
         """,
-        (email, name, username, password_hash, desired_plan, otp_code, expires_at,
+        (email, name, username, password_hash, desired_plan, otp_hash, expires_at,
          datetime.now(timezone.utc)),
     )
     conn.commit()
@@ -675,7 +894,7 @@ def verify_otp():
         conn.close()
         return jsonify({"error": "This code has expired. Please request a new one."}), 400
 
-    if otp_code != pending["otp_code"]:
+    if not pending.get("otp_hash") or not check_password_hash(pending["otp_hash"], otp_code):
         attempts = pending.get("attempt_count", 0) + 1
         if attempts >= 5:
             cur.execute("DELETE FROM pending_verifications WHERE email = %s", (email,))
@@ -700,7 +919,7 @@ def verify_otp():
         conn.close()
         return jsonify({"error": "That username was taken while you were verifying. Please sign up again with a different one."}), 400
 
-    plan_status = "active" if pending["plan"] == "free" else "pending_payment"
+    plan_status = "active"
 
     try:
         cur.execute(
@@ -729,6 +948,8 @@ def verify_otp():
 
     session.clear()
     session["user_id"] = user["id"]
+    session["session_version"] = user["session_version"]
+    session["csrf_token"] = secrets.token_urlsafe(32)
     session.permanent = True
     return jsonify({"user": user_to_dict(user)})
 
@@ -759,14 +980,16 @@ def resend_otp():
         return jsonify({"error": "Please wait one minute before requesting another code."}), 429
 
     otp_code = generate_otp()
+    otp_hash = generate_password_hash(otp_code)
     expires_at = now + timedelta(minutes=10)
     cur.execute(
         """
         UPDATE pending_verifications
-        SET otp_code = %s, expires_at = %s, attempt_count = 0, last_sent_at = %s
+        SET otp_code = 'hashed', otp_hash = %s, expires_at = %s,
+            attempt_count = 0, last_sent_at = %s
         WHERE email = %s
         """,
-        (otp_code, expires_at, now, email),
+        (otp_hash, expires_at, now, email),
     )
     conn.commit()
     name = pending["name"]
@@ -807,6 +1030,8 @@ def login():
 
     session.clear()
     session["user_id"] = user["id"]
+    session["session_version"] = user["session_version"]
+    session["csrf_token"] = secrets.token_urlsafe(32)
     session.permanent = True
     return jsonify({"user": user_to_dict(user)})
 
@@ -819,7 +1044,7 @@ def logout():
 
 @app.route("/api/me")
 def me():
-    user_id = session.get("user_id")
+    user_id = require_user_id()
     if not user_id:
         return jsonify({"user": None})
     conn = get_db()
@@ -828,7 +1053,11 @@ def me():
     user = cur.fetchone()
     cur.close()
     conn.close()
-    return jsonify({"user": user_to_dict(user) if user else None})
+    if not user:
+        return jsonify({"user": None})
+    if not session.get("csrf_token"):
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return jsonify({"user": user_to_dict(user), "csrf_token": session["csrf_token"]})
 
 
 # --------------------------------------------------------------------
@@ -860,18 +1089,21 @@ def forgot_password():
         return jsonify({"ok": True})
 
     otp_code = generate_otp()
+    otp_hash = generate_password_hash(otp_code)
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     cur.execute(
         """
-        INSERT INTO password_resets (email, otp_code, expires_at, attempt_count, last_sent_at)
-        VALUES (%s, %s, %s, 0, %s)
+        INSERT INTO password_resets
+            (email, otp_code, otp_hash, expires_at, attempt_count, last_sent_at)
+        VALUES (%s, 'hashed', %s, %s, 0, %s)
         ON CONFLICT (email) DO UPDATE SET
-            otp_code = EXCLUDED.otp_code,
+            otp_code = 'hashed',
+            otp_hash = EXCLUDED.otp_hash,
             expires_at = EXCLUDED.expires_at,
             attempt_count = 0,
             last_sent_at = EXCLUDED.last_sent_at
         """,
-        (email, otp_code, expires_at, datetime.now(timezone.utc)),
+        (email, otp_hash, expires_at, datetime.now(timezone.utc)),
     )
     conn.commit()
     name = user["name"]
@@ -917,7 +1149,7 @@ def reset_password():
         conn.close()
         return jsonify({"error": "This code has expired. Please request a new one."}), 400
 
-    if otp_code != pending["otp_code"]:
+    if not pending.get("otp_hash") or not check_password_hash(pending["otp_hash"], otp_code):
         attempts = pending.get("attempt_count", 0) + 1
         if attempts >= 5:
             cur.execute("DELETE FROM password_resets WHERE email = %s", (email,))
@@ -934,7 +1166,14 @@ def reset_password():
         return jsonify({"error": message}), 400
 
     password_hash = generate_password_hash(new_password)
-    cur.execute("UPDATE users SET password_hash = %s WHERE email = %s", (password_hash, email))
+    cur.execute(
+        """
+        UPDATE users
+        SET password_hash = %s, session_version = session_version + 1
+        WHERE email = %s
+        """,
+        (password_hash, email),
+    )
     cur.execute("DELETE FROM password_resets WHERE email = %s", (email,))
     conn.commit()
     cur.close()
@@ -948,7 +1187,7 @@ def reset_password():
 # --------------------------------------------------------------------
 @app.route("/api/history")
 def history():
-    user_id = session.get("user_id")
+    user_id = require_user_id()
     if not user_id:
         return jsonify({"messages": []})
     conn = get_db()
@@ -1177,6 +1416,9 @@ def conversation_messages(conversation_id):
             "next_before_id": next_before_id,
         })
 
+    limit_response = limited("chat_message", str(user_id), 30, 5)
+    if limit_response:
+        return limit_response
     data = request.get_json(force=True, silent=True) or {}
     content = str(data.get("content") or "").strip()
     if not content:
@@ -1207,7 +1449,9 @@ def conversation_messages(conversation_id):
     context.append({"role": "user", "content": content})
 
     try:
-        reply = generate_gemini_reply(context, load_active_memories(user_id))
+        reply = generate_gemini_reply(
+            context, load_active_memories(user_id), load_user_language(user_id)
+        )
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
     except Exception:
@@ -1265,6 +1509,9 @@ def regenerate_conversation_reply(conversation_id):
     user_id = require_user_id()
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    limit_response = limited("chat_regenerate", str(user_id), 15, 5)
+    if limit_response:
+        return limit_response
 
     conn = get_db()
     cur = conn.cursor()
@@ -1299,7 +1546,9 @@ def regenerate_conversation_reply(conversation_id):
         for row in rows[:last_user_index + 1]
     ]
     try:
-        reply = generate_gemini_reply(context, load_active_memories(user_id))
+        reply = generate_gemini_reply(
+            context, load_active_memories(user_id), load_user_language(user_id)
+        )
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
     except Exception:
@@ -1361,12 +1610,40 @@ def reminder_to_dict(row):
         "next_run_at": row["next_run_at"].isoformat(),
         "recurrence": row["recurrence"],
         "active": row["active"],
+        "email_enabled": row.get("email_enabled", False),
         "created_at": row["created_at"].isoformat(),
     }
 
 
+def next_reminder_occurrence(next_run, recurrence, now):
+    if recurrence == "once":
+        return next_run, False
+    step = timedelta(days=1 if recurrence == "daily" else 7)
+    while next_run <= now:
+        next_run += step
+    return next_run, True
+
+
 def require_user_id():
-    return session.get("user_id")
+    if hasattr(g, "authenticated_user_id"):
+        return g.authenticated_user_id
+    user_id = session.get("user_id")
+    session_version = session.get("session_version")
+    if not user_id or not session_version:
+        g.authenticated_user_id = None
+        return None
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT session_version FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not user or user["session_version"] != session_version:
+        session.clear()
+        g.authenticated_user_id = None
+        return None
+    g.authenticated_user_id = user_id
+    return user_id
 
 
 @app.route("/api/reminders", methods=["GET", "POST"])
@@ -1391,6 +1668,7 @@ def reminders():
     title = (data.get("title") or "").strip()
     note = (data.get("note") or "").strip()
     recurrence = data.get("recurrence") or "once"
+    email_enabled = data.get("email_enabled", False)
     next_run_raw = data.get("next_run_at") or ""
 
     if not title or len(title) > 160:
@@ -1399,6 +1677,8 @@ def reminders():
         return jsonify({"error": "Reminder note should be 500 characters or less."}), 400
     if recurrence not in ("once", "daily", "weekly"):
         return jsonify({"error": "Choose once, daily, or weekly."}), 400
+    if not isinstance(email_enabled, bool):
+        return jsonify({"error": "Use a valid email-delivery setting."}), 400
     try:
         next_run_at = datetime.fromisoformat(next_run_raw.replace("Z", "+00:00"))
         if next_run_at.tzinfo is None:
@@ -1410,11 +1690,12 @@ def reminders():
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO reminders (user_id, title, note, next_run_at, recurrence, active, created_at)
-        VALUES (%s, %s, %s, %s, %s, TRUE, %s)
+        INSERT INTO reminders
+            (user_id, title, note, next_run_at, recurrence, active, email_enabled, created_at)
+        VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
         RETURNING *
         """,
-        (user_id, title, note, next_run_at, recurrence, datetime.now(timezone.utc)),
+        (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc)),
     )
     row = cur.fetchone()
     conn.commit()
@@ -1468,33 +1749,147 @@ def reminder_detail(reminder_id):
         )
     elif action == "complete":
         now = datetime.now(timezone.utc)
-        if reminder["recurrence"] == "daily":
-            next_run = reminder["next_run_at"]
-            while next_run <= now:
-                next_run += timedelta(days=1)
-            active = True
-        elif reminder["recurrence"] == "weekly":
-            next_run = reminder["next_run_at"]
-            while next_run <= now:
-                next_run += timedelta(days=7)
-            active = True
-        else:
-            next_run = reminder["next_run_at"]
-            active = False
+        next_run, active = next_reminder_occurrence(
+            reminder["next_run_at"], reminder["recurrence"], now
+        )
         cur.execute(
             "UPDATE reminders SET next_run_at = %s, active = %s WHERE id = %s AND user_id = %s RETURNING *",
             (next_run, active, reminder_id, user_id),
         )
+    elif action == "update":
+        title = " ".join(str(data.get("title", reminder["title"])).split())
+        note = str(data.get("note", reminder["note"])).strip()
+        recurrence = data.get("recurrence", reminder["recurrence"])
+        active = data.get("active", reminder["active"])
+        email_enabled = data.get("email_enabled", reminder.get("email_enabled", False))
+        if not title or len(title) > 160 or len(note) > 500:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Check the reminder title and note length."}), 400
+        if (recurrence not in ("once", "daily", "weekly") or not isinstance(active, bool)
+                or not isinstance(email_enabled, bool)):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Choose a valid repeat and active setting."}), 400
+        try:
+            next_run = parse_optional_datetime(data.get("next_run_at", reminder["next_run_at"]))
+            if not next_run:
+                raise ValueError
+        except (TypeError, ValueError):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Choose a valid reminder date and time."}), 400
+        cur.execute(
+            """
+            UPDATE reminders
+            SET title = %s, note = %s, next_run_at = %s, recurrence = %s,
+                active = %s, email_enabled = %s
+            WHERE id = %s AND user_id = %s
+            RETURNING *
+            """,
+            (title, note, next_run, recurrence, active, email_enabled, reminder_id, user_id),
+        )
     else:
         cur.close()
         conn.close()
-        return jsonify({"error": "Choose toggle, snooze, or complete."}), 400
+        return jsonify({"error": "Choose update, toggle, snooze, or complete."}), 400
 
     updated = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
     return jsonify({"reminder": reminder_to_dict(updated)})
+
+
+@app.route("/api/cron/reminders", methods=["POST"])
+def deliver_due_reminders():
+    provided = request.headers.get("X-Cron-Secret") or ""
+    if not CRON_SECRET or not secrets.compare_digest(CRON_SECRET, provided):
+        return jsonify({"error": "Not authorised."}), 401
+    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
+        return jsonify({"error": "Email delivery is not configured."}), 503
+    now = datetime.now(timezone.utc)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT reminder.*, users.email, users.name AS user_name
+        FROM reminders AS reminder
+        JOIN users ON users.id = reminder.user_id
+        WHERE reminder.active = TRUE AND reminder.email_enabled = TRUE
+          AND reminder.next_run_at <= %s
+          AND reminder.next_run_at >= %s
+        ORDER BY reminder.next_run_at ASC LIMIT 100
+        """,
+        (now, now - timedelta(days=30)),
+    )
+    due = cur.fetchall()
+    cur.close()
+    conn.close()
+    sent = 0
+    failed = 0
+    skipped = 0
+    for reminder in due:
+        claim_conn = get_db()
+        claim_cur = claim_conn.cursor()
+        claim_cur.execute(
+            """
+            INSERT INTO reminder_deliveries
+                (reminder_id, user_id, scheduled_for, channel, status,
+                 attempt_count, created_at, updated_at)
+            VALUES (%s, %s, %s, 'email', 'processing', 1, %s, %s)
+            ON CONFLICT (reminder_id, scheduled_for, channel) DO UPDATE
+            SET status = 'processing',
+                attempt_count = reminder_deliveries.attempt_count + 1,
+                updated_at = EXCLUDED.updated_at
+            WHERE (reminder_deliveries.status = 'failed'
+                   AND reminder_deliveries.updated_at <= %s)
+               OR (reminder_deliveries.status = 'processing'
+                   AND reminder_deliveries.updated_at <= %s)
+            RETURNING id
+            """,
+            (reminder["id"], reminder["user_id"], reminder["next_run_at"], now, now,
+             now - timedelta(minutes=15), now - timedelta(minutes=30)),
+        )
+        claimed = claim_cur.fetchone()
+        claim_conn.commit()
+        claim_cur.close()
+        claim_conn.close()
+        if not claimed:
+            skipped += 1
+            continue
+        try:
+            note = f"\n\nNote: {reminder['note']}" if reminder["note"] else ""
+            send_email(
+                reminder["email"], reminder["user_name"],
+                f"Saathi reminder: {reminder['title']}",
+                (
+                    f"Hi {reminder['user_name']},\n\n"
+                    f"Your Saathi reminder is due: {reminder['title']}.{note}\n\n"
+                    "This schedule was created by you. Saathi does not choose medicines, "
+                    "doses, treatment, or professional advice.\n\n- Saathi"
+                ),
+            )
+            status = "sent"
+            sent += 1
+        except requests.exceptions.RequestException:
+            app.logger.warning("Reminder email delivery failed for delivery id %s", claimed["id"])
+            status = "failed"
+            failed += 1
+        result_conn = get_db()
+        result_cur = result_conn.cursor()
+        result_cur.execute(
+            """
+            UPDATE reminder_deliveries
+            SET status = %s, updated_at = %s, sent_at = CASE WHEN %s = 'sent' THEN %s ELSE sent_at END
+            WHERE id = %s
+            """,
+            (status, datetime.now(timezone.utc), status, datetime.now(timezone.utc), claimed["id"]),
+        )
+        result_conn.commit()
+        result_cur.close()
+        result_conn.close()
+    return jsonify({"ok": True, "sent": sent, "failed": failed, "skipped": skipped})
 
 
 # --------------------------------------------------------------------
@@ -1753,6 +2148,17 @@ def load_active_memories(user_id):
     )
 
 
+def load_user_language(user_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT language FROM users WHERE id = %s", (user_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    language = row["language"] if row else "en"
+    return language if language in ("en", "gu", "hi") else "en"
+
+
 @app.route("/api/memories", methods=["GET", "POST"])
 def memories():
     user_id = require_user_id()
@@ -1838,6 +2244,484 @@ def memory_detail(memory_id):
 
 
 # --------------------------------------------------------------------
+# HABITS, PRIVATE JOURNAL, LANGUAGE, AND TRUSTED CONTACT CONSENT
+# --------------------------------------------------------------------
+def parse_entry_date(value):
+    if not value:
+        return datetime.now(timezone.utc).date()
+    return datetime.strptime(str(value), "%Y-%m-%d").date()
+
+
+def habit_streak(completed_dates, frequency, today):
+    completed = set(completed_dates)
+    if not completed:
+        return 0
+    if frequency == "weekly":
+        weeks = {day - timedelta(days=day.weekday()) for day in completed}
+        cursor = today - timedelta(days=today.weekday())
+        if cursor not in weeks:
+            cursor -= timedelta(days=7)
+        streak = 0
+        while cursor in weeks:
+            streak += 1
+            cursor -= timedelta(days=7)
+        return streak
+    cursor = today
+    if frequency == "weekdays":
+        while cursor.weekday() >= 5:
+            cursor -= timedelta(days=1)
+    if cursor not in completed:
+        cursor -= timedelta(days=1)
+        if frequency == "weekdays":
+            while cursor.weekday() >= 5:
+                cursor -= timedelta(days=1)
+    streak = 0
+    while cursor in completed:
+        streak += 1
+        cursor -= timedelta(days=1)
+        if frequency == "weekdays":
+            while cursor.weekday() >= 5:
+                cursor -= timedelta(days=1)
+    return streak
+
+
+def habit_to_dict(row, completed_dates=(), today=None):
+    today = today or datetime.now(timezone.utc).date()
+    completed_dates = list(completed_dates)
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "frequency": row["frequency"],
+        "active": row["active"],
+        "completed_today": today in completed_dates,
+        "streak": habit_streak(completed_dates, row["frequency"], today),
+        "recent_dates": [day.isoformat() for day in sorted(completed_dates, reverse=True)[:14]],
+        "created_at": row["created_at"].isoformat(),
+        "updated_at": row["updated_at"].isoformat(),
+    }
+
+
+@app.route("/api/habits", methods=["GET", "POST"])
+def habits():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    try:
+        today = parse_entry_date(request.args.get("date"))
+    except ValueError:
+        return jsonify({"error": "Use a valid date."}), 400
+    if request.method == "GET":
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM habits WHERE user_id = %s ORDER BY active DESC, updated_at DESC LIMIT 100",
+            (user_id,),
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT habit_id, entry_date FROM habit_entries
+            WHERE user_id = %s AND entry_date >= %s
+            ORDER BY entry_date DESC
+            """,
+            (user_id, today - timedelta(days=370)),
+        )
+        dates_by_habit = {}
+        for entry in cur.fetchall():
+            dates_by_habit.setdefault(entry["habit_id"], []).append(entry["entry_date"])
+        cur.close()
+        conn.close()
+        return jsonify({
+            "date": today.isoformat(),
+            "habits": [habit_to_dict(row, dates_by_habit.get(row["id"], ()), today) for row in rows],
+        })
+
+    data = request.get_json(force=True, silent=True) or {}
+    name = " ".join(str(data.get("name") or "").split())
+    frequency = data.get("frequency") or "daily"
+    if not name or len(name) > 120:
+        return jsonify({"error": "Habit name should be between 1 and 120 characters."}), 400
+    if frequency not in ("daily", "weekdays", "weekly"):
+        return jsonify({"error": "Choose daily, weekdays, or weekly."}), 400
+    now = datetime.now(timezone.utc)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO habits (user_id, name, frequency, active, created_at, updated_at)
+        VALUES (%s, %s, %s, TRUE, %s, %s) RETURNING *
+        """,
+        (user_id, name, frequency, now, now),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"habit": habit_to_dict(row, (), today)}), 201
+
+
+@app.route("/api/habits/<int:habit_id>", methods=["PATCH", "DELETE"])
+def habit_detail(habit_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM habits WHERE id = %s AND user_id = %s", (habit_id, user_id))
+    habit = cur.fetchone()
+    if not habit:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Habit not found."}), 404
+    if request.method == "DELETE":
+        cur.execute("DELETE FROM habits WHERE id = %s AND user_id = %s", (habit_id, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+    data = request.get_json(force=True, silent=True) or {}
+    name = " ".join(str(data.get("name", habit["name"])).split())
+    frequency = data.get("frequency", habit["frequency"])
+    active = data.get("active", habit["active"])
+    if not name or len(name) > 120 or frequency not in ("daily", "weekdays", "weekly") or not isinstance(active, bool):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Check the habit name, frequency, and active setting."}), 400
+    cur.execute(
+        """
+        UPDATE habits SET name = %s, frequency = %s, active = %s, updated_at = %s
+        WHERE id = %s AND user_id = %s RETURNING *
+        """,
+        (name, frequency, active, datetime.now(timezone.utc), habit_id, user_id),
+    )
+    updated = cur.fetchone()
+    cur.execute(
+        "SELECT entry_date FROM habit_entries WHERE habit_id = %s AND user_id = %s AND entry_date >= %s",
+        (habit_id, user_id, datetime.now(timezone.utc).date() - timedelta(days=370)),
+    )
+    completed_dates = [row["entry_date"] for row in cur.fetchall()]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"habit": habit_to_dict(updated, completed_dates)})
+
+
+@app.route("/api/habits/<int:habit_id>/entries", methods=["POST"])
+def habit_entry(habit_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    completed = data.get("completed", True)
+    note = str(data.get("note") or "").strip()
+    if not isinstance(completed, bool) or len(note) > 300:
+        return jsonify({"error": "Check the completed value and note length."}), 400
+    try:
+        entry_date = parse_entry_date(data.get("date"))
+    except ValueError:
+        return jsonify({"error": "Use a valid date."}), 400
+    today = datetime.now(timezone.utc).date()
+    if entry_date > today + timedelta(days=1) or entry_date < today - timedelta(days=370):
+        return jsonify({"error": "Habit dates must be recent and cannot be in the future."}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM habits WHERE id = %s AND user_id = %s", (habit_id, user_id))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Habit not found."}), 404
+    if completed:
+        cur.execute(
+            """
+            INSERT INTO habit_entries (habit_id, user_id, entry_date, note, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (habit_id, entry_date) DO UPDATE SET note = EXCLUDED.note
+            """,
+            (habit_id, user_id, entry_date, note, datetime.now(timezone.utc)),
+        )
+    else:
+        cur.execute(
+            "DELETE FROM habit_entries WHERE habit_id = %s AND user_id = %s AND entry_date = %s",
+            (habit_id, user_id, entry_date),
+        )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"ok": True, "completed": completed, "date": entry_date.isoformat()})
+
+
+def journal_to_dict(row):
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "content": row["content"],
+        "entry_date": row["entry_date"].isoformat(),
+        "created_at": row["created_at"].isoformat(),
+        "updated_at": row["updated_at"].isoformat(),
+    }
+
+
+@app.route("/api/journal", methods=["GET", "POST"])
+def journal_entries():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    if request.method == "GET":
+        search = str(request.args.get("search") or "").strip()[:100]
+        pattern = f"%{search}%"
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT * FROM journal_entries
+            WHERE user_id = %s AND (%s = '' OR title ILIKE %s OR content ILIKE %s)
+            ORDER BY entry_date DESC, id DESC LIMIT 100
+            """,
+            (user_id, search, pattern, pattern),
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({"entries": [journal_to_dict(row) for row in rows]})
+    data = request.get_json(force=True, silent=True) or {}
+    title = " ".join(str(data.get("title") or "").split())
+    content = str(data.get("content") or "").strip()
+    try:
+        entry_date = parse_entry_date(data.get("entry_date"))
+    except ValueError:
+        return jsonify({"error": "Use a valid journal date."}), 400
+    if not title or len(title) > 120 or not content or len(content) > 20000:
+        return jsonify({"error": "Journal title and content are required. Content can be up to 20,000 characters."}), 400
+    now = datetime.now(timezone.utc)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO journal_entries (user_id, title, content, entry_date, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
+        """,
+        (user_id, title, content, entry_date, now, now),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"entry": journal_to_dict(row)}), 201
+
+
+@app.route("/api/journal/<int:entry_id>", methods=["PATCH", "DELETE"])
+def journal_entry_detail(entry_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM journal_entries WHERE id = %s AND user_id = %s", (entry_id, user_id))
+    entry = cur.fetchone()
+    if not entry:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Journal entry not found."}), 404
+    if request.method == "DELETE":
+        cur.execute("DELETE FROM journal_entries WHERE id = %s AND user_id = %s", (entry_id, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+    data = request.get_json(force=True, silent=True) or {}
+    title = " ".join(str(data.get("title", entry["title"])).split())
+    content = str(data.get("content", entry["content"])).strip()
+    try:
+        entry_date = parse_entry_date(data.get("entry_date", entry["entry_date"].isoformat()))
+    except ValueError:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Use a valid journal date."}), 400
+    if not title or len(title) > 120 or not content or len(content) > 20000:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Check the journal title and content length."}), 400
+    cur.execute(
+        """
+        UPDATE journal_entries SET title = %s, content = %s, entry_date = %s, updated_at = %s
+        WHERE id = %s AND user_id = %s RETURNING *
+        """,
+        (title, content, entry_date, datetime.now(timezone.utc), entry_id, user_id),
+    )
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"entry": journal_to_dict(updated)})
+
+
+@app.route("/api/preferences", methods=["PATCH"])
+def update_preferences():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    language = data.get("language")
+    if language not in ("en", "gu", "hi"):
+        return jsonify({"error": "Choose English, Gujarati, or Hindi."}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET language = %s WHERE id = %s RETURNING *", (language, user_id))
+    user = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"user": user_to_dict(user)})
+
+
+def trusted_contact_to_dict(row, direction):
+    return {
+        "id": row["id"],
+        "direction": direction,
+        "name": row.get("contact_name") or row.get("owner_name") or "Saathi user",
+        "email": row.get("invited_email") if direction == "sent" else row.get("owner_email"),
+        "status": row["status"],
+        "allow_tasks": row["allow_tasks"],
+        "allow_reminders": row["allow_reminders"],
+        "updated_at": row["updated_at"].isoformat(),
+    }
+
+
+@app.route("/api/trusted-contacts", methods=["GET", "POST"])
+def trusted_contacts():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+    current_email = cur.fetchone()["email"]
+    if request.method == "GET":
+        cur.execute(
+            """
+            SELECT contact.*, invited.name AS contact_name
+            FROM trusted_contacts AS contact
+            LEFT JOIN users AS invited ON invited.id = contact.contact_user_id
+            WHERE contact.owner_user_id = %s ORDER BY contact.updated_at DESC
+            """,
+            (user_id,),
+        )
+        sent = cur.fetchall()
+        cur.execute(
+            """
+            SELECT contact.*, owner.name AS owner_name, owner.email AS owner_email
+            FROM trusted_contacts AS contact
+            JOIN users AS owner ON owner.id = contact.owner_user_id
+            WHERE contact.invited_email = %s ORDER BY contact.updated_at DESC
+            """,
+            (current_email,),
+        )
+        incoming = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({
+            "sent": [trusted_contact_to_dict(row, "sent") for row in sent],
+            "incoming": [trusted_contact_to_dict(row, "incoming") for row in incoming],
+            "boundary": "Contacts never receive chats, journal entries, check-ins, or memories.",
+        })
+    data = request.get_json(force=True, silent=True) or {}
+    invited_email = str(data.get("email") or "").strip().lower()
+    if not EMAIL_RE.match(invited_email) or invited_email == current_email:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Enter a different valid email address."}), 400
+    limit_response = limited("trusted_contact_invite", str(user_id), 10, 1440)
+    if limit_response:
+        cur.close()
+        conn.close()
+        return limit_response
+    now = datetime.now(timezone.utc)
+    cur.execute("SELECT id FROM users WHERE email = %s", (invited_email,))
+    matched = cur.fetchone()
+    cur.execute(
+        """
+        INSERT INTO trusted_contacts
+            (owner_user_id, invited_email, contact_user_id, status, allow_tasks,
+             allow_reminders, created_at, updated_at)
+        VALUES (%s, %s, %s, 'pending', FALSE, FALSE, %s, %s)
+        ON CONFLICT (owner_user_id, invited_email) DO UPDATE
+        SET contact_user_id = EXCLUDED.contact_user_id, status = 'pending',
+            allow_tasks = FALSE, allow_reminders = FALSE, updated_at = EXCLUDED.updated_at
+        RETURNING *
+        """,
+        (user_id, invited_email, matched["id"] if matched else None, now, now),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "contact": trusted_contact_to_dict(row, "sent"),
+        "message": "Invitation saved. The contact must sign in with that email and accept before anything can be shared.",
+    }), 201
+
+
+@app.route("/api/trusted-contacts/<int:contact_id>", methods=["PATCH", "DELETE"])
+def trusted_contact_detail(contact_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+    current_email = cur.fetchone()["email"]
+    cur.execute(
+        "SELECT * FROM trusted_contacts WHERE id = %s AND (owner_user_id = %s OR invited_email = %s)",
+        (contact_id, user_id, current_email),
+    )
+    contact = cur.fetchone()
+    if not contact:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Trusted contact invitation not found."}), 404
+    if request.method == "DELETE":
+        cur.execute(
+            "DELETE FROM trusted_contacts WHERE id = %s AND (owner_user_id = %s OR invited_email = %s)",
+            (contact_id, user_id, current_email),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+    if contact["invited_email"] != current_email:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Only the invited person can choose these consent settings."}), 403
+    data = request.get_json(force=True, silent=True) or {}
+    action = data.get("action")
+    if action not in ("accept", "decline"):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Choose accept or decline."}), 400
+    allow_tasks = data.get("allow_tasks", False) if action == "accept" else False
+    allow_reminders = data.get("allow_reminders", False) if action == "accept" else False
+    if not isinstance(allow_tasks, bool) or not isinstance(allow_reminders, bool):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Use valid sharing choices."}), 400
+    cur.execute(
+        """
+        UPDATE trusted_contacts
+        SET contact_user_id = %s, status = %s, allow_tasks = %s,
+            allow_reminders = %s, updated_at = %s
+        WHERE id = %s RETURNING *
+        """,
+        (user_id, "accepted" if action == "accept" else "declined", allow_tasks,
+         allow_reminders, datetime.now(timezone.utc), contact_id),
+    )
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"contact": trusted_contact_to_dict(updated, "incoming")})
+
+
+# --------------------------------------------------------------------
 # PROFILE, PASSWORD, EXPORT, AND ACCOUNT CONTROL
 # --------------------------------------------------------------------
 @app.route("/api/profile", methods=["PATCH"])
@@ -1893,12 +2777,19 @@ def change_password():
         conn.close()
         return jsonify({"error": "Current password is not correct."}), 401
     cur.execute(
-        "UPDATE users SET password_hash = %s WHERE id = %s",
+        """
+        UPDATE users
+        SET password_hash = %s, session_version = session_version + 1
+        WHERE id = %s
+        RETURNING session_version
+        """,
         (generate_password_hash(new_password), user_id),
     )
+    updated = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
+    session["session_version"] = updated["session_version"]
     return jsonify({"ok": True})
 
 
@@ -1916,9 +2807,11 @@ def overview():
             (SELECT COUNT(*) FROM messages WHERE user_id = %s) AS messages,
             (SELECT COUNT(*) FROM tasks WHERE user_id = %s AND completed = FALSE) AS pending_tasks,
             (SELECT COUNT(*) FROM reminders WHERE user_id = %s AND active = TRUE) AS active_reminders,
-            (SELECT COUNT(*) FROM memories WHERE user_id = %s AND active = TRUE) AS active_memories
+            (SELECT COUNT(*) FROM memories WHERE user_id = %s AND active = TRUE) AS active_memories,
+            (SELECT COUNT(*) FROM habits WHERE user_id = %s AND active = TRUE) AS active_habits,
+            (SELECT COUNT(*) FROM journal_entries WHERE user_id = %s) AS journal_entries
         """,
-        (user_id, user_id, user_id, user_id, user_id),
+        (user_id, user_id, user_id, user_id, user_id, user_id, user_id),
     )
     counts = dict(cur.fetchone())
     cur.execute(
@@ -1953,12 +2846,29 @@ def export_data():
     message_rows = cur.fetchall()
     cur.execute("SELECT * FROM reminders WHERE user_id = %s ORDER BY created_at", (user_id,))
     reminder_rows = cur.fetchall()
+    cur.execute("SELECT * FROM reminder_deliveries WHERE user_id = %s ORDER BY created_at", (user_id,))
+    reminder_delivery_rows = cur.fetchall()
     cur.execute("SELECT * FROM tasks WHERE user_id = %s ORDER BY created_at", (user_id,))
     task_rows = cur.fetchall()
     cur.execute("SELECT * FROM check_ins WHERE user_id = %s ORDER BY created_at", (user_id,))
     check_in_rows = cur.fetchall()
     cur.execute("SELECT * FROM memories WHERE user_id = %s ORDER BY created_at", (user_id,))
     memory_rows = cur.fetchall()
+    cur.execute("SELECT * FROM habits WHERE user_id = %s ORDER BY created_at", (user_id,))
+    habit_rows = cur.fetchall()
+    cur.execute("SELECT * FROM habit_entries WHERE user_id = %s ORDER BY entry_date", (user_id,))
+    habit_entry_rows = cur.fetchall()
+    cur.execute("SELECT * FROM journal_entries WHERE user_id = %s ORDER BY entry_date", (user_id,))
+    journal_rows = cur.fetchall()
+    cur.execute(
+        """
+        SELECT * FROM trusted_contacts
+        WHERE owner_user_id = %s OR invited_email = (SELECT email FROM users WHERE id = %s)
+        ORDER BY created_at
+        """,
+        (user_id, user_id),
+    )
+    trusted_contact_rows = cur.fetchall()
     cur.close()
     conn.close()
 
@@ -1967,7 +2877,7 @@ def export_data():
         for key, value in dict(row).items():
             if key in excluded:
                 continue
-            result[key] = value.isoformat() if isinstance(value, datetime) else value
+            result[key] = value.isoformat() if isinstance(value, (date, datetime)) else value
         return result
 
     payload = {
@@ -1976,9 +2886,14 @@ def export_data():
         "conversations": [clean(row) for row in conversations_rows],
         "messages": [clean(row) for row in message_rows],
         "reminders": [clean(row) for row in reminder_rows],
+        "reminder_deliveries": [clean(row) for row in reminder_delivery_rows],
         "tasks": [clean(row) for row in task_rows],
         "check_ins": [clean(row) for row in check_in_rows],
         "memories": [clean(row) for row in memory_rows],
+        "habits": [clean(row) for row in habit_rows],
+        "habit_entries": [clean(row) for row in habit_entry_rows],
+        "journal_entries": [clean(row) for row in journal_rows],
+        "trusted_contacts": [clean(row) for row in trusted_contact_rows],
     }
     filename = f"saathi-data-{datetime.now(timezone.utc).date().isoformat()}.json"
     return Response(
@@ -2018,34 +2933,68 @@ def delete_account():
 
 
 # --------------------------------------------------------------------
-# UPGRADE (placeholder until Razorpay is connected)
+# PLANS (no checkout until verified adult-owned billing is connected)
 # --------------------------------------------------------------------
+PLAN_CATALOG = {
+    "free": {
+        "name": "Free",
+        "status": "available",
+        "monthly": {"INR": 0, "USD": 0},
+        "benefits": [
+            "Saved conversations",
+            "Basic study planner and reminders",
+            "Privacy, export and deletion controls",
+        ],
+    },
+    "plus": {
+        "name": "Saathi Plus",
+        "status": "coming_soon",
+        "regional_monthly": {
+            "india": {"currency": "INR", "amount": 249},
+            "emerging": {"currency": "USD", "amount": 2.99},
+            "middle": {"currency": "USD", "amount": 4.99},
+            "standard": {"currency": "USD", "amount": 7.99},
+        },
+        "benefits": [
+            "Study from notes, images and PDFs",
+            "Adaptive plans, quizzes and weekly review",
+            "Higher fair-use chat, memory and routine limits",
+        ],
+    },
+    "family": {
+        "name": "Saathi Family",
+        "status": "coming_soon",
+        "regional_monthly": {
+            "india": {"currency": "INR", "amount": 599},
+            "emerging": {"currency": "USD", "amount": 6.99},
+            "middle": {"currency": "USD", "amount": 11.99},
+            "standard": {"currency": "USD", "amount": 17.99},
+        },
+        "benefits": [
+            "Up to four separate private accounts",
+            "Shared tasks and reminders by explicit choice",
+            "No automatic access to chats, journals or memories",
+        ],
+    },
+}
+
+
+@app.route("/api/plans")
+def plan_catalog():
+    return jsonify({
+        "checkout_enabled": False,
+        "billing_status": "coming_soon",
+        "plans": PLAN_CATALOG,
+        "note": "Prices are planned and may change before verified checkout launches.",
+    })
+
+
 @app.route("/api/upgrade", methods=["POST"])
 def upgrade():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Please log in first."}), 401
-
-    data = request.get_json(force=True, silent=True) or {}
-    desired_plan = data.get("plan")
-    if desired_plan not in ("plus", "care"):
-        return jsonify({"error": "Not a valid plan."}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE users SET plan = %s, plan_status = 'pending_payment' WHERE id = %s RETURNING *",
-        (desired_plan, user_id),
-    )
-    user = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-
     return jsonify({
-        "user": user_to_dict(user),
-        "message": "Payment is not connected yet, so this plan is saved as pending."
-    })
+        "error": "Plus and Family are Coming Soon. No payment was taken and your plan was not changed.",
+        "checkout_enabled": False,
+    }), 503
 
 
 # --------------------------------------------------------------------
@@ -2118,16 +3067,30 @@ SYSTEM_PROMPT = (
 )
 
 
-def generate_gemini_reply(messages, memory_context=""):
+def generate_gemini_reply(messages, memory_context="", language="en"):
     if not GEMINI_API_KEY:
         raise RuntimeError("Saathi is not connected yet. Please try again after the server is configured.")
 
-    contents = []
-    for message in messages[-30:]:
+    selected = []
+    remaining_characters = 40000
+    for message in reversed(messages[-30:]):
         if not isinstance(message, dict):
             continue
-        role = "user" if message.get("role") == "user" else "model"
         text = str(message.get("content", ""))[:5000].strip()
+        if not text:
+            continue
+        text = text[:remaining_characters]
+        if not text:
+            break
+        selected.append({"role": message.get("role"), "content": text})
+        remaining_characters -= len(text)
+        if remaining_characters <= 0:
+            break
+
+    contents = []
+    for message in reversed(selected):
+        role = "user" if message.get("role") == "user" else "model"
+        text = message["content"]
         if not text or (not contents and role == "model"):
             continue
         # Gemini expects alternating turns. Merge any consecutive messages
@@ -2143,6 +3106,12 @@ def generate_gemini_reply(messages, memory_context=""):
     system_text = SYSTEM_PROMPT
     if memory_context:
         system_text += "\n\nUSER-CONTROLLED MEMORY\n" + memory_context
+    language_names = {"en": "English", "gu": "Gujarati", "hi": "Hindi"}
+    system_text += (
+        "\n\nLANGUAGE PREFERENCE\nReply in "
+        + language_names.get(language, "English")
+        + " unless the user clearly asks for another language. Keep safety and medical wording plain and accurate."
+    )
 
     payload = {
         "contents": contents,
@@ -2180,9 +3149,12 @@ def generate_gemini_reply(messages, memory_context=""):
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_id = session.get("user_id")
+    user_id = require_user_id()
     if not user_id:
         return jsonify({"error": "Please log in to talk with Saathi.", "login_required": True}), 401
+    limit_response = limited("chat_legacy", str(user_id), 30, 5)
+    if limit_response:
+        return limit_response
 
     if not GEMINI_API_KEY:
         return jsonify({
@@ -2197,7 +3169,9 @@ def chat():
     messages = messages[-30:]
 
     try:
-        reply = generate_gemini_reply(messages, load_active_memories(user_id))
+        reply = generate_gemini_reply(
+            messages, load_active_memories(user_id), load_user_language(user_id)
+        )
 
         last_user_content = ""
         if messages and messages[-1].get("role") == "user":

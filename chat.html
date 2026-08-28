@@ -222,11 +222,11 @@ dialog::backdrop{background:rgba(13,15,12,.45);backdrop-filter:blur(3px)}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<dialog id="renameDialog"><form class="dialog-body" id="renameForm"><h2>Rename conversation</h2><p>Choose a short name that will be easy to find later.</p><input id="renameInput" maxlength="80" required><div class="dialog-actions"><button type="button" data-close="renameDialog">Cancel</button><button class="primary" type="submit">Save name</button></div></form></dialog>
+<dialog id="renameDialog"><form class="dialog-body" id="renameForm"><h2>Rename conversation</h2><p>Choose a short name that will be easy to find later.</p><label for="renameInput">Conversation name</label><input id="renameInput" maxlength="80" required><div class="dialog-actions"><button type="button" data-close="renameDialog">Cancel</button><button class="primary" type="submit">Save name</button></div></form></dialog>
 <dialog id="deleteDialog"><div class="dialog-body"><h2>Delete this conversation?</h2><p>This removes its messages from your account permanently. This action cannot be undone.</p><div class="dialog-actions"><button type="button" data-close="deleteDialog">Cancel</button><button class="danger" id="confirmDelete" type="button">Delete conversation</button></div></div></dialog>
 
 <script>
-const state={user:null,conversations:[],activeId:null,messages:[],sending:false,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null};
+const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null};
 const el={
   sidebar:document.getElementById('sidebar'),scrim:document.getElementById('sidebarScrim'),history:document.getElementById('history'),
   search:document.getElementById('searchInput'),searchWrap:document.getElementById('searchWrap'),chatTitle:document.getElementById('chatTitle'),
@@ -238,7 +238,8 @@ const el={
 };
 
 async function api(url,options={}){
-  const response=await fetch(url,{credentials:'include',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
+  const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method);
+  const response=await fetch(url,{credentials:'include',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
   let data={};
   try{data=await response.json()}catch(error){data={error:'The server returned an unreadable response.'}}
   if(response.status===401||data.login_required){location.href='/account';throw new Error('Please log in first.')}
@@ -404,7 +405,7 @@ el.messages.addEventListener('scroll',()=>{const distance=el.messages.scrollHeig
 
 async function init(){
   applyTheme(localStorage.getItem('saathi-theme')||'light');
-  try{const data=await api('/api/me');if(!data.user){location.href='/account';return}state.user=data.user;document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=`${data.user.plan} plan`;document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();await loadConversations();updateComposer();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  try{const data=await api('/api/me');if(!data.user){location.href='/account';return}state.user=data.user;state.csrf=data.csrf_token||'';document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=`${data.user.plan} plan`;document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();await loadConversations();updateComposer();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();

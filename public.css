@@ -1,0 +1,43 @@
+:root{--canvas:#f8f6ef;--paper:#fffdfa;--ink:#1d211d;--muted:#646b63;--line:rgba(36,42,35,.12);--gold:#9b7420;--gold-soft:#f0e5c9;--sage:#52705f;--sage-soft:#e5eee8;--danger:#a64239;--shadow:0 24px 70px rgba(29,34,28,.09);--sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at 20% 0,rgba(225,201,135,.2),transparent 32%),var(--canvas);color:var(--ink);font-family:var(--sans);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,textarea,select{font:inherit}
+.site-header{position:sticky;z-index:20;top:0;border-bottom:1px solid var(--line);background:rgba(248,246,239,.88);backdrop-filter:blur(18px)}
+.site-nav{width:min(1040px,calc(100% - 32px));height:66px;margin:auto;display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:820;letter-spacing:-.035em}
+.orb{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 31% 28%,#f0d780,#b48b2b 58%,#755713);box-shadow:0 0 0 5px rgba(180,139,43,.1)}
+.nav-links{margin-left:auto;display:flex;gap:18px;color:var(--muted);font-size:13px}
+.nav-links a:hover{color:var(--ink)}
+.page{width:min(880px,calc(100% - 32px));margin:auto;padding:72px 0 100px}
+.eyebrow{margin:0 0 10px;color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+h1{max-width:760px;margin:0;font-size:clamp(42px,7vw,68px);line-height:1.02;letter-spacing:-.06em;font-weight:650}
+.lede{max-width:720px;margin:22px 0 44px;color:var(--muted);font-size:17px}
+.notice{margin:0 0 32px;padding:18px 20px;border:1px solid rgba(82,112,95,.2);border-radius:17px;background:var(--sage-soft);color:#405a4b;font-size:14px}
+.legal-section{margin:14px 0;padding:28px;border:1px solid var(--line);border-radius:22px;background:rgba(255,253,250,.88);box-shadow:0 10px 35px rgba(29,34,28,.035)}
+.legal-section h2{margin:0 0 12px;font-size:22px;letter-spacing:-.035em}
+.legal-section h3{margin:24px 0 8px;font-size:16px}
+.legal-section p,.legal-section li{color:var(--muted);font-size:14px}
+.legal-section ul{margin:10px 0 0;padding-left:21px}
+.legal-section li+li{margin-top:8px}
+.meta{margin-top:36px;color:var(--muted);font-size:12px}
+.support-form{display:grid;gap:17px}
+.field{display:grid;gap:7px;color:var(--muted);font-size:13px;font-weight:700}
+.field input,.field textarea,.field select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#fff;color:var(--ink);outline:none}
+.field textarea{min-height:150px;resize:vertical}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(155,116,32,.1)}
+.primary{width:max-content;padding:13px 20px;border:0;border-radius:999px;background:var(--ink);color:#fff;font-weight:780;cursor:pointer}
+.primary:disabled{opacity:.55;cursor:not-allowed}
+.message{min-height:24px;color:var(--muted);font-size:13px}
+.message.error{color:var(--danger)}.message.success{color:var(--sage)}
+.error-page{min-height:calc(100vh - 130px);display:grid;align-content:center}
+.error-code{color:var(--gold);font-size:13px;font-weight:850;letter-spacing:.15em}
+.actions{margin-top:28px;display:flex;gap:10px;flex-wrap:wrap}
+.action{padding:12px 18px;border:1px solid var(--line);border-radius:999px;background:var(--paper);text-decoration:none;font-size:13px;font-weight:750}
+.action.primary-link{border-color:var(--ink);background:var(--ink);color:#fff}
+.site-footer{border-top:1px solid var(--line)}
+.footer-inner{width:min(1040px,calc(100% - 32px));margin:auto;padding:30px 0;display:flex;justify-content:space-between;gap:22px;color:var(--muted);font-size:12px}
+.footer-links{display:flex;gap:15px;flex-wrap:wrap}
+@media(max-width:650px){.site-nav{height:auto;min-height:64px;padding:12px 0;align-items:flex-start}.nav-links{gap:10px;flex-wrap:wrap;justify-content:flex-end;font-size:11px}.page{padding-top:48px}.legal-section{padding:21px}.footer-inner{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}

@@ -1,5 +1,9 @@
-const CACHE_NAME = "saathi-shell-v1";
-const APP_SHELL = ["/", "/account", "/dashboard", "/chat", "/offline.html", "/manifest.webmanifest", "/saathi-icon.svg"];
+const CACHE_NAME = "saathi-shell-v2";
+const APP_SHELL = [
+  "/", "/privacy", "/terms",
+  "/limitations", "/support", "/offline.html", "/manifest.webmanifest",
+  "/saathi-icon.svg", "/public.css"
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
@@ -17,8 +21,10 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      if (response.ok && !["/account", "/dashboard", "/chat"].includes(url.pathname)) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
       return response;
     }).catch(async () => (await caches.match(request)) || caches.match("/offline.html")));
     return;

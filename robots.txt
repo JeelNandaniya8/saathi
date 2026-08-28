@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /api/
+
+Sitemap: {{BASE_URL}}/sitemap.xml
