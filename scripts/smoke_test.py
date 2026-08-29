@@ -8,6 +8,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
+EXPECTED_RELEASE = "2026-08-29-ai-study"
+
+
 def fetch(base_url, path, timeout):
     request = Request(
         base_url.rstrip("/") + path,
@@ -20,7 +23,7 @@ def fetch(base_url, path, timeout):
         return error.code, error.read(), dict(error.headers)
 
 
-def run(base_url, timeout):
+def run(base_url, timeout, expected_release=EXPECTED_RELEASE):
     failures = []
 
     for path in ("/", "/privacy", "/terms", "/limitations", "/support"):
@@ -37,6 +40,11 @@ def run(base_url, timeout):
         health = {}
     if status != 200 or health.get("status") != "ok":
         failures.append(f"/api/health returned {status} with status={health.get('status')!r}")
+    if expected_release and health.get("release") != expected_release:
+        failures.append(
+            f"/api/health returned release={health.get('release')!r}, "
+            f"expected {expected_release!r}"
+        )
 
     status, body, _headers = fetch(base_url, "/api/plans", timeout)
     try:
@@ -58,9 +66,14 @@ def main():
     parser = argparse.ArgumentParser(description="Run read-only checks against a deployed Saathi site.")
     parser.add_argument("base_url", help="Deployment URL, for example https://saathi-md5w.onrender.com")
     parser.add_argument("--timeout", type=float, default=60, help="Seconds to wait for each request")
+    parser.add_argument(
+        "--expected-release",
+        default=EXPECTED_RELEASE,
+        help="Release ID expected from /api/health (use an empty value to skip this check)",
+    )
     args = parser.parse_args()
     try:
-        failures = run(args.base_url, args.timeout)
+        failures = run(args.base_url, args.timeout, args.expected_release)
     except (URLError, TimeoutError) as error:
         print(f"Smoke test could not connect: {error}", file=sys.stderr)
         return 1

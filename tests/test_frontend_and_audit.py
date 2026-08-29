@@ -42,15 +42,25 @@ def test_dashboard_has_real_daily_tools_and_localised_navigation():
     assert "X-CSRF-Token" in text
 
 
+def test_account_return_path_is_restricted_to_private_pages():
+    text = (ROOT / "account.html").read_text(encoding="utf-8")
+    assert "['/dashboard','/chat'].includes(params.get('next'))" in text
+    assert "location.href=destination" in text
+
+
 def test_chat_has_working_attachment_controls_and_multipart_flow():
     text = (ROOT / "chat.html").read_text(encoding="utf-8")
     for marker in (
         'id="attachButton"', 'id="fileInput"', 'id="attachmentTray"',
         "new FormData()", "body.append('attachments'", "instanceof FormData",
-        "message.attachments",
+        "message.attachments", 'id="chatMode"', 'id="uploadStatus"',
+        "XMLHttpRequest()", "xhr.upload.onprogress", "request_id",
+        "clipboardData", "dataTransfer", "quick-actions", 'id="taskDialog"',
+        'id="reminderDialog"', "Save task", "Set reminder",
     ):
         assert marker in text
     assert "application/pdf,image/jpeg,image/png,image/webp" in text
+    assert "Simpler" in text and "Deeper" in text and "Quiz me" in text
 
 
 def test_only_gemini_provider_and_no_committed_secrets():
@@ -70,6 +80,22 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
+    assert 'saathi-shell-v4' in text
+
+
+def test_interactive_pages_have_visible_keyboard_focus():
+    for name in ("account.html", "chat.html", "dashboard.html", "saathi.html"):
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert ":focus-visible" in text, name
+    assert ":focus-visible" in (ROOT / "public.css").read_text(encoding="utf-8")
+
+
+def test_landing_navigation_and_faq_expose_accessible_state():
+    text = (ROOT / "saathi.html").read_text(encoding="utf-8")
+    assert 'aria-controls="mobileMenu"' in text
+    assert "setAttribute('aria-expanded'" in text
+    assert "faq-answer-" in text
+    assert '<span class="card-status">Visible to you</span>' in text
 
 
 def test_launch_readiness_files_are_wired():
@@ -81,3 +107,14 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-08-29-ai-study"' in smoke
+
+
+def test_dependencies_are_reproducible_and_scheduled_for_review():
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    development = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+    dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    assert all("==" in line for line in requirements.splitlines() if line.strip())
+    assert "pytest==" in development
+    assert "package-ecosystem: pip" in dependabot
+    assert "package-ecosystem: github-actions" in dependabot

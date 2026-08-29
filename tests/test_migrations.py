@@ -71,7 +71,7 @@ def test_legacy_history_migration_is_preserving_and_idempotent():
 def test_daily_tools_and_delivery_schema_present():
     root = Path(__file__).parents[1]
     combined = "\n".join(path.read_text(encoding="utf-8").lower() for path in (root / "migrations").glob("*.sql"))
-    for table in ("habits", "habit_entries", "journal_entries", "trusted_contacts", "reminder_deliveries", "chat_attachments"):
+    for table in ("habits", "habit_entries", "journal_entries", "trusted_contacts", "reminder_deliveries", "chat_attachments", "ai_usage_events"):
         assert f"create table if not exists {table}" in combined
 
 
@@ -82,3 +82,21 @@ def test_attachment_migration_has_private_ownership_and_cascades():
     assert "conversation_id integer not null references conversations(id) on delete cascade" in sql
     assert "message_id integer not null references messages(id) on delete cascade" in sql
     assert "content bytea not null" in sql
+
+
+def test_ai_mode_migration_supports_safe_request_retries():
+    root = Path(__file__).parents[1]
+    sql = (root / "migrations" / "008_ai_study_modes.sql").read_text(encoding="utf-8").lower()
+    assert "ai_mode text not null default 'normal'" in sql
+    assert "client_request_id text" in sql
+    assert "unique index" in sql
+    assert "(user_id, conversation_id, client_request_id)" in sql
+    assert "where client_request_id is not null and role = 'user'" in sql
+
+
+def test_ai_usage_migration_stores_metadata_not_content():
+    root = Path(__file__).parents[1]
+    sql = (root / "migrations" / "009_ai_usage_events.sql").read_text(encoding="utf-8").lower()
+    for column in ("ai_mode", "attachment_count", "prompt_tokens", "output_tokens", "total_tokens"):
+        assert column in sql
+    assert "message_content" not in sql and "file_content" not in sql

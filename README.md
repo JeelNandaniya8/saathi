@@ -10,6 +10,11 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - separate conversations with search, rename, pin, archive, delete and pagination
 - Gemini replies using limited recent context and only user-approved memory
 - real PDF, JPG, PNG and WebP chat attachments with server validation, private storage and Gemini analysis
+- seven server-validated AI modes: Normal, Explain simply, Deep study, Summarise, Quiz me, Flashcards and Study plan
+- drag, drop and clipboard image attachment with preview, upload progress, cancellation and retry-safe request IDs
+- reply actions for simpler, deeper, example and quiz follow-ups
+- reviewed chat actions that save a response as a Planner task or user-scheduled reminder
+- privacy-safe AI cost records containing provider token counts, mode and attachment count without duplicating message or file content
 - task creation, editing, completion and deletion
 - once, daily and weekly reminders with edit, snooze, pause and completion
 - optional reminder email delivery through a protected scheduler
@@ -44,7 +49,7 @@ The service worker never caches API responses. Repository files such as `app.py`
 | `migrations/` | Ordered SQL migrations recorded in `schema_migrations` |
 | `saathi.html` | Public landing page |
 | `account.html` | Signup, OTP, login and password reset |
-| `chat.html` | Full-page conversation workspace with photo and PDF attachments |
+| `chat.html` | Full-page conversation workspace with AI modes, study actions and photo/PDF attachments |
 | `dashboard.html` | Planner, reminders, habits, journal, check-ins, memory and account |
 | `privacy.html`, `terms.html`, `limitations.html` | Public policy pages |
 | `support.html` | Rate-limited feedback form |
@@ -147,7 +152,7 @@ deployed public release without changing data:
 python scripts/smoke_test.py https://saathi-md5w.onrender.com
 ```
 
-The automated suite covers public source blocking, security headers, CSRF, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
+The automated suite covers public source blocking, security headers, CSRF, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, AI-mode validation, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
 
 ## Production deployment
 
@@ -173,7 +178,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns `{"status":"ok"}`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-08-29-ai-study`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP, login, chat and logout with test accounts.
 8. Test conversation ownership with two separate accounts.
@@ -201,7 +206,8 @@ The scheduler records one delivery per reminder schedule, retries failed claims 
 - rotate any key that was ever committed or shared
 - keep database, Gemini, Brevo and cron values out of Git and browser code
 - use HTTPS and secure cookies
-- keep dependency ranges reviewed and update them deliberately
+- keep the committed dependency pins reproducible and merge automated update PRs only after CI passes
+- review dependency version updates deliberately instead of bypassing CI
 - review migrations before deployment and back up first
 - check logs for errors, but never log OTPs, passwords, API keys or provider bodies
 - do not enable payment buttons until verified billing is legally and technically ready
