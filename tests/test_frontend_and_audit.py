@@ -86,6 +86,23 @@ def test_chat_history_titles_and_right_aligned_user_messages_are_wired():
         assert marker in text
 
 
+def test_chat_history_sidebar_is_on_the_right_across_breakpoints():
+    text = (ROOT / "chat.html").read_text(encoding="utf-8")
+    for marker in (
+        'grid-template-columns:minmax(0,1fr) var(--sidebar-width)',
+        'grid-template-areas:"main sidebar"',
+        '.sidebar{grid-area:sidebar',
+        'border-left:1px solid var(--line)',
+        '.main{grid-area:main',
+        'inset:0 0 0 auto',
+        'transform:translateX(103%)',
+        '.mobile-menu{display:grid;grid-column:3;grid-row:1}',
+    ):
+        assert marker in text
+    assert 'border-right:1px solid var(--line)' not in text
+    assert 'transform:translateX(-103%)' not in text
+
+
 def test_memory_view_edit_and_global_logout_controls_are_wired():
     text = (ROOT / "dashboard.html").read_text(encoding="utf-8")
     for marker in (
