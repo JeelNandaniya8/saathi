@@ -136,7 +136,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v5' in text
+    assert 'saathi-shell-v6' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -164,6 +164,36 @@ def test_launch_readiness_files_are_wired():
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
     assert 'EXPECTED_RELEASE = "2026-08-29-conversation-security"' in smoke
+
+
+def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
+    dashboard = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+    chat = (ROOT / "chat.html").read_text(encoding="utf-8")
+    account = (ROOT / "account.html").read_text(encoding="utf-8")
+    public = (ROOT / "public.css").read_text(encoding="utf-8")
+
+    for marker in (
+        "--accent:#5b7cfa",
+        ".nav button,.nav a{min-height:46px",
+        "font-size:13px",
+        ".metric span{font-size:12px",
+    ):
+        assert marker in dashboard
+    for marker in (
+        "grid-template-columns:minmax(120px,1fr) minmax(0,560px) minmax(120px,1fr)",
+        ".chat-heading{grid-column:2",
+        ".top-actions{grid-column:3;justify-self:end",
+        ".brand-row #closeSidebar{display:none}",
+        ".brand-row #closeSidebar{display:grid}",
+        "background:linear-gradient(135deg,var(--accent),var(--accent-deep))",
+    ):
+        assert marker in chat
+    assert ".field input{height:50px" in account
+    assert "font-size:15px" in account
+    assert "background:linear-gradient(135deg,var(--accent),var(--accent-deep))" in public
+    assert 'aria-controls="sidebar" aria-expanded="false"' in chat
+    assert 'aria-controls="sidebar" aria-expanded="false"' in dashboard
+    assert "function setNavigation(open)" in dashboard
 
 
 def test_dependencies_are_reproducible_and_scheduled_for_review():

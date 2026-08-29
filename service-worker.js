@@ -1,4 +1,4 @@
-const CACHE_NAME = "saathi-shell-v5";
+const CACHE_NAME = "saathi-shell-v6";
 const APP_SHELL = [
   "/", "/privacy", "/terms",
   "/limitations", "/support", "/offline.html", "/manifest.webmanifest",
