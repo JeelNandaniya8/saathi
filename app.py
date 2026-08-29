@@ -53,7 +53,8 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-08-29-ai-study"
+RELEASE_ID = "2026-08-29-conversation-security"
+OTP_LIFETIME = timedelta(minutes=10)
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
@@ -256,6 +257,27 @@ def validate_password(password):
     if not PASSWORD_HAS_DIGIT_RE.search(password):
         return "Password needs at least one number."
     return None
+
+
+def otp_is_expired(expires_at, now=None):
+    """Treat an OTP as invalid at and after its exact expiry instant."""
+    if not expires_at:
+        return True
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return current >= expires_at
+
+
+def start_user_session(user, remember=False):
+    """Create either a browser-session cookie or an explicit 30-day login."""
+    session.clear()
+    session["user_id"] = user["id"]
+    session["session_version"] = user["session_version"]
+    session["csrf_token"] = secrets.token_urlsafe(32)
+    session.permanent = remember
 
 
 # --------------------------------------------------------------------
@@ -971,7 +993,7 @@ def signup():
 
     otp_code = generate_otp()
     otp_hash = generate_password_hash(otp_code)
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    expires_at = datetime.now(timezone.utc) + OTP_LIFETIME
     password_hash = generate_password_hash(password)
 
     cur.execute(
@@ -1015,6 +1037,10 @@ def verify_otp():
     data = request.get_json(force=True, silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     otp_code = (data.get("otp") or "").strip()
+    remember = data.get("remember", False)
+
+    if not isinstance(remember, bool):
+        return jsonify({"error": "Choose a valid sign-in preference."}), 400
 
     limit_response = limited("verify_signup", email, 8, 15)
     if limit_response:
@@ -1030,7 +1056,7 @@ def verify_otp():
         conn.close()
         return jsonify({"error": "No pending signup found for this email. Please sign up again."}), 400
 
-    if datetime.now(timezone.utc) > pending["expires_at"]:
+    if otp_is_expired(pending["expires_at"]):
         cur.close()
         conn.close()
         return jsonify({"error": "This code has expired. Please request a new one."}), 400
@@ -1087,11 +1113,7 @@ def verify_otp():
     cur.close()
     conn.close()
 
-    session.clear()
-    session["user_id"] = user["id"]
-    session["session_version"] = user["session_version"]
-    session["csrf_token"] = secrets.token_urlsafe(32)
-    session.permanent = True
+    start_user_session(user, remember)
     return jsonify({"user": user_to_dict(user)})
 
 
@@ -1122,7 +1144,7 @@ def resend_otp():
 
     otp_code = generate_otp()
     otp_hash = generate_password_hash(otp_code)
-    expires_at = now + timedelta(minutes=10)
+    expires_at = now + OTP_LIFETIME
     cur.execute(
         """
         UPDATE pending_verifications
@@ -1154,6 +1176,10 @@ def login():
     data = request.get_json(force=True, silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
+    remember = data.get("remember", False)
+
+    if not isinstance(remember, bool):
+        return jsonify({"error": "Choose a valid sign-in preference."}), 400
 
     limit_response = limited("login", email, 10, 15)
     if limit_response:
@@ -1169,16 +1195,37 @@ def login():
     if not user or not check_password_hash(user["password_hash"], password):
         return jsonify({"error": "Incorrect email or password."}), 401
 
-    session.clear()
-    session["user_id"] = user["id"]
-    session["session_version"] = user["session_version"]
-    session["csrf_token"] = secrets.token_urlsafe(32)
-    session.permanent = True
+    start_user_session(user, remember)
     return jsonify({"user": user_to_dict(user)})
 
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/logout-all", methods=["POST"])
+def logout_all():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET session_version = session_version + 1 WHERE id = %s RETURNING id",
+        (user_id,),
+    )
+    updated = cur.fetchone()
+    if not updated:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        session.clear()
+        return jsonify({"error": "This account is no longer available."}), 404
+    conn.commit()
+    cur.close()
+    conn.close()
     session.clear()
     return jsonify({"ok": True})
 
@@ -1256,7 +1303,7 @@ def forgot_password():
 
     otp_code = generate_otp()
     otp_hash = generate_password_hash(otp_code)
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    expires_at = datetime.now(timezone.utc) + OTP_LIFETIME
     cur.execute(
         """
         INSERT INTO password_resets
@@ -1310,7 +1357,7 @@ def reset_password():
         conn.close()
         return jsonify({"error": "No password reset was requested for this email. Please request a new code."}), 400
 
-    if datetime.now(timezone.utc) > pending["expires_at"]:
+    if otp_is_expired(pending["expires_at"]):
         cur.close()
         conn.close()
         return jsonify({"error": "This code has expired. Please request a new one."}), 400
@@ -1552,6 +1599,22 @@ def make_conversation_title(text):
     return (shortened or one_line[:68]).rstrip(".,!?;:") + "…"
 
 
+def make_attachment_conversation_title(mode, attachments):
+    labels = {
+        "summarise": "Summary",
+        "quiz": "Quiz",
+        "flashcards": "Flashcards",
+        "deep_study": "Deep study",
+        "explain": "Explain",
+        "study_plan": "Study plan",
+    }
+    names = [str(item.get("name") or "file") for item in attachments]
+    first_name = names[0] if names else "file"
+    extra = f" +{len(names) - 1}" if len(names) > 1 else ""
+    prefix = labels.get(normalise_chat_mode(mode))
+    return make_conversation_title(f"{prefix} · {first_name}{extra}" if prefix else f"{first_name}{extra}")
+
+
 def owned_conversation(cur, conversation_id, user_id):
     cur.execute(
         "SELECT * FROM conversations WHERE id = %s AND user_id = %s",
@@ -1791,6 +1854,7 @@ def conversation_messages(conversation_id):
         return jsonify({"error": str(error)}), 400
 
     content = str(data.get("content") or "").strip()
+    user_wrote_content = bool(content)
     if not content and attachments:
         content = default_attachment_prompt(mode, len(attachments))
     if not content:
@@ -1864,7 +1928,14 @@ def conversation_messages(conversation_id):
         return jsonify({"error": "Something went wrong while preparing the reply."}), 500
 
     now = datetime.now(timezone.utc)
-    new_title = make_conversation_title(content) if is_first_user_message else conversation["title"]
+    if is_first_user_message:
+        new_title = (
+            make_conversation_title(content)
+            if user_wrote_content or not attachments
+            else make_attachment_conversation_title(mode, attachments)
+        )
+    else:
+        new_title = conversation["title"]
     conn = get_db()
     cur = conn.cursor()
     if not owned_conversation(cur, conversation_id, user_id):

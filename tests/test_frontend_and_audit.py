@@ -48,6 +48,15 @@ def test_account_return_path_is_restricted_to_private_pages():
     assert "location.href=destination" in text
 
 
+def test_account_exposes_explicit_session_duration_choice():
+    text = (ROOT / "account.html").read_text(encoding="utf-8")
+    assert 'id="signupRemember"' in text
+    assert 'id="loginRemember"' in text
+    assert "remember:document.getElementById('loginRemember').checked" in text
+    assert "remember:document.getElementById('signupRemember').checked" in text
+    assert "beforeunload" not in text and "sendBeacon" not in text
+
+
 def test_chat_has_working_attachment_controls_and_multipart_flow():
     text = (ROOT / "chat.html").read_text(encoding="utf-8")
     for marker in (
@@ -61,6 +70,36 @@ def test_chat_has_working_attachment_controls_and_multipart_flow():
         assert marker in text
     assert "application/pdf,image/jpeg,image/png,image/webp" in text
     assert "Simpler" in text and "Deeper" in text and "Quiz me" in text
+
+
+def test_chat_history_titles_and_right_aligned_user_messages_are_wired():
+    text = (ROOT / "chat.html").read_text(encoding="utf-8")
+    for marker in (
+        ".message.user{grid-template-columns:minmax(0,76%) 34px",
+        "conversation-copy",
+        "conversation-preview",
+        "function conversationTitle(text)",
+        "function attachmentConversationTitle(mode,files)",
+        "firstUserMessage",
+        "el.chatTitle.textContent=active.title",
+    ):
+        assert marker in text
+
+
+def test_memory_view_edit_and_global_logout_controls_are_wired():
+    text = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+    for marker in (
+        'id="memoryDialog"',
+        'id="memoryEditForm"',
+        'id="memoryEditLabel"',
+        'id="memoryEditContent"',
+        "View & edit",
+        "function openMemory(memory)",
+        "'/api/memories/'+id",
+        'id="logoutAllButton"',
+        "'/api/logout-all'",
+    ):
+        assert marker in text
 
 
 def test_only_gemini_provider_and_no_committed_secrets():
@@ -80,7 +119,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v4' in text
+    assert 'saathi-shell-v5' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -107,7 +146,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-08-29-ai-study"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-08-29-conversation-security"' in smoke
 
 
 def test_dependencies_are_reproducible_and_scheduled_for_review():

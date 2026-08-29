@@ -6,8 +6,8 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 
 ## What works
 
-- email verified signup, login, logout and hashed password reset codes
-- separate conversations with search, rename, pin, archive, delete and pagination
+- email verified signup, explicit browser-session or 30-day login, current-session logout, all-device logout and hashed password reset codes
+- separate conversations with immediate descriptive titles, recent previews, search, rename, pin, archive, delete and pagination
 - Gemini replies using limited recent context and only user-approved memory
 - real PDF, JPG, PNG and WebP chat attachments with server validation, private storage and Gemini analysis
 - seven server-validated AI modes: Normal, Explain simply, Deep study, Summarise, Quiz me, Flashcards and Study plan
@@ -21,6 +21,7 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - habits with local-day completion, pause, edit, deletion and streaks
 - private journal creation, search, editing and deletion
 - private mood and energy check-ins
+- user-controlled memory with concise previews and a full View and Edit panel
 - English, Gujarati and Hindi workspace preference and AI reply preference
 - consent-based trusted-contact invitations with clear private-data boundaries
 - account profile, password, JSON export and permanent deletion controls
@@ -152,7 +153,7 @@ deployed public release without changing data:
 python scripts/smoke_test.py https://saathi-md5w.onrender.com
 ```
 
-The automated suite covers public source blocking, security headers, CSRF, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, AI-mode validation, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
+The automated suite covers public source blocking, security headers, CSRF, session duration choice, all-device logout, signup and password-reset OTP expiry boundaries, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, AI-mode validation, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
 
 ## Production deployment
 
@@ -178,9 +179,9 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-08-29-ai-study`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-08-29-conversation-security`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
-7. Test signup, OTP, login, chat and logout with test accounts.
+7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.
 9. Test tasks, reminders, habits, journal, language, export and deletion.
 10. Attach a small test image and PDF, verify the reply and confirm another account cannot open their attachment URLs.

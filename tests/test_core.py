@@ -25,6 +25,192 @@ def test_validation_rules(backend):
     assert backend.validate_password("onlyletters")
 
 
+def test_otp_expiry_rejects_the_exact_ten_minute_boundary(backend):
+    expires_at = datetime(2026, 8, 29, 4, 15, tzinfo=timezone.utc)
+    assert backend.otp_is_expired(expires_at, expires_at - timedelta(microseconds=1)) is False
+    assert backend.otp_is_expired(expires_at, expires_at) is True
+    assert backend.otp_is_expired(expires_at, expires_at + timedelta(seconds=1)) is True
+    assert backend.otp_is_expired(None, expires_at) is True
+
+
+@pytest.mark.parametrize("remember", [False, True])
+def test_session_duration_is_an_explicit_user_choice(backend, remember):
+    user = {"id": 7, "session_version": 3}
+    with backend.app.test_request_context():
+        backend.start_user_session(user, remember)
+        assert backend.session["user_id"] == 7
+        assert backend.session["session_version"] == 3
+        assert backend.session["csrf_token"]
+        assert backend.session.permanent is remember
+
+
+@pytest.mark.parametrize(("remember", "has_expiry"), [(False, False), (True, True)])
+def test_login_cookie_expiry_matches_remember_choice(backend, monkeypatch, remember, has_expiry):
+    user = {
+        "id": 7,
+        "name": "Test Student",
+        "username": "test_student",
+        "email": "student@example.com",
+        "password_hash": "stored-hash",
+        "plan": "free",
+        "plan_status": "active",
+        "language": "en",
+        "session_version": 3,
+        "created_at": datetime(2026, 8, 29, tzinfo=timezone.utc),
+    }
+
+    class Cursor:
+        def execute(self, query, params=None):
+            assert "SELECT * FROM users WHERE email" in query
+
+        def fetchone(self):
+            return user
+
+        def close(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(backend, "limited", lambda *_args: None)
+    monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    monkeypatch.setattr(backend, "check_password_hash", lambda *_args: True)
+    response = backend.app.test_client().post(
+        "/api/login",
+        json={"email": user["email"], "password": "Saathi123", "remember": remember},
+    )
+    assert response.status_code == 200
+    cookie = response.headers["Set-Cookie"]
+    assert ("Expires=" in cookie) is has_expiry
+    assert "HttpOnly" in cookie and "SameSite=Lax" in cookie
+
+
+def test_login_rejects_non_boolean_remember_preference(backend):
+    response = backend.app.test_client().post(
+        "/api/login",
+        json={"email": "student@example.com", "password": "Saathi123", "remember": "yes"},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Choose a valid sign-in preference."
+
+
+def test_expired_correct_password_reset_code_cannot_change_password(backend, monkeypatch):
+    executed = []
+    pending = {
+        "email": "student@example.com",
+        "otp_hash": backend.generate_password_hash("123456"),
+        "expires_at": datetime.now(timezone.utc) - timedelta(seconds=1),
+        "attempt_count": 0,
+    }
+
+    class Cursor:
+        def execute(self, query, params=None):
+            executed.append(query)
+            assert "SELECT * FROM password_resets" in query
+
+        def fetchone(self):
+            return pending
+
+        def close(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(backend, "limited", lambda *_args: None)
+    monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    response = backend.app.test_client().post(
+        "/api/reset-password",
+        json={"email": "student@example.com", "otp": "123456", "password": "NewSaathi123"},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "This code has expired. Please request a new one."
+    assert not any("UPDATE users" in query for query in executed)
+
+
+def test_expired_signup_code_cannot_create_account(backend, monkeypatch):
+    executed = []
+    pending = {
+        "otp_hash": backend.generate_password_hash("654321"),
+        "expires_at": datetime.now(timezone.utc) - timedelta(seconds=1),
+        "attempt_count": 0,
+    }
+
+    class Cursor:
+        def execute(self, query, params=None):
+            executed.append(query)
+            assert "SELECT * FROM pending_verifications" in query
+
+        def fetchone(self):
+            return pending
+
+        def close(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(backend, "limited", lambda *_args: None)
+    monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    response = backend.app.test_client().post(
+        "/api/verify-otp",
+        json={"email": "student@example.com", "otp": "654321", "remember": False},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "This code has expired. Please request a new one."
+    assert not any("INSERT INTO users" in query for query in executed)
+
+
+def test_logout_all_devices_invalidates_sessions_and_clears_current_cookie(backend, monkeypatch):
+    class Cursor:
+        def execute(self, query, params=None):
+            assert "session_version = session_version + 1" in query
+            assert params == (7,)
+
+        def fetchone(self):
+            return {"id": 7}
+
+        def close(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def commit(self):
+            return None
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(backend, "require_user_id", lambda: 7)
+    monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    client = backend.app.test_client()
+    with client.session_transaction() as current:
+        current["user_id"] = 7
+        current["csrf_token"] = "known-token"
+    response = client.post(
+        "/api/logout-all", json={}, headers={"X-CSRF-Token": "known-token"}
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True}
+    with client.session_transaction() as current:
+        assert "user_id" not in current
+        assert "csrf_token" not in current
+
+
 def test_health_reports_release_without_exposing_configuration(backend, monkeypatch):
     class Cursor:
         def execute(self, query):
@@ -46,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-08-29-ai-study",
+        "release": "2026-08-29-conversation-security",
     }
 
 
@@ -126,6 +312,12 @@ def test_chat_modes_are_server_validated(backend):
     assert "Summarise" in backend.default_attachment_prompt("summarise", 1)
     assert "one question at a time" in backend.default_attachment_prompt("quiz", 2)
     assert backend.default_attachment_prompt("unknown", 1) == "Please explain the attached file."
+    assert backend.make_attachment_conversation_title(
+        "summarise", [{"name": "Physics_notes.pdf"}]
+    ) == "Summary · Physics_notes.pdf"
+    assert backend.make_attachment_conversation_title(
+        "normal", [{"name": "diagram.png"}, {"name": "chapter.pdf"}]
+    ) == "diagram.png +1"
 
 
 def test_attachment_magic_validation_and_limits(backend):
