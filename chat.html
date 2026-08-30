@@ -223,7 +223,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
     <div class="brand-row"><a class="brand" href="/"><span class="orb"></span>Saathi</a><button class="icon-btn" id="closeSidebar" aria-label="Close sidebar">×</button></div>
-    <button class="new-chat" id="newChat"><span>+</span><span>New conversation</span><span class="shortcut">Ctrl ⇧ O</span></button>
+    <button class="new-chat" id="newChat" type="button" title="Start a new conversation"><span>+</span><span>New conversation</span><span class="shortcut">Ctrl ⇧ O</span></button>
     <label class="search" id="searchWrap" aria-label="Search conversations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
       <input id="searchInput" type="search" placeholder="Search conversations" maxlength="100" autocomplete="off">
@@ -243,7 +243,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
     <header class="topbar">
       <button class="icon-btn mobile-menu" id="openSidebar" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
       <div class="chat-heading"><h1 id="chatTitle">New conversation</h1><p>Private to your signed-in account</p></div>
-      <div class="top-actions"><a class="top-pill" href="/dashboard">Dashboard</a><button class="icon-btn" id="topNewChat" aria-label="Start a new conversation">＋</button></div>
+      <div class="top-actions"><a class="top-pill" href="/dashboard">Dashboard</a></div>
     </header>
 
     <section class="messages" id="messages" aria-label="Conversation messages">
@@ -378,6 +378,8 @@ async function loadConversations(search=''){
 
 async function createConversation(){
   if(state.sending)return;
+  const active=currentConversation();
+  if(!state.showArchived&&active?.title==='New conversation'&&!state.messages.length){closeSide();el.input.focus();return}
   try{
     state.showArchived=false;document.getElementById('archiveToggle').classList.remove('active');document.getElementById('archiveLabel').textContent='Archived conversations';
     el.search.value='';el.searchWrap.classList.remove('has-value');
@@ -572,7 +574,7 @@ function setupVoiceInput(){
   el.voice.addEventListener('click',()=>{if(el.voice.classList.contains('listening')){recognition.stop();return}recognition.lang=state.user?.language==='gu'?'gu-IN':state.user?.language==='hi'?'hi-IN':'en-IN';try{recognition.start()}catch(error){showToast('Voice input is already starting.')}})
 }
 
-document.getElementById('newChat').addEventListener('click',createConversation);document.getElementById('topNewChat').addEventListener('click',createConversation);
+document.getElementById('newChat').addEventListener('click',createConversation);
 document.getElementById('openSidebar').addEventListener('click',openSide);document.getElementById('closeSidebar').addEventListener('click',closeSide);el.scrim.addEventListener('click',closeSide);
 el.attach.addEventListener('click',()=>el.fileInput.click());el.fileInput.addEventListener('change',()=>chooseFiles(el.fileInput.files));
 el.mode.addEventListener('change',updateModeDescription);el.cancelRequest.addEventListener('click',()=>state.activeRequest?.abort());

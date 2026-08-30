@@ -219,6 +219,15 @@ def test_chat_experience_features_are_real_and_safely_rendered():
     assert "bubble.textContent=text" not in landing
 
 
+def test_new_conversation_control_is_clear_and_does_not_duplicate_blank_chats():
+    chat = (ROOT / "chat.html").read_text(encoding="utf-8")
+
+    assert 'id="newChat" type="button" title="Start a new conversation"' in chat
+    assert 'id="topNewChat"' not in chat
+    assert "active?.title==='New conversation'&&!state.messages.length" in chat
+    assert "document.getElementById('newChat').addEventListener('click',createConversation)" in chat
+
+
 def test_quiz_and_flashcard_prompts_have_machine_readable_boundaries():
     backend = (ROOT / "app.py").read_text(encoding="utf-8")
     for marker in ("[QUIZ]", "[/QUIZ]", "[FLASHCARDS]", "[/FLASHCARDS]"):
