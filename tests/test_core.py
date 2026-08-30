@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-08-29-conversation-security",
+        "release": "2026-08-30-ai-experience",
     }
 
 
@@ -448,3 +448,64 @@ def test_attachment_usage_payload_keeps_retry_allowance_current(backend):
         Cursor(), 7, backend.PLAN_ENTITLEMENTS["free"]
     )
     assert payload == {"used_today": 3, "remaining_today": 2, "per_day": 5}
+
+
+def test_message_payload_exposes_only_saved_memory_labels_and_feedback(backend):
+    now = datetime(2026, 8, 30, 8, tzinfo=timezone.utc)
+    payload = backend.message_to_dict({
+        "id": 42,
+        "role": "assistant",
+        "content": "A clear answer",
+        "created_at": now,
+        "ai_mode": "explain",
+        "memory_labels": ["Study goal", "Preferred language"],
+        "feedback": "helpful",
+    })
+    assert payload["memory_labels"] == ["Study goal", "Preferred language"]
+    assert payload["feedback"] == "helpful"
+    assert "memory_content" not in payload
+
+
+def test_message_feedback_is_limited_to_owned_assistant_message(backend, monkeypatch):
+    executed = {}
+
+    class Cursor:
+        def execute(self, query, params=None):
+            executed["query"] = query
+            executed["params"] = params
+
+        def fetchone(self):
+            return {"id": 42, "feedback": "helpful"}
+
+        def close(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def commit(self):
+            return None
+
+        def rollback(self):
+            return None
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(backend, "require_user_id", lambda: 7)
+    monkeypatch.setattr(backend, "limited", lambda *_args: None)
+    monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    client = backend.app.test_client()
+    with client.session_transaction() as current:
+        current["user_id"] = 7
+        current["csrf_token"] = "known-token"
+    response = client.patch(
+        "/api/messages/42/feedback",
+        json={"rating": "helpful"},
+        headers={"X-CSRF-Token": "known-token"},
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"message_id": 42, "feedback": "helpful"}
+    assert "role = 'assistant'" in executed["query"]
+    assert executed["params"] == ("helpful", 42, 7)

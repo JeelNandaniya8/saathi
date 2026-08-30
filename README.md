@@ -179,7 +179,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-08-29-conversation-security`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-08-30-ai-experience`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.

@@ -136,7 +136,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v6' in text
+    assert 'saathi-shell-v7' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -163,7 +163,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-08-29-conversation-security"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-08-30-ai-experience"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
@@ -194,6 +194,35 @@ def test_interface_polish_has_readable_core_typography_and_balanced_chat_header(
     assert 'aria-controls="sidebar" aria-expanded="false"' in chat
     assert 'aria-controls="sidebar" aria-expanded="false"' in dashboard
     assert "function setNavigation(open)" in dashboard
+
+
+def test_chat_experience_features_are_real_and_safely_rendered():
+    chat = (ROOT / "chat.html").read_text(encoding="utf-8")
+    landing = (ROOT / "saathi.html").read_text(encoding="utf-8")
+
+    for marker in (
+        "function renderMarkdown(target,text)",
+        "document.createTextNode",
+        "function parseQuiz(text)",
+        "function parseFlashcards(text)",
+        "function progressiveReveal(message)",
+        "function setupVoiceInput()",
+        "SpeechRecognition||window.webkitSpeechRecognition",
+        "speechSynthesis",
+        "Shared "+"'+labels.length+'"+" saved ",
+        "Uploaded PDF · exact page not confirmed",
+        "/feedback",
+    ):
+        assert marker in chat
+    assert "content.innerHTML=message.content" not in chat.replace(" ", "")
+    assert "function formatBubbleText(element,text)" in landing
+    assert "bubble.textContent=text" not in landing
+
+
+def test_quiz_and_flashcard_prompts_have_machine_readable_boundaries():
+    backend = (ROOT / "app.py").read_text(encoding="utf-8")
+    for marker in ("[QUIZ]", "[/QUIZ]", "[FLASHCARDS]", "[/FLASHCARDS]"):
+        assert marker in backend
 
 
 def test_dependencies_are_reproducible_and_scheduled_for_review():

@@ -100,3 +100,12 @@ def test_ai_usage_migration_stores_metadata_not_content():
     for column in ("ai_mode", "attachment_count", "prompt_tokens", "output_tokens", "total_tokens"):
         assert column in sql
     assert "message_content" not in sql and "file_content" not in sql
+
+
+def test_message_experience_migration_is_additive_and_private():
+    root = Path(__file__).parents[1]
+    sql = (root / "migrations" / "010_message_experience.sql").read_text(encoding="utf-8").lower()
+    assert "alter table messages" in sql
+    assert "memory_labels jsonb" in sql
+    assert "feedback text" in sql
+    assert "drop table" not in sql and "delete from" not in sql
