@@ -72,6 +72,32 @@ def test_chat_has_working_attachment_controls_and_multipart_flow():
     assert "Simpler" in text and "Deeper" in text and "Quiz me" in text
 
 
+def test_streaming_grounding_and_saved_study_controls_are_wired():
+    text = (ROOT / "chat.html").read_text(encoding="utf-8")
+    backend = (ROOT / "app.py").read_text(encoding="utf-8")
+    for marker in (
+        "function streamChatRequest(url,body,onDelta)",
+        "/messages/stream",
+        "xhr.onprogress",
+        "id=\"fileOnly\"",
+        "Answer from file only",
+        "/study-progress",
+        "Saved flashcards",
+        "Generation stopped",
+        "aria-busy",
+    ):
+        assert marker in text
+    for marker in (
+        "def stream_gemini_reply(",
+        ":streamGenerateContent",
+        "X-Accel-Buffering",
+        "def extract_pdf_pages(",
+        "def persist_streamed_exchange(",
+        "chat_attachment_pages",
+    ):
+        assert marker in backend
+
+
 def test_chat_history_titles_and_right_aligned_user_messages_are_wired():
     text = (ROOT / "chat.html").read_text(encoding="utf-8")
     for marker in (
@@ -136,7 +162,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v7' in text
+    assert 'saathi-shell-v8' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -163,7 +189,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-08-30-ai-experience"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-08-30-study-streaming"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
@@ -238,7 +264,10 @@ def test_dependencies_are_reproducible_and_scheduled_for_review():
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     development = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
     dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    render = (ROOT / "render.yaml").read_text(encoding="utf-8")
     assert all("==" in line for line in requirements.splitlines() if line.strip())
+    assert "pypdf==6.0.0" in requirements
     assert "pytest==" in development
     assert "package-ecosystem: pip" in dependabot
     assert "package-ecosystem: github-actions" in dependabot
+    assert "startCommand: gunicorn --timeout 120 app:app" in render

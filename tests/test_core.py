@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-08-30-ai-experience",
+        "release": "2026-08-30-study-streaming",
     }
 
 
@@ -389,6 +389,109 @@ def test_gemini_multimodal_payload_contains_inline_file(backend, monkeypatch):
     assert parts[0]["text"] == "Explain this image."
     assert parts[1]["inlineData"]["mimeType"] == "image/png"
     assert parts[1]["inlineData"]["data"] == base64.b64encode(content).decode("ascii")
+
+
+def test_pdf_page_grounding_and_file_only_prompt_are_exact(backend, monkeypatch):
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    attachment = {
+        "name": "Physics.pdf",
+        "mime_type": "application/pdf",
+        "content": b"%PDF-1.7\nexample",
+        "page_count": 3,
+        "pages": [
+            {"page_number": 1, "content": "Velocity is displacement per unit time."},
+            {"page_number": 2, "content": "Acceleration is the rate of velocity change."},
+        ],
+    }
+    payload = backend.build_gemini_payload(
+        [{"role": "user", "content": "Explain acceleration", "attachments": [attachment]}],
+        mode="explain",
+        file_only=True,
+    )
+    parts = payload["contents"][0]["parts"]
+    assert parts[0]["text"] == "Explain acceleration"
+    assert "[Source: Physics.pdf | Page 2]" in parts[1]["text"]
+    assert "inlineData" not in parts[1]
+    assert "FILE-ONLY MODE" in payload["systemInstruction"]["parts"][0]["text"]
+    assert backend.cited_source_pages(
+        "The rate changes [Physics.pdf, Page 2]. Ignore [Physics.pdf, Page 99].",
+        [attachment],
+    ) == [{"name": "Physics.pdf", "page": 2}]
+
+
+def test_pdf_extraction_keeps_page_numbers_and_bounds_text(backend, monkeypatch):
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self):
+            return self.text
+
+    class Reader:
+        def __init__(self, _stream, strict=False):
+            assert strict is False
+            self.pages = [Page(" First   page "), Page(""), Page("Third page")]
+
+    monkeypatch.setattr(backend, "PdfReader", Reader)
+    count, pages = backend.extract_pdf_pages(b"%PDF-1.7\nexample")
+    assert count == 3
+    assert pages == [
+        {"page_number": 1, "content": "First page"},
+        {"page_number": 3, "content": "Third page"},
+    ]
+
+
+def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypatch):
+    captured = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def iter_lines(self, decode_unicode=False):
+            assert decode_unicode is True
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"Hello "}]}}]}'
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"there"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"totalTokenCount":5}}'
+
+        def close(self):
+            captured["closed"] = True
+
+    def fake_post(url, json, stream, timeout):
+        captured.update(url=url, payload=json, stream=stream, timeout=timeout)
+        return Response()
+
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(backend.requests, "post", fake_post)
+    generator = backend.stream_gemini_reply([{"role": "user", "content": "Hi"}])
+    chunks = []
+    while True:
+        try:
+            chunks.append(next(generator))
+        except StopIteration as finished:
+            usage = finished.value
+            break
+    assert chunks == ["Hello ", "there"]
+    assert usage == {"prompt_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+    assert ":streamGenerateContent" in captured["url"]
+    assert captured["stream"] is True
+    assert captured["closed"] is True
+
+
+@pytest.mark.parametrize(
+    ("mode", "reply", "expected"),
+    [
+        ("quiz", "[QUIZ]\nQuestion: One?\nA. Yes\nB. No\n[/QUIZ]", "quiz"),
+        ("flashcards", "[FLASHCARDS]\nFront: A\nBack: B\n[/FLASHCARDS]", "flashcards"),
+        ("flashcards", "[flashcards]\nFront: A\nBack: B\n[/flashcards]", "flashcards"),
+        ("normal", "[QUIZ]This is only quoted text[/QUIZ]", None),
+        ("quiz", "[QUIZ]A response that was cut off.", None),
+        ("quiz", "An ordinary explanation without a quiz block.", None),
+    ],
+)
+def test_study_progress_is_created_only_for_structured_study_replies(
+    backend, mode, reply, expected
+):
+    assert backend.study_kind_for_reply(mode, reply) == expected
 
 
 def test_completed_chat_request_replays_without_duplicate(backend):

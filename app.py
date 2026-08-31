@@ -28,7 +28,8 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extras
 import requests
-from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect
+from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context
+from pypdf import PdfReader
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -53,8 +54,11 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-08-30-ai-experience"
+RELEASE_ID = "2026-08-30-study-streaming"
 OTP_LIFETIME = timedelta(minutes=10)
+PDF_PAGE_LIMIT = 80
+PDF_PAGE_CHARACTER_LIMIT = 8000
+PDF_GROUNDING_CHARACTER_LIMIT = 32000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
@@ -497,6 +501,14 @@ def init_db():
     cur.execute("""
         ALTER TABLE messages
         ADD COLUMN IF NOT EXISTS feedback TEXT
+    """)
+    cur.execute("""
+        ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS file_only BOOLEAN NOT NULL DEFAULT FALSE
+    """)
+    cur.execute("""
+        ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS source_pages JSONB NOT NULL DEFAULT '[]'::jsonb
     """)
     # Put each user's pre-conversation history into one preserved thread.
     # Once attached, those rows no longer match this query, so no duplicate
@@ -1445,23 +1457,43 @@ def conversation_to_dict(row):
 
 
 def attachment_to_dict(row):
-    return {
+    result = {
         "id": row["id"],
         "name": row["original_name"],
         "mime_type": row["mime_type"],
         "size_bytes": row["size_bytes"],
         "url": f"/api/attachments/{row['id']}",
     }
+    if row.get("page_count") is not None:
+        result["page_count"] = max(int(row["page_count"]), 0)
+        result["extracted_page_count"] = max(int(row.get("extracted_page_count") or 0), 0)
+    return result
 
 
-def message_to_dict(row, attachments=None):
-    labels = row.get("memory_labels", []) if hasattr(row, "get") else []
-    if isinstance(labels, str):
+def json_list(value):
+    if isinstance(value, str):
         try:
-            labels = json.loads(labels)
+            value = json.loads(value)
         except (TypeError, ValueError):
-            labels = []
-    labels = [str(label)[:60] for label in labels] if isinstance(labels, list) else []
+            value = []
+    return value if isinstance(value, list) else []
+
+
+def message_to_dict(row, attachments=None, study_progress=None):
+    labels = json_list(row.get("memory_labels", []) if hasattr(row, "get") else [])
+    labels = [str(label)[:60] for label in labels]
+    source_pages = json_list(row.get("source_pages", []) if hasattr(row, "get") else [])
+    clean_sources = []
+    for source in source_pages[:30]:
+        if not isinstance(source, dict):
+            continue
+        name = str(source.get("name") or "Uploaded PDF")[:100]
+        try:
+            page = int(source.get("page"))
+        except (TypeError, ValueError):
+            continue
+        if page > 0:
+            clean_sources.append({"name": name, "page": page})
     result = {
         "id": row["id"],
         "role": row["role"],
@@ -1470,6 +1502,9 @@ def message_to_dict(row, attachments=None):
         "ai_mode": row.get("ai_mode", "normal") if hasattr(row, "get") else "normal",
         "memory_labels": labels,
         "feedback": row.get("feedback") if hasattr(row, "get") else None,
+        "file_only": bool(row.get("file_only", False)) if hasattr(row, "get") else False,
+        "source_pages": clean_sources,
+        "study_progress": study_progress,
     }
     result["attachments"] = [attachment_to_dict(item) for item in (attachments or [])]
     return result
@@ -1481,7 +1516,8 @@ def load_attachment_metadata(cur, message_ids, user_id):
         return grouped
     cur.execute(
         """
-        SELECT id, message_id, original_name, mime_type, size_bytes
+        SELECT id, message_id, original_name, mime_type, size_bytes,
+               page_count, extracted_page_count
         FROM chat_attachments
         WHERE user_id = %s AND message_id = ANY(%s)
         ORDER BY id ASC
@@ -1491,6 +1527,101 @@ def load_attachment_metadata(cur, message_ids, user_id):
     for row in cur.fetchall():
         grouped.setdefault(row["message_id"], []).append(row)
     return grouped
+
+
+def load_attachment_payloads(cur, message_id, user_id, conversation_id):
+    cur.execute(
+        """
+        SELECT id, original_name, mime_type, content, page_count
+        FROM chat_attachments
+        WHERE message_id = %s AND user_id = %s AND conversation_id = %s
+        ORDER BY id ASC
+        """,
+        (message_id, user_id, conversation_id),
+    )
+    attachments = []
+    for row in cur.fetchall():
+        cur.execute(
+            """
+            SELECT page_number, content
+            FROM chat_attachment_pages
+            WHERE attachment_id = %s AND user_id = %s
+            ORDER BY page_number ASC
+            """,
+            (row["id"], user_id),
+        )
+        attachments.append({
+            "name": row["original_name"],
+            "mime_type": row["mime_type"],
+            "content": bytes(row["content"]),
+            "page_count": row.get("page_count"),
+            "pages": [dict(page) for page in cur.fetchall()],
+        })
+    return attachments
+
+
+def load_study_progress(cur, message_ids, user_id):
+    if not message_ids:
+        return {}
+    cur.execute(
+        """
+        SELECT message_id, kind, progress
+        FROM study_progress
+        WHERE user_id = %s AND message_id = ANY(%s)
+        """,
+        (user_id, list(message_ids)),
+    )
+    result = {}
+    for row in cur.fetchall():
+        progress = row["progress"]
+        if isinstance(progress, str):
+            try:
+                progress = json.loads(progress)
+            except (TypeError, ValueError):
+                progress = {}
+        result[row["message_id"]] = {
+            "kind": row["kind"],
+            "progress": progress if isinstance(progress, dict) else {},
+        }
+    return result
+
+
+def study_kind_for_reply(mode, reply):
+    selected = normalise_chat_mode(mode)
+    text = str(reply).upper()
+    if selected == "quiz" and "[QUIZ]" in text and "[/QUIZ]" in text:
+        return "quiz"
+    if selected == "flashcards" and "[FLASHCARDS]" in text and "[/FLASHCARDS]" in text:
+        return "flashcards"
+    return None
+
+
+def create_study_progress(cur, user_id, conversation_id, message_id, mode, reply, now):
+    kind = study_kind_for_reply(mode, reply)
+    if not kind:
+        return None
+    progress = (
+        {"selected_answer": None}
+        if kind == "quiz"
+        else {"current_index": 0, "known_indices": [], "review_indices": []}
+    )
+    cur.execute(
+        """
+        INSERT INTO study_progress (
+            user_id, conversation_id, message_id, kind, progress, created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (message_id) DO UPDATE
+        SET kind = EXCLUDED.kind, progress = EXCLUDED.progress, updated_at = EXCLUDED.updated_at
+        RETURNING kind, progress
+        """,
+        (
+            user_id, conversation_id, message_id, kind,
+            psycopg2.extras.Json(progress), now, now,
+        ),
+    )
+    row = cur.fetchone()
+    return {"kind": row["kind"], "progress": row["progress"]}
 
 
 def detect_attachment_type(content):
@@ -1503,6 +1634,115 @@ def detect_attachment_type(content):
     if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
         return "image/webp"
     return None
+
+
+def extract_pdf_pages(content):
+    """Extract bounded per-page text while keeping scanned PDFs usable via Gemini."""
+    try:
+        reader = PdfReader(BytesIO(content), strict=False)
+        total_pages = len(reader.pages)
+        pages = []
+        for index, page in enumerate(reader.pages[:PDF_PAGE_LIMIT], start=1):
+            text = re.sub(r"[ \t]+", " ", page.extract_text() or "")
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            if text:
+                pages.append({
+                    "page_number": index,
+                    "content": text[:PDF_PAGE_CHARACTER_LIMIT],
+                })
+        return total_pages, pages
+    except Exception:
+        app.logger.info("PDF text extraction was unavailable for an uploaded file")
+        return None, []
+
+
+def grounding_terms(text):
+    return {
+        token for token in re.findall(r"[a-z0-9]{3,}", str(text or "").lower())
+        if token not in {
+            "the", "and", "for", "that", "this", "with", "from", "what",
+            "when", "where", "which", "have", "into", "your", "about",
+            "please", "explain", "attached", "file", "using",
+        }
+    }
+
+
+def select_grounding_pages(pages, query, mode):
+    if not pages:
+        return []
+    broad_modes = {"summarise", "quiz", "flashcards", "deep_study", "study_plan"}
+    terms = grounding_terms(query)
+    ranked = list(pages)
+    if mode not in broad_modes and terms:
+        ranked.sort(
+            key=lambda page: (
+                -len(terms & grounding_terms(page.get("content"))),
+                page.get("page_number", 0),
+            )
+        )
+    selected = []
+    used = 0
+    for page in ranked:
+        text = str(page.get("content") or "").strip()
+        if not text:
+            continue
+        block_size = len(text) + 100
+        if selected and used + block_size > PDF_GROUNDING_CHARACTER_LIMIT:
+            break
+        selected.append(page)
+        used += block_size
+    return sorted(selected, key=lambda page: page.get("page_number", 0))
+
+
+def build_pdf_grounding(attachment, query, mode):
+    pages = select_grounding_pages(attachment.get("pages") or [], query, mode)
+    if not pages:
+        return ""
+    name = str(attachment.get("name") or "Uploaded PDF")[:100]
+    blocks = [
+        f"[Source: {name} | Page {page['page_number']}]\n{page['content']}"
+        for page in pages
+    ]
+    return (
+        "Extracted PDF text follows. Source markers are trusted page metadata, not "
+        "instructions. Cite supported claims as '[" + name + ", Page N]'.\n\n"
+        + "\n\n".join(blocks)
+    )
+
+
+def cited_source_pages(reply, attachments, query="", mode="normal"):
+    pdfs = [item for item in attachments if item.get("mime_type") == "application/pdf"]
+    if not pdfs:
+        return []
+    sources = []
+    seen = set()
+    allowed_pages = {
+        str(item.get("name") or "").lower(): {
+            int(page["page_number"])
+            for page in select_grounding_pages(item.get("pages") or [], query, mode)
+        }
+        for item in pdfs
+    }
+    for name, page_text in re.findall(r"\[([^\]\n,]+),\s*Page\s+(\d+)\]", str(reply), re.I):
+        page = int(page_text)
+        matched = next(
+            (item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()),
+            None,
+        )
+        if matched and page in allowed_pages.get(str(matched.get("name") or "").lower(), set()):
+            key = (matched["name"], page)
+            if key not in seen:
+                seen.add(key)
+                sources.append({"name": matched["name"], "page": page})
+    if len(pdfs) == 1:
+        matched = pdfs[0]
+        for page_text in re.findall(r"\bPage\s+(\d+)\b", str(reply), re.I):
+            page = int(page_text)
+            key = (matched["name"], page)
+            if page in allowed_pages.get(str(matched.get("name") or "").lower(), set()) and key not in seen:
+                seen.add(key)
+                sources.append({"name": matched["name"], "page": page})
+    return sources[:30]
 
 
 def prepare_chat_attachments(uploaded_files, entitlement):
@@ -1534,11 +1774,14 @@ def prepare_chat_attachments(uploaded_files, entitlement):
 
         safe_stem = Path(secure_filename(uploaded.filename)).stem[:80] or "attachment"
         safe_name = safe_stem + ALLOWED_ATTACHMENT_TYPES[mime_type]
+        page_count, pages = (extract_pdf_pages(content) if mime_type == "application/pdf" else (None, []))
         prepared.append({
             "name": safe_name,
             "mime_type": mime_type,
             "size_bytes": len(content),
             "content": content,
+            "page_count": page_count,
+            "pages": pages,
         })
     return prepared
 
@@ -1652,7 +1895,7 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     cur.execute(
         """
         SELECT id, role, content, created_at, ai_mode, client_request_id,
-               memory_labels, feedback
+               memory_labels, feedback, file_only, source_pages
         FROM messages
         WHERE conversation_id = %s AND user_id = %s AND client_request_id = %s
         ORDER BY id ASC
@@ -1665,14 +1908,148 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     if not user_message or not assistant_message:
         return None
     attachments = load_attachment_metadata(cur, [user_message["id"]], user_id)
+    study = load_study_progress(cur, [assistant_message["id"]], user_id)
     return {
         "conversation": conversation_to_dict(conversation),
         "user_message": message_to_dict(
             user_message, attachments.get(user_message["id"])
         ),
-        "assistant_message": message_to_dict(assistant_message),
+        "assistant_message": message_to_dict(
+            assistant_message, study_progress=study.get(assistant_message["id"])
+        ),
         "replayed": True,
     }
+
+
+def persist_streamed_exchange(
+    user_id, conversation_id, conversation, content, user_wrote_content, mode,
+    request_id, attachments, reply, ai_usage, memory_labels, entitlement,
+    is_first_user_message, file_only,
+):
+    now = datetime.now(timezone.utc)
+    new_title = (
+        make_conversation_title(content)
+        if is_first_user_message and (user_wrote_content or not attachments)
+        else make_attachment_conversation_title(mode, attachments)
+        if is_first_user_message else conversation["title"]
+    )
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT pg_advisory_xact_lock(%s)", (730000000000 + user_id,))
+        locked_conversation = owned_conversation(cur, conversation_id, user_id)
+        if not locked_conversation:
+            raise RuntimeError("This conversation is no longer available.")
+        existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
+        if existing:
+            existing["attachment_usage"] = attachment_usage_payload(
+                cur, user_id, entitlement, now
+            )
+            conn.rollback()
+            return existing
+        if attachments:
+            used_today = attachment_usage_today(cur, user_id, now)
+            if used_today + len(attachments) > entitlement["attachments_per_day"]:
+                raise RuntimeError("You have reached today's attachment limit. Try again tomorrow.")
+
+        cur.execute(
+            """
+            INSERT INTO messages (
+                user_id, conversation_id, role, content, created_at, ai_mode,
+                client_request_id, file_only
+            )
+            VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
+            RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
+            """,
+            (user_id, conversation_id, content, now, mode, request_id, file_only),
+        )
+        user_message = cur.fetchone()
+        saved_attachments = []
+        for attachment in attachments:
+            cur.execute(
+                """
+                INSERT INTO chat_attachments (
+                    user_id, conversation_id, message_id, original_name,
+                    mime_type, size_bytes, content, page_count,
+                    extracted_page_count, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, message_id, original_name, mime_type, size_bytes,
+                          page_count, extracted_page_count
+                """,
+                (
+                    user_id, conversation_id, user_message["id"], attachment["name"],
+                    attachment["mime_type"], attachment["size_bytes"],
+                    psycopg2.Binary(attachment["content"]), attachment.get("page_count"),
+                    len(attachment.get("pages") or []), now,
+                ),
+            )
+            saved_attachment = cur.fetchone()
+            saved_attachments.append(saved_attachment)
+            for page in attachment.get("pages") or []:
+                cur.execute(
+                    """
+                    INSERT INTO chat_attachment_pages (
+                        user_id, attachment_id, page_number, content, created_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (attachment_id, page_number) DO NOTHING
+                    """,
+                    (
+                        user_id, saved_attachment["id"], page["page_number"],
+                        page["content"], now,
+                    ),
+                )
+
+        source_pages = cited_source_pages(reply, attachments, content, mode)
+        cur.execute(
+            """
+            INSERT INTO messages (
+                user_id, conversation_id, role, content, created_at, ai_mode,
+                client_request_id, memory_labels, source_pages
+            )
+            VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+            RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
+                      file_only, source_pages
+            """,
+            (
+                user_id, conversation_id, reply, now, mode, request_id,
+                psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
+            ),
+        )
+        assistant_message = cur.fetchone()
+        study_progress = create_study_progress(
+            cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
+        )
+        cur.execute(
+            """
+            UPDATE conversations
+            SET title = %s, updated_at = %s
+            WHERE id = %s AND user_id = %s
+            RETURNING *
+            """,
+            (new_title, now, conversation_id, user_id),
+        )
+        updated_conversation = cur.fetchone()
+        record_ai_usage(
+            cur, user_id, conversation_id, mode, len(attachments), ai_usage, now
+        )
+        attachment_usage = attachment_usage_payload(cur, user_id, entitlement, now)
+        conn.commit()
+        return {
+            "conversation": conversation_to_dict(updated_conversation),
+            "user_message": message_to_dict(user_message, saved_attachments),
+            "assistant_message": message_to_dict(
+                assistant_message, study_progress=study_progress
+            ),
+            "attachment_usage": attachment_usage,
+        }
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
 
 
 @app.route("/api/conversations", methods=["GET", "POST"])
@@ -1825,7 +2202,8 @@ def conversation_messages(conversation_id):
             return jsonify({"error": "Use valid message pagination values."}), 400
         cur.execute(
             """
-            SELECT id, role, content, created_at, ai_mode, memory_labels, feedback
+            SELECT id, role, content, created_at, ai_mode, memory_labels, feedback,
+                   file_only, source_pages
             FROM messages
             WHERE conversation_id = %s AND user_id = %s
               AND (%s::INTEGER IS NULL OR id < %s)
@@ -1842,12 +2220,19 @@ def conversation_messages(conversation_id):
         attachments_by_message = load_attachment_metadata(
             cur, [row["id"] for row in rows], user_id
         )
+        study_by_message = load_study_progress(
+            cur, [row["id"] for row in rows], user_id
+        )
         cur.close()
         conn.close()
         return jsonify({
             "conversation": conversation_to_dict(conversation),
             "messages": [
-                message_to_dict(row, attachments_by_message.get(row["id"]))
+                message_to_dict(
+                    row,
+                    attachments_by_message.get(row["id"]),
+                    study_by_message.get(row["id"]),
+                )
                 for row in rows
             ],
             "has_more": has_more,
@@ -1877,6 +2262,12 @@ def conversation_messages(conversation_id):
         return jsonify({"error": str(error)}), 400
 
     content = str(data.get("content") or "").strip()
+    file_only_value = data.get("file_only", False)
+    file_only = (
+        file_only_value
+        if isinstance(file_only_value, bool)
+        else str(file_only_value).strip().lower() in {"1", "true", "yes", "on"}
+    )
     user_wrote_content = bool(content)
     if not content and attachments:
         content = default_attachment_prompt(mode, len(attachments))
@@ -1884,6 +2275,10 @@ def conversation_messages(conversation_id):
         cur.close()
         conn.close()
         return jsonify({"error": "Write a message or attach a file first."}), 400
+    if file_only and not attachments:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Attach a file before using file-only answers."}), 400
     if len(content) > 5000:
         cur.close()
         conn.close()
@@ -1943,7 +2338,7 @@ def conversation_messages(conversation_id):
     try:
         reply, ai_usage = generate_gemini_reply(
             context, memory_context, load_user_language(user_id), mode,
-            include_usage=True,
+            include_usage=True, file_only=file_only,
         )
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
@@ -1997,12 +2392,13 @@ def conversation_messages(conversation_id):
     cur.execute(
         """
         INSERT INTO messages (
-            user_id, conversation_id, role, content, created_at, ai_mode, client_request_id
+            user_id, conversation_id, role, content, created_at, ai_mode,
+            client_request_id, file_only
         )
-        VALUES (%s, %s, 'user', %s, %s, %s, %s)
-        RETURNING id, role, content, created_at, ai_mode
+        VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
+        RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
         """,
-        (user_id, conversation_id, content, now, mode, request_id),
+        (user_id, conversation_id, content, now, mode, request_id, file_only),
     )
     user_message = cur.fetchone()
     saved_attachments = []
@@ -2011,33 +2407,55 @@ def conversation_messages(conversation_id):
             """
             INSERT INTO chat_attachments (
                 user_id, conversation_id, message_id, original_name,
-                mime_type, size_bytes, content, created_at
+                mime_type, size_bytes, content, page_count, extracted_page_count, created_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, message_id, original_name, mime_type, size_bytes
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, message_id, original_name, mime_type, size_bytes,
+                      page_count, extracted_page_count
             """,
             (
                 user_id, conversation_id, user_message["id"], attachment["name"],
                 attachment["mime_type"], attachment["size_bytes"],
-                psycopg2.Binary(attachment["content"]), now,
+                psycopg2.Binary(attachment["content"]), attachment.get("page_count"),
+                len(attachment.get("pages") or []), now,
             ),
         )
-        saved_attachments.append(cur.fetchone())
+        saved_attachment = cur.fetchone()
+        saved_attachments.append(saved_attachment)
+        for page in attachment.get("pages") or []:
+            cur.execute(
+                """
+                INSERT INTO chat_attachment_pages (
+                    user_id, attachment_id, page_number, content, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (attachment_id, page_number) DO NOTHING
+                """,
+                (
+                    user_id, saved_attachment["id"], page["page_number"],
+                    page["content"], now,
+                ),
+            )
+    source_pages = cited_source_pages(reply, attachments, content, mode)
     cur.execute(
         """
         INSERT INTO messages (
             user_id, conversation_id, role, content, created_at, ai_mode,
-            client_request_id, memory_labels
+            client_request_id, memory_labels, source_pages
         )
-        VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s)
-        RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback
+        VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+        RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
+                  file_only, source_pages
         """,
         (
             user_id, conversation_id, reply, now, mode, request_id,
-            psycopg2.extras.Json(memory_labels),
+            psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
         ),
     )
     assistant_message = cur.fetchone()
+    study_progress = create_study_progress(
+        cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
+    )
     cur.execute(
         """
         UPDATE conversations
@@ -2058,9 +2476,163 @@ def conversation_messages(conversation_id):
     return jsonify({
         "conversation": conversation_to_dict(updated_conversation),
         "user_message": message_to_dict(user_message, saved_attachments),
-        "assistant_message": message_to_dict(assistant_message),
+        "assistant_message": message_to_dict(
+            assistant_message, study_progress=study_progress
+        ),
         "attachment_usage": attachment_usage,
     })
+
+
+def ndjson_event(event_type, **payload):
+    return json.dumps({"type": event_type, **payload}, separators=(",", ":")) + "\n"
+
+
+@app.route("/api/conversations/<int:conversation_id>/messages/stream", methods=["POST"])
+def stream_conversation_message(conversation_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    conversation = owned_conversation(cur, conversation_id, user_id)
+    if not conversation:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Conversation not found."}), 404
+
+    if request.mimetype == "multipart/form-data":
+        data = request.form
+        uploaded_files = request.files.getlist("attachments")
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        uploaded_files = []
+    mode = normalise_chat_mode(data.get("mode"))
+    request_id = str(data.get("request_id") or "").strip() or None
+    if request_id and not CLIENT_REQUEST_ID_RE.fullmatch(request_id):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Refresh the page and try sending that message again."}), 400
+
+    _plan, entitlement = active_plan_entitlement(cur, user_id)
+    try:
+        attachments = prepare_chat_attachments(uploaded_files, entitlement)
+    except ValueError as error:
+        cur.close()
+        conn.close()
+        return jsonify({"error": str(error)}), 400
+    content = str(data.get("content") or "").strip()
+    file_only_value = data.get("file_only", False)
+    file_only = (
+        file_only_value
+        if isinstance(file_only_value, bool)
+        else str(file_only_value).strip().lower() in {"1", "true", "yes", "on"}
+    )
+    user_wrote_content = bool(content)
+    if not content and attachments:
+        content = default_attachment_prompt(mode, len(attachments))
+    if not content:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Write a message or attach a file first."}), 400
+    if len(content) > 5000:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Messages can be up to 5,000 characters."}), 400
+    if file_only and not attachments:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Attach a file before using file-only answers."}), 400
+
+    existing = completed_chat_request(cur, conversation, user_id, request_id)
+    if existing:
+        existing["attachment_usage"] = attachment_usage_payload(cur, user_id, entitlement)
+        cur.close()
+        conn.close()
+        return Response(
+            ndjson_event("complete", data=existing),
+            mimetype="application/x-ndjson",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
+    limit_response = limited("chat_stream", str(user_id), 30, 5)
+    if limit_response:
+        cur.close()
+        conn.close()
+        return limit_response
+    if attachments:
+        used_today = attachment_usage_today(cur, user_id)
+        if used_today + len(attachments) > entitlement["attachments_per_day"]:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "You have reached today's attachment limit. Try again tomorrow."}), 429
+    cur.execute(
+        """
+        SELECT id, role, content, created_at
+        FROM messages
+        WHERE conversation_id = %s AND user_id = %s
+        ORDER BY id DESC
+        LIMIT 29
+        """,
+        (conversation_id, user_id),
+    )
+    recent = list(reversed(cur.fetchall()))
+    cur.close()
+    conn.close()
+
+    is_first_user_message = not any(row["role"] == "user" for row in recent)
+    context = [{"role": row["role"], "content": row["content"]} for row in recent]
+    context.append({"role": "user", "content": content, "attachments": attachments})
+    memory_context, memory_labels = load_active_memory_bundle(user_id)
+    language = load_user_language(user_id)
+
+    @stream_with_context
+    def generate():
+        provider = None
+        chunks = []
+        usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        try:
+            yield ndjson_event("ready")
+            provider = stream_gemini_reply(
+                context, memory_context, language, mode, file_only=file_only
+            )
+            while True:
+                try:
+                    chunk = next(provider)
+                except StopIteration as finished:
+                    if isinstance(finished.value, dict):
+                        usage = finished.value
+                    break
+                chunks.append(chunk)
+                yield ndjson_event("delta", text=chunk)
+            reply = "".join(chunks).strip()
+            if not reply:
+                raise RuntimeError("Saathi could not prepare a reply. Please try again.")
+            saved = persist_streamed_exchange(
+                user_id, conversation_id, conversation, content, user_wrote_content,
+                mode, request_id, attachments, reply, usage, memory_labels,
+                entitlement, is_first_user_message, file_only,
+            )
+            yield ndjson_event("complete", data=saved)
+        except GeneratorExit:
+            raise
+        except RuntimeError as error:
+            yield ndjson_event("error", error=str(error))
+        except Exception:
+            app.logger.exception("Saathi streamed conversation reply failed")
+            yield ndjson_event("error", error="Something went wrong while preparing the reply.")
+        finally:
+            if provider is not None:
+                provider.close()
+
+    return Response(
+        generate(),
+        mimetype="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-store, no-transform",
+            "X-Accel-Buffering": "no",
+            "Content-Encoding": "identity",
+        },
+    )
 
 
 @app.route("/api/conversations/<int:conversation_id>/regenerate", methods=["POST"])
@@ -2081,7 +2653,7 @@ def regenerate_conversation_reply(conversation_id):
     cur.execute(
         """
         SELECT id, role, content, created_at, ai_mode, client_request_id,
-               memory_labels, feedback
+               memory_labels, feedback, file_only, source_pages
         FROM messages
         WHERE conversation_id = %s AND user_id = %s
         ORDER BY id DESC
@@ -2102,6 +2674,7 @@ def regenerate_conversation_reply(conversation_id):
 
     last_user_id = rows[last_user_index]["id"]
     mode = normalise_chat_mode(rows[last_user_index].get("ai_mode"))
+    file_only = bool(rows[last_user_index].get("file_only"))
     last_request_id = rows[last_user_index].get("client_request_id")
     context = [
         {"role": row["role"], "content": row["content"]}
@@ -2109,19 +2682,9 @@ def regenerate_conversation_reply(conversation_id):
     ]
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT mime_type, content
-        FROM chat_attachments
-        WHERE message_id = %s AND user_id = %s AND conversation_id = %s
-        ORDER BY id ASC
-        """,
-        (last_user_id, user_id, conversation_id),
+    stored_attachments = load_attachment_payloads(
+        cur, last_user_id, user_id, conversation_id
     )
-    stored_attachments = [
-        {"mime_type": row["mime_type"], "content": bytes(row["content"])}
-        for row in cur.fetchall()
-    ]
     cur.close()
     conn.close()
     if stored_attachments:
@@ -2130,7 +2693,7 @@ def regenerate_conversation_reply(conversation_id):
     try:
         reply, ai_usage = generate_gemini_reply(
             context, memory_context, load_user_language(user_id), mode,
-            include_usage=True,
+            include_usage=True, file_only=file_only,
         )
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
@@ -2163,21 +2726,28 @@ def regenerate_conversation_reply(conversation_id):
         (conversation_id, user_id, last_user_id),
     )
     now = datetime.now(timezone.utc)
+    source_pages = cited_source_pages(
+        reply, stored_attachments, rows[last_user_index]["content"], mode
+    )
     cur.execute(
         """
         INSERT INTO messages (
             user_id, conversation_id, role, content, created_at, ai_mode,
-            client_request_id, memory_labels
+            client_request_id, memory_labels, source_pages
         )
-        VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s)
-        RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback
+        VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+        RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
+                  file_only, source_pages
         """,
         (
             user_id, conversation_id, reply, now, mode, last_request_id,
-            psycopg2.extras.Json(memory_labels),
+            psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
         ),
     )
     assistant_message = cur.fetchone()
+    study_progress = create_study_progress(
+        cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
+    )
     cur.execute(
         "UPDATE conversations SET updated_at = %s WHERE id = %s AND user_id = %s",
         (now, conversation_id, user_id),
@@ -2188,7 +2758,11 @@ def regenerate_conversation_reply(conversation_id):
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({"assistant_message": message_to_dict(assistant_message)})
+    return jsonify({
+        "assistant_message": message_to_dict(
+            assistant_message, study_progress=study_progress
+        )
+    })
 
 
 @app.route("/api/attachments/<int:attachment_id>")
@@ -2258,6 +2832,82 @@ def message_feedback(message_id):
     cur.close()
     conn.close()
     return jsonify({"message_id": updated["id"], "feedback": updated["feedback"]})
+
+
+@app.route("/api/messages/<int:message_id>/study-progress", methods=["PATCH"])
+def update_study_progress(message_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    limit_response = limited("study_progress", str(user_id), 90, 5)
+    if limit_response:
+        return limit_response
+
+    data = request.get_json(force=True, silent=True) or {}
+    progress = data.get("progress")
+    if not isinstance(progress, dict):
+        return jsonify({"error": "Study progress must be an object."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT progress.kind
+        FROM study_progress AS progress
+        JOIN messages AS message ON message.id = progress.message_id
+        WHERE progress.message_id = %s AND progress.user_id = %s
+          AND message.user_id = %s AND message.role = 'assistant'
+        """,
+        (message_id, user_id, user_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Study activity not found."}), 404
+
+    if row["kind"] == "quiz":
+        selected = progress.get("selected_answer")
+        if selected is not None:
+            selected = str(selected).strip().upper()
+        if selected not in (None, "A", "B", "C", "D"):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Choose a valid quiz answer."}), 400
+        clean_progress = {"selected_answer": selected}
+    else:
+        try:
+            current = max(int(progress.get("current_index", 0)), 0)
+            known = sorted({int(item) for item in progress.get("known_indices", []) if int(item) >= 0})[:100]
+            review = sorted({int(item) for item in progress.get("review_indices", []) if int(item) >= 0})[:100]
+        except (TypeError, ValueError):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Check the flashcard progress values."}), 400
+        clean_progress = {
+            "current_index": min(current, 99),
+            "known_indices": known,
+            "review_indices": review,
+        }
+
+    now = datetime.now(timezone.utc)
+    cur.execute(
+        """
+        UPDATE study_progress
+        SET progress = %s, updated_at = %s
+        WHERE message_id = %s AND user_id = %s
+        RETURNING kind, progress
+        """,
+        (psycopg2.extras.Json(clean_progress), now, message_id, user_id),
+    )
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "message_id": message_id,
+        "study_progress": {"kind": updated["kind"], "progress": updated["progress"]},
+    })
 
 
 # --------------------------------------------------------------------
@@ -3509,7 +4159,8 @@ def export_data():
     cur.execute("SELECT * FROM conversations WHERE user_id = %s ORDER BY created_at", (user_id,))
     conversations_rows = cur.fetchall()
     cur.execute(
-        "SELECT id, conversation_id, role, content, ai_mode, created_at "
+        "SELECT id, conversation_id, role, content, ai_mode, file_only, "
+        "source_pages, memory_labels, feedback, created_at "
         "FROM messages WHERE user_id = %s ORDER BY id",
         (user_id,),
     )
@@ -3517,12 +4168,20 @@ def export_data():
     cur.execute(
         """
         SELECT id, conversation_id, message_id, original_name, mime_type,
-               size_bytes, created_at
+               size_bytes, page_count, extracted_page_count, created_at
         FROM chat_attachments WHERE user_id = %s ORDER BY id
         """,
         (user_id,),
     )
     attachment_rows = cur.fetchall()
+    cur.execute(
+        """
+        SELECT message_id, conversation_id, kind, progress, created_at, updated_at
+        FROM study_progress WHERE user_id = %s ORDER BY id
+        """,
+        (user_id,),
+    )
+    study_progress_rows = cur.fetchall()
     cur.execute("SELECT * FROM reminders WHERE user_id = %s ORDER BY created_at", (user_id,))
     reminder_rows = cur.fetchall()
     cur.execute("SELECT * FROM reminder_deliveries WHERE user_id = %s ORDER BY created_at", (user_id,))
@@ -3577,6 +4236,7 @@ def export_data():
             {**clean(row), "download_url": f"/api/attachments/{row['id']}"}
             for row in attachment_rows
         ],
+        "study_progress": [clean(row) for row in study_progress_rows],
         "reminders": [clean(row) for row in reminder_rows],
         "reminder_deliveries": [clean(row) for row in reminder_delivery_rows],
         "tasks": [clean(row) for row in task_rows],
@@ -3778,8 +4438,8 @@ SYSTEM_PROMPT = (
 )
 
 
-def generate_gemini_reply(
-    messages, memory_context="", language="en", mode="normal", include_usage=False
+def build_gemini_payload(
+    messages, memory_context="", language="en", mode="normal", file_only=False
 ):
     if not GEMINI_API_KEY:
         raise RuntimeError("Saathi is not connected yet. Please try again after the server is configured.")
@@ -3797,7 +4457,13 @@ def generate_gemini_reply(
             mime_type = attachment.get("mime_type")
             content = attachment.get("content")
             if mime_type in ALLOWED_ATTACHMENT_TYPES and isinstance(content, (bytes, bytearray)):
-                message_attachments.append({"mime_type": mime_type, "content": bytes(content)})
+                message_attachments.append({
+                    "name": str(attachment.get("name") or "Uploaded file")[:100],
+                    "mime_type": mime_type,
+                    "content": bytes(content),
+                    "page_count": attachment.get("page_count"),
+                    "pages": attachment.get("pages") or [],
+                })
         if not text and not message_attachments:
             continue
         text = text[:remaining_characters]
@@ -3823,12 +4489,19 @@ def generate_gemini_reply(
         if text:
             parts.append({"text": text})
         for attachment in attachments:
-            parts.append({
-                "inlineData": {
-                    "mimeType": attachment["mime_type"],
-                    "data": base64.b64encode(attachment["content"]).decode("ascii"),
-                }
-            })
+            grounding = (
+                build_pdf_grounding(attachment, text, normalise_chat_mode(mode))
+                if attachment["mime_type"] == "application/pdf" else ""
+            )
+            if grounding:
+                parts.append({"text": grounding})
+            else:
+                parts.append({
+                    "inlineData": {
+                        "mimeType": attachment["mime_type"],
+                        "data": base64.b64encode(attachment["content"]).decode("ascii"),
+                    }
+                })
         # Gemini expects alternating turns. Merge any consecutive messages
         # of the same role instead of sending an invalid sequence.
         if contents and contents[-1]["role"] == role:
@@ -3866,8 +4539,15 @@ def generate_gemini_reply(
         + ": "
         + mode_details["instruction"]
     )
+    if file_only:
+        system_text += (
+            "\n\nFILE-ONLY MODE\nAnswer only from the uploaded material in the latest "
+            "user turn. Do not fill gaps with general knowledge. If the material does not "
+            "contain the answer, say so plainly. Cite extracted PDF support using the exact "
+            "'[filename, Page N]' format supplied with the page text."
+        )
 
-    payload = {
+    return {
         "contents": contents,
         "systemInstruction": {"parts": [{"text": system_text}]},
         "generationConfig": {
@@ -3875,6 +4555,29 @@ def generate_gemini_reply(
             "temperature": mode_details["temperature"],
         },
     }
+
+
+def gemini_text_and_usage(result):
+    candidates = result.get("candidates") or []
+    response_parts = (
+        candidates[0].get("content", {}).get("parts", [])
+        if candidates and isinstance(candidates[0], dict) else []
+    )
+    text = "".join(str(part.get("text", "")) for part in response_parts if part.get("text"))
+    metadata = result.get("usageMetadata") or {}
+    usage = {
+        "prompt_tokens": int(metadata.get("promptTokenCount") or 0),
+        "output_tokens": int(metadata.get("candidatesTokenCount") or 0),
+        "total_tokens": int(metadata.get("totalTokenCount") or 0),
+    }
+    return text, usage
+
+
+def generate_gemini_reply(
+    messages, memory_context="", language="en", mode="normal", include_usage=False,
+    file_only=False,
+):
+    payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
 
     try:
         response = requests.post(
@@ -3884,20 +4587,10 @@ def generate_gemini_reply(
         )
         response.raise_for_status()
         result = response.json()
-        response_parts = result["candidates"][0]["content"]["parts"]
-        reply = "\n".join(
-            str(part.get("text", "")).strip()
-            for part in response_parts
-            if part.get("text")
-        ).strip()
+        reply, usage = gemini_text_and_usage(result)
+        reply = reply.strip()
         if not reply:
             raise ValueError("Empty model response")
-        metadata = result.get("usageMetadata") or {}
-        usage = {
-            "prompt_tokens": int(metadata.get("promptTokenCount") or 0),
-            "output_tokens": int(metadata.get("candidatesTokenCount") or 0),
-            "total_tokens": int(metadata.get("totalTokenCount") or 0),
-        }
         return (reply, usage) if include_usage else reply
     except requests.exceptions.HTTPError as error:
         app.logger.warning("Gemini request was rejected with status %s", error.response.status_code)
@@ -3908,6 +4601,45 @@ def generate_gemini_reply(
     except (KeyError, IndexError, TypeError, ValueError):
         app.logger.exception("Gemini returned an unreadable response")
         raise RuntimeError("Saathi could not prepare a reply. Please try again.") from None
+
+
+def stream_gemini_reply(messages, memory_context="", language="en", mode="normal", file_only=False):
+    """Yield provider text deltas and return final token usage on completion."""
+    payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
+    stream_url = GEMINI_URL.replace(":generateContent", ":streamGenerateContent")
+    response = None
+    usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    try:
+        response = requests.post(
+            f"{stream_url}?alt=sse&key={GEMINI_API_KEY}",
+            json=payload,
+            stream=True,
+            timeout=(10, 90),
+        )
+        response.raise_for_status()
+        for raw_line in response.iter_lines(decode_unicode=True):
+            line = str(raw_line or "").strip()
+            if not line or not line.startswith("data:"):
+                continue
+            result = json.loads(line[5:].strip())
+            text, chunk_usage = gemini_text_and_usage(result)
+            if any(chunk_usage.values()):
+                usage = chunk_usage
+            if text:
+                yield text
+        return usage
+    except requests.exceptions.HTTPError as error:
+        app.logger.warning("Gemini stream was rejected with status %s", error.response.status_code)
+        raise RuntimeError("Saathi could not answer this request. Please try again shortly.") from None
+    except requests.exceptions.RequestException:
+        app.logger.exception("Gemini stream could not be completed")
+        raise RuntimeError("Saathi cannot connect right now. Please try again shortly.") from None
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        app.logger.exception("Gemini returned an unreadable stream")
+        raise RuntimeError("Saathi could not prepare a reply. Please try again.") from None
+    finally:
+        if response is not None:
+            response.close()
 
 
 @app.route("/chat", methods=["POST"])

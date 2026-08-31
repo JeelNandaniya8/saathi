@@ -32,7 +32,7 @@ def test_health_is_honest_without_database(client):
     response = client.get("/api/health")
     assert response.status_code == 503
     assert response.get_json()["status"] == "configuration_required"
-    assert response.get_json()["release"] == "2026-08-30-ai-experience"
+    assert response.get_json()["release"] == "2026-08-30-study-streaming"
 
 
 def test_checkout_is_disabled(client):
@@ -85,6 +85,8 @@ def test_daily_tool_and_preferences_routes_are_registered(client):
         "/api/trusted-contacts",
         "/api/preferences",
         "/api/attachments/<int:attachment_id>",
+        "/api/conversations/<int:conversation_id>/messages/stream",
+        "/api/messages/<int:message_id>/study-progress",
         "/api/logout-all",
     } <= routes
 

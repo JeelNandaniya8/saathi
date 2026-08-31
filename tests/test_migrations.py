@@ -109,3 +109,18 @@ def test_message_experience_migration_is_additive_and_private():
     assert "memory_labels jsonb" in sql
     assert "feedback text" in sql
     assert "drop table" not in sql and "delete from" not in sql
+
+
+def test_streaming_study_migration_preserves_private_ownership():
+    root = Path(__file__).parents[1]
+    sql = (root / "migrations" / "011_study_streaming.sql").read_text(encoding="utf-8").lower()
+    for marker in (
+        "file_only boolean",
+        "source_pages jsonb",
+        "create table if not exists chat_attachment_pages",
+        "create table if not exists study_progress",
+        "message_id integer not null unique references messages(id) on delete cascade",
+        "user_id integer not null references users(id) on delete cascade",
+    ):
+        assert marker in sql
+    assert "drop table" not in sql and "delete from" not in sql

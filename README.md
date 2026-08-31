@@ -8,11 +8,15 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 
 - email verified signup, explicit browser-session or 30-day login, current-session logout, all-device logout and hashed password reset codes
 - separate conversations with immediate descriptive titles, recent previews, search, rename, pin, archive, delete and pagination
+- real Gemini response streaming with an explicit Stop control and retry-safe final persistence
 - Gemini replies using limited recent context and only user-approved memory
 - real PDF, JPG, PNG and WebP chat attachments with server validation, private storage and Gemini analysis
+- bounded per-page PDF text grounding, verified page chips and an optional file-only answer mode
 - seven server-validated AI modes: Normal, Explain simply, Deep study, Summarise, Quiz me, Flashcards and Study plan
 - drag, drop and clipboard image attachment with preview, upload progress, cancellation and retry-safe request IDs
 - reply actions for simpler, deeper, example and quiz follow-ups
+- persistent quiz answers and flashcard review progress across page reloads
+- safe Markdown rendering for headings, bold text, lists, tables, links and code blocks
 - reviewed chat actions that save a response as a Planner task or user-scheduled reminder
 - privacy-safe AI cost records containing provider token counts, mode and attachment count without duplicating message or file content
 - task creation, editing, completion and deletion
@@ -166,7 +170,7 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-gunicorn app:app
+gunicorn --timeout 120 app:app
 ```
 
 `render.yaml` records the intended Render build, start, health and environment
@@ -179,12 +183,12 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-08-30-ai-experience`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-08-30-study-streaming`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.
 9. Test tasks, reminders, habits, journal, language, export and deletion.
-10. Attach a small test image and PDF, verify the reply and confirm another account cannot open their attachment URLs.
+10. Attach a small test image and PDF, verify streaming, Stop, file-only answers and confirmed page chips, then confirm another account cannot open their attachment URLs.
 11. Run `python scripts/smoke_test.py https://saathi-md5w.onrender.com`.
 12. Review server logs without copying secrets into tickets or screenshots.
 
