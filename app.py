@@ -54,7 +54,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-08-30-study-streaming"
+RELEASE_ID = "2026-09-01-branded-interactions"
 OTP_LIFETIME = timedelta(minutes=10)
 PDF_PAGE_LIMIT = 80
 PDF_PAGE_CHARACTER_LIMIT = 8000

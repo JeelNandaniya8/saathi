@@ -17,12 +17,14 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - reply actions for simpler, deeper, example and quiz follow-ups
 - persistent quiz answers and flashcard review progress across page reloads
 - safe Markdown rendering for headings, bold text, lists, tables, links and code blocks
+- text download plus a branded Print / Save as PDF conversation export with user messages kept on the right
 - reviewed chat actions that save a response as a Planner task or user-scheduled reminder
 - privacy-safe AI cost records containing provider token counts, mode and attachment count without duplicating message or file content
 - task creation, editing, completion and deletion
 - once, daily and weekly reminders with edit, snooze, pause and completion
 - optional reminder email delivery through a protected scheduler
 - habits with local-day completion, pause, edit, deletion and streaks
+- branded confirmation dialogs, accessible mobile bottom sheets and semantic success, info, warning and error notices
 - private journal creation, search, editing and deletion
 - private mood and energy check-ins
 - user-controlled memory with concise previews and a full View and Edit panel
@@ -157,7 +159,7 @@ deployed public release without changing data:
 python scripts/smoke_test.py https://saathi-md5w.onrender.com
 ```
 
-The automated suite covers public source blocking, security headers, CSRF, session duration choice, all-device logout, signup and password-reset OTP expiry boundaries, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, AI-mode validation, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
+The automated suite covers public source blocking, security headers, CSRF, session duration choice, all-device logout, signup and password-reset OTP expiry boundaries, branded destructive-action confirmations, printable conversation exports, disabled checkout, migrations, legacy history preservation, reminder recurrence, habit streaks, attachment signatures and limits, AI-mode validation, Gemini multimodal payloads, language context, HTML IDs, service-worker privacy and forbidden-provider scanning.
 
 ## Production deployment
 
@@ -183,7 +185,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-08-30-study-streaming`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-09-01-branded-interactions`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.

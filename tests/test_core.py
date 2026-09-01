@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-08-30-study-streaming",
+        "release": "2026-09-01-branded-interactions",
     }
 
 

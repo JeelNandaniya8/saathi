@@ -32,7 +32,7 @@ def test_health_is_honest_without_database(client):
     response = client.get("/api/health")
     assert response.status_code == 503
     assert response.get_json()["status"] == "configuration_required"
-    assert response.get_json()["release"] == "2026-08-30-study-streaming"
+    assert response.get_json()["release"] == "2026-09-01-branded-interactions"
 
 
 def test_checkout_is_disabled(client):

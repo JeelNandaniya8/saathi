@@ -145,6 +145,68 @@ def test_memory_view_edit_and_global_logout_controls_are_wired():
         assert marker in text
 
 
+def test_branded_dialogs_replace_native_prompts_and_confirm_destructive_actions():
+    dashboard = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+
+    assert not re.search(r"(?<![.\w])(?:confirm|prompt|alert)\s*\(", dashboard)
+    for marker in (
+        'id="confirmDialog"',
+        'id="confirmTitle"',
+        'id="confirmMessage"',
+        "function confirmAction(",
+        "function finishConfirm(",
+        'id="habitDialog"',
+        'id="habitEditForm"',
+        'id="habitEditFrequency"',
+        "await confirmAction({title:'Delete this task?'",
+        "await confirmAction({title:'Delete this reminder?'",
+        "await confirmAction({title:'Delete this habit?'",
+        "await confirmAction({title:'Delete this journal entry?'",
+        "await confirmAction({title:'Delete this check-in?'",
+        "await confirmAction({title:'Delete this saved memory?'",
+        "await confirmAction({title:'Log out every device?'",
+    ):
+        assert marker in dashboard
+
+
+def test_semantic_toasts_and_mobile_dialog_sheets_match_the_brand():
+    for name in ("dashboard.html", "chat.html"):
+        text = (ROOT / name).read_text(encoding="utf-8")
+        for marker in (
+            'class="toast-icon"',
+            "function toastTone(",
+            ".toast.success",
+            ".toast.warning",
+            ".toast.error",
+            "aria-live",
+            "max-height:92dvh",
+            "border-radius:24px 24px 0 0",
+        ):
+            assert marker in text, f"{marker} missing from {name}"
+
+
+def test_conversation_exports_keep_text_and_add_safe_branded_print_layout():
+    chat = (ROOT / "chat.html").read_text(encoding="utf-8")
+
+    for marker in (
+        'id="exportAction">Export text',
+        'id="printAction">Print / save PDF',
+        "function loadAllConversationMessages(id)",
+        "function exportConversation()",
+        "function exportPrintableConversation()",
+        "window.open('about:blank','_blank')",
+        "preview.opener=null",
+        ".print-message.user{justify-content:flex-end}",
+        "message.role==='user'?'You':'Saathi'",
+        "renderMarkdown(rendered,copy)",
+        "paragraph.textContent=copy",
+        "preview.print()",
+        "type:'text/plain;charset=utf-8'",
+    ):
+        assert marker in chat
+    assert "doc.write(`" not in chat
+
+
 def test_only_gemini_provider_and_no_committed_secrets():
     source_files = [
         path for path in ROOT.rglob("*")
@@ -162,7 +224,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v8' in text
+    assert 'saathi-shell-v9' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -189,7 +251,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-08-30-study-streaming"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-09-01-branded-interactions"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
