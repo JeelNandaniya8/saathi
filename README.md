@@ -8,7 +8,7 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 
 - email verified signup, explicit browser-session or 30-day login, current-session logout, all-device logout and hashed password reset codes
 - separate conversations with immediate descriptive titles, recent previews, search, rename, pin, archive, delete and pagination
-- real Gemini response streaming with an explicit Stop control and retry-safe final persistence
+- low-latency Gemini response streaming with live Markdown, UTF-8 Gujarati/Hindi support, an in-composer Stop control and retry-safe final persistence
 - Gemini replies using limited recent context and only user-approved memory
 - real PDF, JPG, PNG and WebP chat attachments with server validation, private storage and Gemini analysis
 - bounded per-page PDF text grounding, verified page chips and an optional file-only answer mode
@@ -185,7 +185,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-09-01-branded-interactions`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-09-02-live-streaming`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.

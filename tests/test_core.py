@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-09-01-branded-interactions",
+        "release": "2026-09-02-live-streaming",
     }
 
 
@@ -445,13 +445,17 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
     captured = {}
 
     class Response:
+        encoding = None
+
         def raise_for_status(self):
             return None
 
-        def iter_lines(self, decode_unicode=False):
+        def iter_lines(self, chunk_size=None, decode_unicode=False):
+            assert chunk_size == 1
             assert decode_unicode is True
-            yield 'data: {"candidates":[{"content":{"parts":[{"text":"Hello "}]}}]}'
-            yield 'data: {"candidates":[{"content":{"parts":[{"text":"there"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"totalTokenCount":5}}'
+            assert self.encoding == "utf-8"
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"ગુજરાતીમાં "}]}}]}'
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"વાત કરીએ"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"totalTokenCount":5}}'
 
         def close(self):
             captured["closed"] = True
@@ -470,7 +474,7 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
         except StopIteration as finished:
             usage = finished.value
             break
-    assert chunks == ["Hello ", "there"]
+    assert chunks == ["ગુજરાતીમાં ", "વાત કરીએ"]
     assert usage == {"prompt_tokens": 3, "output_tokens": 2, "total_tokens": 5}
     assert ":streamGenerateContent" in captured["url"]
     assert captured["stream"] is True

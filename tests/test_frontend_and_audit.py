@@ -98,6 +98,31 @@ def test_streaming_grounding_and_saved_study_controls_are_wired():
         assert marker in backend
 
 
+def test_live_streaming_is_utf8_low_latency_and_uses_one_composer_control():
+    chat = (ROOT / "chat.html").read_text(encoding="utf-8")
+    backend = (ROOT / "app.py").read_text(encoding="utf-8")
+
+    for marker in (
+        "content_type=\"application/x-ndjson; charset=utf-8\"",
+        'response.encoding = "utf-8"',
+        "iter_lines(chunk_size=1, decode_unicode=True)",
+        "GEMINI_CONTEXT_CHARACTER_LIMIT = 24000",
+    ):
+        assert marker in backend
+    for marker in (
+        ".send.stopping",
+        "stopping?'■':'↑'",
+        "state.activeRequest?.abort()",
+        "thinking-dots",
+        "renderMarkdown(contentNode,streaming.content)",
+        "function decodeLegacyText(value)",
+        "new TextDecoder('utf-8',{fatal:true})",
+    ):
+        assert marker in chat
+    assert 'id="cancelRequest"' not in chat
+    assert ".upload-cancel" not in chat
+
+
 def test_chat_history_titles_and_right_aligned_user_messages_are_wired():
     text = (ROOT / "chat.html").read_text(encoding="utf-8")
     for marker in (
@@ -224,7 +249,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v9' in text
+    assert 'saathi-shell-v10' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -251,7 +276,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-09-01-branded-interactions"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-09-02-live-streaming"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():

@@ -54,11 +54,12 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-01-branded-interactions"
+RELEASE_ID = "2026-09-02-live-streaming"
 OTP_LIFETIME = timedelta(minutes=10)
 PDF_PAGE_LIMIT = 80
 PDF_PAGE_CHARACTER_LIMIT = 8000
 PDF_GROUNDING_CHARACTER_LIMIT = 32000
+GEMINI_CONTEXT_CHARACTER_LIMIT = 24000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
@@ -2551,7 +2552,7 @@ def stream_conversation_message(conversation_id):
         conn.close()
         return Response(
             ndjson_event("complete", data=existing),
-            mimetype="application/x-ndjson",
+            content_type="application/x-ndjson; charset=utf-8",
             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
         )
     limit_response = limited("chat_stream", str(user_id), 30, 5)
@@ -2626,7 +2627,7 @@ def stream_conversation_message(conversation_id):
 
     return Response(
         generate(),
-        mimetype="application/x-ndjson",
+        content_type="application/x-ndjson; charset=utf-8",
         headers={
             "Cache-Control": "no-store, no-transform",
             "X-Accel-Buffering": "no",
@@ -4445,7 +4446,7 @@ def build_gemini_payload(
         raise RuntimeError("Saathi is not connected yet. Please try again after the server is configured.")
 
     selected = []
-    remaining_characters = 40000
+    remaining_characters = GEMINI_CONTEXT_CHARACTER_LIMIT
     for message in reversed(messages[-30:]):
         if not isinstance(message, dict):
             continue
@@ -4617,7 +4618,12 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
             timeout=(10, 90),
         )
         response.raise_for_status()
-        for raw_line in response.iter_lines(decode_unicode=True):
+        # Requests otherwise buffers SSE data in 512-byte blocks and may infer
+        # Latin-1 when a provider omits a charset. One-byte line iteration lets
+        # the first model delta reach the browser immediately and preserves
+        # Gujarati, Hindi and emoji exactly.
+        response.encoding = "utf-8"
+        for raw_line in response.iter_lines(chunk_size=1, decode_unicode=True):
             line = str(raw_line or "").strip()
             if not line or not line.startswith("data:"):
                 continue
