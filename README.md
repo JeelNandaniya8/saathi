@@ -12,8 +12,8 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - Gemini replies using limited recent context and only user-approved memory
 - real PDF, JPG, PNG and WebP chat attachments with server validation, private storage and Gemini analysis
 - bounded per-page PDF text grounding, verified page chips and an optional file-only answer mode
-- seven server-validated AI modes: Normal, Explain simply, Deep study, Summarise, Quiz me, Flashcards and Study plan
-- drag, drop and clipboard image attachment with preview, upload progress, cancellation and retry-safe request IDs
+- eight server-validated AI modes: Talk it through, Normal, Explain simply, Deep study, Summarise, Quiz me, Flashcards and Study plan
+- drag, drop and clipboard image attachment with preview, upload status, cancellation and retry-safe request IDs
 - reply actions for simpler, deeper, example and quiz follow-ups
 - persistent quiz answers and flashcard review progress across page reloads
 - safe Markdown rendering for headings, bold text, lists, tables, links and code blocks
@@ -185,7 +185,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-09-02-live-streaming`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-09-07-stream-recovery`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.
@@ -249,3 +249,5 @@ Forward fixes are safer than hand-written destructive rollback SQL for additive 
 - Chat unavailable: confirm `GEMINI_API_KEY` and inspect server logs for the status only, not provider bodies.
 - Reminder email absent: confirm the reminder has email enabled, `CRON_SECRET` matches and the scheduler is actually calling the route.
 - Migration failure: read the first migration error, keep the transaction rolled back and restore the previous deploy while preparing a forward fix.
+
+Streaming recovery release: the browser reads UTF-8 chunks directly with Fetch, including regenerated answers. Stop and connection errors preserve received text on the current screen with an unsaved notice. Retries reuse the request ID. Partial replies are not persisted. The Render start command uses four threads so a long response does not monopolize the sole worker. Existing manually managed services may need their Start Command updated in Render. Verify a logged-in streaming request in browser Network timing after deployment; local chunk tests cannot prove CDN delivery.

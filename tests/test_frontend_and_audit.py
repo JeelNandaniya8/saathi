@@ -63,7 +63,7 @@ def test_chat_has_working_attachment_controls_and_multipart_flow():
         'id="attachButton"', 'id="fileInput"', 'id="attachmentTray"',
         "new FormData()", "body.append('attachments'", "instanceof FormData",
         "message.attachments", 'id="chatMode"', 'id="uploadStatus"',
-        "XMLHttpRequest()", "xhr.upload.onprogress", "request_id",
+        "AbortController()", "response.body.getReader()", "request_id",
         "clipboardData", "dataTransfer", "quick-actions", 'id="taskDialog"',
         'id="reminderDialog"', "Save task", "Set reminder",
     ):
@@ -78,12 +78,12 @@ def test_streaming_grounding_and_saved_study_controls_are_wired():
     for marker in (
         "function streamChatRequest(url,body,onDelta)",
         "/messages/stream",
-        "xhr.onprogress",
+        "decoder.decode(value,{stream:true})",
         "id=\"fileOnly\"",
         "Answer from file only",
         "/study-progress",
         "Saved flashcards",
-        "Generation stopped",
+        "Reply stopped or timed out",
         "aria-busy",
     ):
         assert marker in text
@@ -249,7 +249,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v10' in text
+    assert 'saathi-shell-v11' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -276,7 +276,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-09-02-live-streaming"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-09-07-stream-recovery"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
@@ -357,4 +357,4 @@ def test_dependencies_are_reproducible_and_scheduled_for_review():
     assert "pytest==" in development
     assert "package-ecosystem: pip" in dependabot
     assert "package-ecosystem: github-actions" in dependabot
-    assert "startCommand: gunicorn --timeout 120 app:app" in render
+    assert "startCommand: gunicorn --worker-class gthread --workers 1 --threads 4 --timeout 120 app:app" in render

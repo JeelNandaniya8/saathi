@@ -5,7 +5,7 @@ services:
     plan: free
     autoDeploy: true
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --timeout 120 app:app
+    startCommand: gunicorn --worker-class gthread --workers 1 --threads 4 --timeout 120 app:app
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION

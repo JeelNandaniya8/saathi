@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-09-02-live-streaming",
+        "release": "2026-09-07-stream-recovery",
     }
 
 
@@ -616,3 +616,47 @@ def test_message_feedback_is_limited_to_owned_assistant_message(backend, monkeyp
     assert response.get_json() == {"message_id": 42, "feedback": "helpful"}
     assert "role = 'assistant'" in executed["query"]
     assert executed["params"] == ("helpful", 42, 7)
+
+
+def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch):
+    import json
+    statements = []
+    closed = []
+
+    class Cursor:
+        def execute(self, sql, params):
+            statements.append(sql)
+        def fetchall(self):
+            return [{"id": 3, "role": "user", "content": "hello", "ai_mode": "normal"}]
+        def close(self):
+            pass
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+        def close(self):
+            pass
+
+    def provider(*args, **kwargs):
+        try:
+            yield "ગુજરાતી"
+            raise AssertionError("Cancellation must stop before another provider read")
+        finally:
+            closed.append(True)
+
+    monkeypatch.setattr(backend, "require_user_id", lambda: 1)
+    monkeypatch.setattr(backend, "limited", lambda *args: None)
+    monkeypatch.setattr(backend, "get_db", Connection)
+    monkeypatch.setattr(backend, "owned_conversation", lambda *args: True)
+    monkeypatch.setattr(backend, "load_attachment_payloads", lambda *args: [])
+    monkeypatch.setattr(backend, "load_active_memory_bundle", lambda *args: ("", []))
+    monkeypatch.setattr(backend, "load_user_language", lambda *args: "gu")
+    monkeypatch.setattr(backend, "stream_gemini_reply", provider)
+    with backend.app.test_request_context(headers={"Accept": "application/x-ndjson"}):
+        response = backend.regenerate_conversation_reply(1)
+        stream = iter(response.response)
+        assert json.loads(next(stream))["type"] == "ready"
+        assert json.loads(next(stream))["text"] == "ગુજરાતી"
+        response.close()
+    assert closed == [True]
+    assert not any("DELETE" in sql or "INSERT" in sql for sql in statements)

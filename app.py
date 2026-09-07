@@ -54,7 +54,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-02-live-streaming"
+RELEASE_ID = "2026-09-07-stream-recovery"
 OTP_LIFETIME = timedelta(minutes=10)
 PDF_PAGE_LIMIT = 80
 PDF_PAGE_CHARACTER_LIMIT = 8000
@@ -77,6 +77,20 @@ ALLOWED_ATTACHMENT_TYPES = {
 # public labels and descriptions; the actual behavioural instructions stay
 # here so a modified client cannot invent an unrestricted mode.
 CHAT_MODES = {
+    "care": {
+        "label": "Talk it through",
+        "description": "Space to talk and find a small next step",
+        "instruction": (
+            "Listen to the specific concern without diagnosing or assuming feelings. "
+            "Ask whether the person wants listening or practical ideas when unclear. "
+            "Offer at most one manageable next step at a time. Respect a wish to stop. "
+            "Encourage real-world support when helpful. Never claim monitoring, "
+            "emergency response, human feelings or exclusive companionship. "
+            "Never imply private journal or check-in access unless explicitly shared."
+        ),
+        "temperature": 0.65,
+        "max_output_tokens": 900,
+    },
     "normal": {
         "label": "Normal",
         "description": "A balanced everyday reply",
@@ -2691,79 +2705,111 @@ def regenerate_conversation_reply(conversation_id):
     if stored_attachments:
         context[-1]["attachments"] = stored_attachments
     memory_context, memory_labels = load_active_memory_bundle(user_id)
+    def save_reply(reply, ai_usage):
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT id FROM messages
+                WHERE conversation_id = %s AND user_id = %s AND role = 'user'
+                ORDER BY id DESC LIMIT 1
+                """,
+                (conversation_id, user_id),
+            )
+            latest_user = cur.fetchone()
+            if not latest_user or latest_user["id"] != last_user_id:
+                raise RuntimeError("A newer message was sent. Refresh before trying again.")
+
+            cur.execute(
+                """
+                DELETE FROM messages
+                WHERE conversation_id = %s AND user_id = %s
+                  AND role = 'assistant' AND id > %s
+                """,
+                (conversation_id, user_id, last_user_id),
+            )
+            now = datetime.now(timezone.utc)
+            source_pages = cited_source_pages(
+                reply, stored_attachments, rows[last_user_index]["content"], mode
+            )
+            cur.execute(
+                """
+                INSERT INTO messages (
+                    user_id, conversation_id, role, content, created_at, ai_mode,
+                    client_request_id, memory_labels, source_pages
+                )
+                VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+                RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
+                          file_only, source_pages
+                """,
+                (
+                    user_id, conversation_id, reply, now, mode, last_request_id,
+                    psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
+                ),
+            )
+            assistant_message = cur.fetchone()
+            study_progress = create_study_progress(
+                cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
+            )
+            cur.execute(
+                "UPDATE conversations SET updated_at = %s WHERE id = %s AND user_id = %s",
+                (now, conversation_id, user_id),
+            )
+            record_ai_usage(
+                cur, user_id, conversation_id, mode, len(stored_attachments), ai_usage, now
+            )
+            conn.commit()
+            return {
+                "assistant_message": message_to_dict(
+                    assistant_message, study_progress=study_progress
+                )
+            }
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+            conn.close()
+
+    language = load_user_language(user_id)
+    if "application/x-ndjson" in request.headers.get("Accept", ""):
+        @stream_with_context
+        def generate():
+            provider = stream_gemini_reply(context, memory_context, language, mode, file_only=file_only)
+            chunks = []
+            usage = {}
+            try:
+                yield ndjson_event("ready")
+                while True:
+                    try:
+                        chunk = next(provider)
+                    except StopIteration as finished:
+                        usage = finished.value or {}
+                        break
+                    chunks.append(chunk)
+                    yield ndjson_event("delta", text=chunk)
+                reply = "".join(chunks).strip()
+                if not reply:
+                    raise RuntimeError("No reply was received. Please try again.")
+                yield ndjson_event("complete", data=save_reply(reply, usage))
+            except GeneratorExit:
+                raise
+            except RuntimeError as error:
+                yield ndjson_event("error", error=str(error))
+            except Exception:
+                app.logger.exception("Streaming regeneration failed")
+                yield ndjson_event("error", error="The reply could not be saved. Please try again.")
+            finally:
+                provider.close()
+        return Response(generate(), content_type="application/x-ndjson; charset=utf-8",
+                        headers={"Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no"})
     try:
-        reply, ai_usage = generate_gemini_reply(
-            context, memory_context, load_user_language(user_id), mode,
-            include_usage=True, file_only=file_only,
-        )
+        reply, usage = generate_gemini_reply(context, memory_context, language, mode,
+                                            include_usage=True, file_only=file_only)
+        return jsonify(save_reply(reply, usage))
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
-    except Exception:
-        app.logger.exception("Saathi reply regeneration failed")
-        return jsonify({"error": "Something went wrong while preparing the reply."}), 500
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id FROM messages
-        WHERE conversation_id = %s AND user_id = %s AND role = 'user'
-        ORDER BY id DESC LIMIT 1
-        """,
-        (conversation_id, user_id),
-    )
-    latest_user = cur.fetchone()
-    if not latest_user or latest_user["id"] != last_user_id:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "A newer message was sent. Refresh before trying again."}), 409
-
-    cur.execute(
-        """
-        DELETE FROM messages
-        WHERE conversation_id = %s AND user_id = %s
-          AND role = 'assistant' AND id > %s
-        """,
-        (conversation_id, user_id, last_user_id),
-    )
-    now = datetime.now(timezone.utc)
-    source_pages = cited_source_pages(
-        reply, stored_attachments, rows[last_user_index]["content"], mode
-    )
-    cur.execute(
-        """
-        INSERT INTO messages (
-            user_id, conversation_id, role, content, created_at, ai_mode,
-            client_request_id, memory_labels, source_pages
-        )
-        VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
-        RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
-                  file_only, source_pages
-        """,
-        (
-            user_id, conversation_id, reply, now, mode, last_request_id,
-            psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
-        ),
-    )
-    assistant_message = cur.fetchone()
-    study_progress = create_study_progress(
-        cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
-    )
-    cur.execute(
-        "UPDATE conversations SET updated_at = %s WHERE id = %s AND user_id = %s",
-        (now, conversation_id, user_id),
-    )
-    record_ai_usage(
-        cur, user_id, conversation_id, mode, len(stored_attachments), ai_usage, now
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({
-        "assistant_message": message_to_dict(
-            assistant_message, study_progress=study_progress
-        )
-    })
 
 
 @app.route("/api/attachments/<int:attachment_id>")

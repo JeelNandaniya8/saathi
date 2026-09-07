@@ -180,7 +180,7 @@ a{color:inherit;text-decoration:none}
 .selected-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
 .upload-status{grid-column:1/-1;min-height:24px;margin:0 5px 6px;padding:0;border:0;background:transparent;display:flex;align-items:center;gap:9px}
 .upload-status[hidden]{display:none}.upload-status::before{content:'';width:13px;height:13px;flex:none;border:2px solid var(--line-strong);border-top-color:var(--accent);border-radius:50%;animation:statusSpin .7s linear infinite}.upload-copy{min-width:0;color:var(--muted);font-size:10px;font-weight:680}.upload-progress{width:70px;height:3px;margin-left:auto;overflow:hidden;border-radius:999px;background:var(--line)}.upload-progress i{display:block;width:8%;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--cyan));transition:width .18s ease}.upload-status.processing .upload-progress i{width:35%;animation:processing 1.1s infinite ease-in-out}
-.message.streaming .message-content{white-space:pre-wrap}.message.streaming .message-content.has-text::after{content:'';display:inline-block;width:5px;height:15px;margin-left:3px;border-radius:3px;background:var(--accent);vertical-align:-2px;animation:streamCursor .8s infinite}.thinking-dots{min-height:26px;display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:11px;font-weight:680}.thinking-dots i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:thinkingDot 1.1s infinite ease-in-out}.thinking-dots i:nth-child(2){animation-delay:.14s}.thinking-dots i:nth-child(3){animation-delay:.28s}.quiz-option.selected{border-color:var(--accent);background:var(--accent-soft)}.flashcard-controls button:focus-visible,.flashcard-stage:focus-visible,.quiz-option:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 28%,transparent);outline-offset:2px}
+.message.streaming .message-content{white-space:normal}.message.streaming .message-content.has-text::after{content:'';display:inline-block;width:5px;height:15px;margin-left:3px;border-radius:3px;background:var(--accent);vertical-align:-2px;animation:streamCursor .8s infinite}.thinking-dots{min-height:26px;display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:11px;font-weight:680}.thinking-dots i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:thinkingDot 1.1s infinite ease-in-out}.thinking-dots i:nth-child(2){animation-delay:.14s}.thinking-dots i:nth-child(3){animation-delay:.28s}.quiz-option.selected{border-color:var(--accent);background:var(--accent-soft)}.flashcard-controls button:focus-visible,.flashcard-stage:focus-visible,.quiz-option:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 28%,transparent);outline-offset:2px}
 .send{width:37px;height:37px;border:0;border-radius:12px;background:var(--ink);color:var(--paper);display:grid;place-items:center;transition:.18s}
 .send:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 16px rgba(26,29,25,.18)}
 .send:disabled{opacity:.24;cursor:not-allowed}
@@ -224,6 +224,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 @media(max-width:520px){.message:not(.user){grid-template-columns:30px minmax(0,1fr);gap:10px}.message.user{grid-template-columns:minmax(0,88%) 30px;gap:9px}.message-avatar{width:29px;height:29px;border-radius:9px}.message-content{font-size:14px;line-height:1.68}.message-attachment{max-width:100%}.message-list{padding-bottom:200px}.empty{min-height:calc(100dvh - 250px)}.empty-orb{margin-bottom:21px}.empty h2{font-size:35px}.prompt{min-height:82px}.composer-meta{font-size:10px}.topbar{padding-left:8px;padding-right:8px}.chat-heading h1{font-size:13px}.chat-heading p{display:none}.mode-description{display:none}.mode-select{max-width:calc(100vw - 116px)}.selected-file{max-width:100%}.file-only small{display:none}.quick-actions{gap:6px}.quick-action{padding:0 9px}.dialog-grid{grid-template-columns:1fr}.dialog-field.wide{grid-column:auto}}
 .toast{min-width:min(360px,calc(100% - 28px));display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:10px;border-color:color-mix(in srgb,var(--accent) 28%,var(--line));background:color-mix(in srgb,var(--paper) 96%,var(--accent-soft));color:var(--ink)}.toast-icon{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:850}.toast.success{border-color:color-mix(in srgb,var(--sage) 40%,var(--line))}.toast.success .toast-icon{background:var(--sage-soft);color:var(--sage)}.toast.warning{border-color:color-mix(in srgb,var(--gold) 42%,var(--line))}.toast.warning .toast-icon{background:var(--gold-soft);color:var(--gold)}.toast.error{border-color:color-mix(in srgb,var(--danger) 42%,var(--line))}.toast.error .toast-icon{background:var(--danger-soft);color:var(--danger)}
 @media(max-width:520px){dialog{width:100%;max-width:none;max-height:92dvh;margin:auto 0 0;border-radius:24px 24px 0 0;border-bottom:0;overflow:auto}.dialog-body{padding:25px 20px calc(24px + env(safe-area-inset-bottom))}.dialog-actions{flex-wrap:wrap}.dialog-actions button{flex:1;min-width:112px}.toast{bottom:calc(108px + env(safe-area-inset-bottom))}}
+.attach,.voice,.send{min-width:44px;min-height:44px}.composer{grid-template-columns:44px 44px minmax(0,1fr) 44px}.composer textarea{font-size:16px}.messages{overscroll-behavior:contain}.message-content{overflow-wrap:anywhere}.message.failed .message-content{white-space:pre-wrap}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -354,7 +355,42 @@ function clearSelectedFiles(revoke=true){if(revoke)state.selectedFiles.forEach(r
 function requestId(){if(crypto.randomUUID)return crypto.randomUUID();return`${Date.now()}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`}
 function defaultFilePrompt(mode,count){const noun=count===1?'file':'files',prompts={summarise:`Summarise the attached ${noun} and preserve the important details.`,quiz:`Quiz me using the attached ${noun}. Ask one question at a time.`,flashcards:`Create useful revision flashcards from the attached ${noun}.`,deep_study:`Teach me the attached ${noun} in depth for study and revision.`,explain:`Explain the attached ${noun} in simple steps with an example.`,study_plan:`Create a realistic study plan using the attached ${noun}.`};return prompts[mode]||`Please explain the attached ${noun}.`}
 function showRequestProgress(copy,percent=null,processing=false){el.uploadStatus.hidden=false;el.uploadStatus.classList.toggle('processing',processing);el.uploadCopy.textContent=copy;if(percent!==null)el.uploadProgress.style.width=Math.max(2,Math.min(percent,100))+'%'}
-function streamChatRequest(url,body,onDelta){return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();let read=0,buffer='',complete=null,streamError=null;state.activeRequest=xhr;xhr.open('POST',url);xhr.withCredentials=true;xhr.setRequestHeader('X-CSRF-Token',state.csrf);if(!(body instanceof FormData))xhr.setRequestHeader('Content-Type','application/json');function consume(final=false){const incoming=xhr.responseText.slice(read);read=xhr.responseText.length;buffer+=incoming;const lines=buffer.split('\n'),tail=lines.pop();if(final){if(tail.trim())lines.push(tail);buffer=''}else buffer=tail;for(const line of lines){if(!line.trim())continue;let event;try{event=JSON.parse(line)}catch(error){if(final)streamError='The server returned an unreadable response.';continue}if(event.type==='ready')showRequestProgress('Saathi is responding…',100,true);else if(event.type==='delta')onDelta(String(event.text||''));else if(event.type==='complete')complete=event.data;else if(event.type==='error')streamError=event.error||'Saathi could not finish this reply.'}}xhr.upload.onprogress=event=>{if(event.lengthComputable)showRequestProgress(`Uploading ${Math.round(event.loaded/event.total*100)}%`,event.loaded/event.total*100,false)};xhr.upload.onload=()=>showRequestProgress('Saathi is reading your message…',null,true);xhr.onprogress=()=>consume(false);xhr.onload=()=>{consume(true);if(xhr.status===401){location.href='/account';reject(new Error('Please log in first.'));return}if(xhr.status<200||xhr.status>=300){let data={};try{data=JSON.parse(xhr.responseText||'{}')}catch(error){}reject(new Error(data.error||'Something went wrong.'));return}if(streamError){reject(new Error(streamError));return}if(!complete){reject(new Error('The streamed reply ended before it could be saved.'));return}resolve(complete)};xhr.onerror=()=>reject(new Error('The connection was interrupted. Please try again.'));xhr.onabort=()=>{const error=new Error('Generation stopped. You can safely try again.');error.name='AbortError';reject(error)};xhr.send(body)})}
+async function streamChatRequest(url,body,onDelta){
+  const controller=new AbortController();state.activeRequest=controller;
+  let reader,buffer='',complete=null;
+  const decoder=new TextDecoder('utf-8',{fatal:true});
+  let timeout=setTimeout(()=>controller.abort(),90000);
+  function consume(line){
+    if(!line.trim())return;
+    const event=JSON.parse(line);
+    if(event.type==='ready')showRequestProgress('Waiting for the first words…',null,true);
+    else if(event.type==='delta'){el.uploadStatus.hidden=true;onDelta(String(event.text||''))}
+    else if(event.type==='complete')complete=event.data;
+    else if(event.type==='error')throw new Error(event.error||'Saathi could not finish this reply.');
+  }
+  try{
+    const headers={'X-CSRF-Token':state.csrf,'Accept':'application/x-ndjson'};
+    if(!(body instanceof FormData))headers['Content-Type']='application/json';
+    const response=await fetch(url,{method:'POST',headers,body,credentials:'same-origin',cache:'no-store',signal:controller.signal});
+    if(response.status===401){location.href='/account';throw new Error('Please log in first.')}
+    if(!response.ok){let data={};try{data=await response.json()}catch(_){}throw new Error(data.error||'The request could not start. Please try again.')}
+    if(!response.body)throw new Error('Streaming is unavailable in this browser. Please update your browser.');
+    reader=response.body.getReader();
+    while(true){
+      const {value,done}=await reader.read();
+      clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),90000);
+      buffer+=done?decoder.decode():decoder.decode(value,{stream:true});
+      let end;while((end=buffer.indexOf('\n'))!==-1){consume(buffer.slice(0,end));buffer=buffer.slice(end+1)}
+      if(done){if(buffer.trim())consume(buffer);break}
+    }
+    if(!complete)throw new Error('Connection ended before the reply was saved. Your received text is kept below.');
+    return complete;
+  }catch(error){
+    if(error.name==='AbortError')error.message='Reply stopped or timed out. Received text is kept on this screen; it is not saved yet.';
+    throw error;
+  }finally{clearTimeout(timeout);if(reader){try{await reader.cancel()}catch(_){}reader.releaseLock()}}
+}
+
 function renderChatModes(modes){state.chatModes=Array.isArray(modes)&&modes.length?modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}];el.mode.replaceChildren();state.chatModes.forEach(mode=>{const option=document.createElement('option');option.value=mode.id;option.textContent=mode.label;el.mode.append(option)});const saved=localStorage.getItem('saathi-chat-mode');el.mode.value=state.chatModes.some(mode=>mode.id===saved)?saved:'normal';updateModeDescription()}
 function updateModeDescription(){const mode=state.chatModes.find(item=>item.id===el.mode.value);el.modeDescription.textContent=mode?.description||'A balanced everyday reply';localStorage.setItem('saathi-chat-mode',el.mode.value)}
 function formatDateGroup(dateString){
@@ -406,7 +442,7 @@ async function createConversation(){
 }
 
 async function selectConversation(id){
-  if(state.sending&&id!==state.activeId){showToast('Wait for the current reply before switching chats.');return}
+  if(state.sending){showToast('Wait for the current reply before switching chats.');return}
   if(id!==state.activeId){if(state.selectedFiles.length)clearSelectedFiles();state.messages.forEach(releaseLocalPreviews)}
   state.activeId=id;const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
   el.list.innerHTML='<div class="history-state">Loading conversation…</div>';
@@ -416,14 +452,15 @@ async function selectConversation(id){
 
 function emptyView(){
   const empty=document.createElement('div');empty.className='empty';
-  const inner=document.createElement('div');inner.className='empty-inner';inner.innerHTML='<div class="empty-orb"><span class="orb"></span></div><h2>What can we make <em>clearer</em> today?</h2><p>Start with a question, a plan or something you want to think through. Each conversation stays separate so it is easy to return later.</p>';
+  const inner=document.createElement('div');inner.className='empty-inner';inner.innerHTML='<div class="empty-orb"><span class="orb"></span></div><h2>How can Saathi <em>help</em> today?</h2><p>Talk through your day, find a small next step, or study something new. You choose what to share.</p>';
   const prompts=document.createElement('div');prompts.className='prompts';
   [
+    ['♡','Talk it through','I would like to talk about how I am feeling. Please listen first and ask whether I want ideas.'],
     ['□','Study plan','Help me make a focused study plan for this week.'],
     ['◇','Organise my day','Help me put today’s tasks in a realistic order.'],
     ['○','Understand a topic','Explain a difficult topic in simple steps.'],
     ['✓','Think it through','Help me compare the options in a decision.']
-  ].forEach(([icon,title,prompt])=>{const button=document.createElement('button');button.className='prompt';button.type='button';button.innerHTML=`<span>${icon}</span><b></b><small></small>`;button.querySelector('b').textContent=title;button.querySelector('small').textContent=prompt;button.addEventListener('click',()=>{el.input.value=prompt;updateComposer();el.input.focus()});prompts.append(button)});
+  ].forEach(([icon,title,prompt])=>{const button=document.createElement('button');button.className='prompt';button.type='button';button.innerHTML=`<span>${icon}</span><b></b><small></small>`;button.querySelector('b').textContent=title;button.querySelector('small').textContent=prompt;button.addEventListener('click',()=>{if(title==='Talk it through'){el.mode.value='care';updateModeDescription()}el.input.value=prompt;updateComposer();el.input.focus()});prompts.append(button)});
   inner.append(prompts);empty.append(inner);return empty;
 }
 
@@ -548,7 +585,7 @@ async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverr
     state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
-  }catch(error){if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:error.message||'I could not prepare a reply. Please try again.',failed:true});renderMessages();scrollToLatest();}
+  }catch(error){if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true});renderMessages();scrollToLatest();}
   finally{setBusy(false);el.input.focus()}
 }
 
@@ -558,10 +595,26 @@ async function retryFailed(){
 }
 
 async function regenerateReply(){
-  if(state.sending||!state.activeId)return;const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;
-  state.messages.pop();setBusy(true);renderMessages(true);scrollToLatest();
-  try{const data=await api(`/api/conversations/${state.activeId}/regenerate`,{method:'POST',body:'{}'});state.messages.push(data.assistant_message);renderMessages();progressiveReveal(data.assistant_message);scrollToLatest();await loadConversations(el.search.value.trim())}
-  catch(error){state.messages.push(previous);renderMessages();showToast(error.message)}finally{setBusy(false);el.input.focus()}
+  if(state.sending||!state.activeId)return;
+  const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;
+  const streaming={id:'regenerating-'+Date.now(),role:'assistant',content:'',streaming:true};
+  state.messages.push(streaming);setBusy(true);renderMessages();scrollToLatest(false);
+  try{
+    const data=await streamChatRequest(`/api/conversations/${state.activeId}/regenerate`,'{}',chunk=>{
+      streaming.content+=chunk;
+      const node=el.list.querySelector('[data-message-id="'+streaming.id+'"] .message-content');
+      if(node){renderMarkdown(node,streaming.content);node.classList.add('has-text')}
+      if(el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight<180)scrollToLatest(false);
+    });
+    state.messages=state.messages.filter(message=>message!==previous&&message!==streaming);
+    state.messages.push(normaliseMessageDisplay(data.assistant_message));renderMessages();
+  }catch(error){
+    state.messages=state.messages.filter(message=>message!==streaming);
+    if(streaming.content){el.input.value='';showToast('Reply stopped. The original saved answer is kept.','warning');
+      const node=document.createElement('div');node.className='message-content';renderMarkdown(node,streaming.content);
+      const notice=document.createElement('p');notice.textContent='Incomplete alternative · not saved';node.prepend(notice);renderMessages();el.list.append(node);
+    }else{renderMessages();showToast(error.message,'warning')}
+  }finally{setBusy(false);el.input.focus()}
 }
 
 function openConversationMenu(event,id){

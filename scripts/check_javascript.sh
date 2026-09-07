@@ -6,3 +6,5 @@ for page in account.html chat.html dashboard.html saathi.html support.html; do
 done
 
 node --check service-worker.js
+
+node tests/stream_reader.cjs
