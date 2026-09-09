@@ -26,7 +26,9 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - habits with local-day completion, pause, edit, deletion and streaks
 - branded confirmation dialogs, accessible mobile bottom sheets and semantic success, info, warning and error notices
 - private journal creation, search, editing and deletion
-- private mood and energy check-ins
+- private mood and energy check-ins, with optional care and reflection shortcuts on Today
+- section-aware Dashboard Back/Forward navigation, safe sign-in return paths and independent loading with Retry
+- natural heading spacing, readable form fields and keyboard-safe mobile navigation
 - user-controlled memory with concise previews and a full View and Edit panel
 - English, Gujarati and Hindi workspace preference and AI reply preference
 - consent-based trusted-contact invitations with clear private-data boundaries
@@ -185,7 +187,7 @@ Deployment checklist:
 2. Configure all required environment variables in the hosting dashboard.
 3. Keep `COOKIE_SECURE=true` and `FLASK_DEBUG=false`.
 4. Deploy the reviewed commit.
-5. Confirm `GET /api/health` returns status `ok` and release `2026-09-07-stream-recovery`.
+5. Confirm `GET /api/health` returns status `ok` and release `2026-09-09-workspace-navigation`.
 6. Confirm `/app.py`, `/README.md` and `/requirements.txt` return 404.
 7. Test signup, OTP expiry, temporary and 30-day login, chat, current-session logout and all-device logout with test accounts.
 8. Test conversation ownership with two separate accounts.
@@ -251,3 +253,7 @@ Forward fixes are safer than hand-written destructive rollback SQL for additive 
 - Migration failure: read the first migration error, keep the transaction rolled back and restore the previous deploy while preparing a forward fix.
 
 Streaming recovery release: the browser reads UTF-8 chunks directly with Fetch, including regenerated answers. Stop and connection errors preserve received text on the current screen with an unsaved notice. Retries reuse the request ID. Partial replies are not persisted. The Render start command uses four threads so a long response does not monopolize the sole worker. Existing manually managed services may need their Start Command updated in Render. Verify a logged-in streaming request in browser Network timing after deployment; local chunk tests cannot prove CDN delivery.
+
+Workspace navigation release (`2026-09-09-workspace-navigation`): Dashboard section changes now create history entries, while successful sign-in replaces the login entry. Valid sessions revisiting `/account` return to the workspace. Each dashboard section loads independently and can recover through Retry; failed requests do not trigger logout unless the server returns 401. Private pages are marked no-store and streaming responses retain no-transform. Heading tracking uses normal spacing across the workspace and public pages. Care shortcuts remain optional; journal entries and check-ins are not sent to the AI.
+
+Regression checks run the production navigation and request functions against a DOM/history model, including Today → Planner/Reminders/Memory → Back → Forward, preserved drafts, deep links, mobile focus, missing notifications, connection failures, Retry and sign-in history. After deployment, repeat these paths in a real signed-in browser at desktop and mobile widths, including refreshed deep links and Stop during a Gujarati reply. The automated model does not verify rendered layout or live proxy streaming.

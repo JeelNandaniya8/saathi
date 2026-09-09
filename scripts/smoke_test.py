@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-EXPECTED_RELEASE = "2026-09-07-stream-recovery"
+EXPECTED_RELEASE = "2026-09-09-workspace-navigation"
 
 
 def fetch(base_url, path, timeout):

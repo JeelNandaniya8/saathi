@@ -54,7 +54,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-07-stream-recovery"
+RELEASE_ID = "2026-09-09-workspace-navigation"
 OTP_LIFETIME = timedelta(minutes=10)
 PDF_PAGE_LIMIT = 80
 PDF_PAGE_CHARACTER_LIMIT = 8000
@@ -229,14 +229,14 @@ def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=" + ("(self)" if request.path == "/chat" else "()") + ", geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
         "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
         "script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'"
     )
-    if request.path.startswith("/api/") or (request.path == "/chat" and request.method == "POST"):
-        response.headers["Cache-Control"] = "no-store"
+    if request.path.startswith("/api/") or request.path in ("/account", "/dashboard", "/chat"):
+        response.headers["Cache-Control"] = "no-store, no-transform" if response.mimetype == "application/x-ndjson" else "no-store"
     if request.path.startswith("/api/") or request.path in ("/account", "/dashboard", "/chat"):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if request.is_secure:
@@ -816,6 +816,11 @@ def home():
 
 @app.route("/account")
 def account_page():
+    if session.get("user_id") and require_user_id():
+        destination = request.args.get("next", "/dashboard")
+        if not re.fullmatch(r"/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account))?|/chat", destination):
+            destination = "/dashboard"
+        return redirect(destination)
     return send_from_directory(".", "account.html")
 
 

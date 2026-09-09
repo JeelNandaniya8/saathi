@@ -8,3 +8,5 @@ done
 node --check service-worker.js
 
 node tests/stream_reader.cjs
+
+node tests/workspace_behavior.cjs

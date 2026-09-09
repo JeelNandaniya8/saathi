@@ -232,7 +232,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
-        "release": "2026-09-07-stream-recovery",
+        "release": "2026-09-09-workspace-navigation",
     }
 
 
@@ -660,3 +660,53 @@ def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch)
         response.close()
     assert closed == [True]
     assert not any("DELETE" in sql or "INSERT" in sql for sql in statements)
+
+
+@pytest.mark.parametrize('next_path, expected', [
+    ('/dashboard#tasks', '/dashboard#tasks'),
+    ('/dashboard#reminders', '/dashboard#reminders'),
+    ('/dashboard#memory', '/dashboard#memory'),
+    ('/chat', '/chat'),
+    ('https://example.test', '/dashboard'),
+    ('//example.test', '/dashboard'),
+    ('/dashboard#unknown', '/dashboard'),
+])
+def test_signed_in_account_return_preserves_session_and_stays_local(backend, monkeypatch, next_path, expected):
+    monkeypatch.setattr(backend, 'require_user_id', lambda: 7)
+    client = backend.app.test_client()
+    with client.session_transaction() as session:
+        session['user_id'] = 7
+        session['session_version'] = 2
+        session['csrf_token'] = 'test-csrf'
+    response = client.get('/account', query_string={'next': next_path})
+    assert response.status_code == 302
+    assert response.headers['Location'] == expected
+    assert response.headers['Cache-Control'] == 'no-store'
+    with client.session_transaction() as session:
+        assert session['user_id'] == 7
+        assert session['session_version'] == 2
+        assert session['csrf_token'] == 'test-csrf'
+
+
+def test_expired_account_session_returns_login_without_redirect_loop(backend, monkeypatch):
+    monkeypatch.setattr(backend, 'require_user_id', lambda: None)
+    client = backend.app.test_client()
+    with client.session_transaction() as session:
+        session['user_id'] = 7
+    response = client.get('/account')
+    assert response.status_code == 200
+    assert b'id="loginForm"' in response.data
+
+
+def test_private_pages_are_not_cached_and_voice_permission_is_chat_only(backend):
+    client = backend.app.test_client()
+    with client.session_transaction() as session:
+        session['user_id'] = 7
+    for path in ['/dashboard', '/chat']:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers['Cache-Control'] == 'no-store'
+        assert ('microphone=(self)' in response.headers['Permissions-Policy']) == (path == '/chat')
+    with backend.app.test_request_context('/api/conversations/1/messages/stream'):
+        response = backend.add_security_headers(backend.Response('x', content_type='application/x-ndjson; charset=utf-8'))
+        assert 'no-transform' in response.headers['Cache-Control']

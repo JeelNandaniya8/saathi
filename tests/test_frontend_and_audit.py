@@ -44,8 +44,9 @@ def test_dashboard_has_real_daily_tools_and_localised_navigation():
 
 def test_account_return_path_is_restricted_to_private_pages():
     text = (ROOT / "account.html").read_text(encoding="utf-8")
-    assert "['/dashboard','/chat'].includes(params.get('next'))" in text
-    assert "location.href=destination" in text
+    assert "destination=/^" in text
+    assert ".test(params.get('next')||'')" in text
+    assert "location.replace(destination)" in text
 
 
 def test_account_exposes_explicit_session_duration_choice():
@@ -249,7 +250,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v11' in text
+    assert 'saathi-shell-v12' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
@@ -276,7 +277,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-09-07-stream-recovery"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-09-09-workspace-navigation"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
