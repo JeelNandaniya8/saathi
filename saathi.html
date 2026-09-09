@@ -37,16 +37,25 @@
 /* Keep marketing content readable while miniature product previews retain their intentional scale. */
 :root{--accent:#5b7cfa;--accent-deep:#465dd4;--accent-soft:#e9edff}
 .nav-links{font-size:13px}.nav-cta,.btn.dark{background:linear-gradient(135deg,var(--accent),var(--accent-deep));box-shadow:0 10px 26px rgba(70,93,212,.2)}.nav-cta{font-size:13px}.btn{font-size:14px}.badge{font-size:12px}.trust span{font-size:11px}.principles p{font-size:12px}.ticks li{font-size:13px}.how-card p,.feature p{font-size:14px}.plan p,.plan li{font-size:13px}.care-card b{font-size:13px}.care-card p{font-size:12px}.footer{font-size:12px}.who small{font-size:11px}.bubble{font-size:14px}.bubble.user{background:linear-gradient(135deg,var(--accent),var(--accent-deep))}.composer textarea{font-size:15px}.send{background:linear-gradient(135deg,var(--accent),var(--accent-deep))}
+.lang-switch{display:flex;align-items:center;background:rgba(0,0,0,.06);border-radius:999px;padding:3px;margin-left:auto;margin-right:12px;gap:2px}
+.lang-btn{border:0;background:transparent;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;color:var(--muted);transition:all .18s;cursor:pointer}
+.lang-btn:hover{color:var(--ink)}
+.lang-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.prompt-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px 12px;border-bottom:1px solid var(--line);background:#faf9f5}
+.prompt-chip{border:1px solid var(--line);background:#fff;padding:6px 12px;border-radius:999px;font-size:11px;color:var(--muted);cursor:pointer;transition:transform .15s,background .15s}
+.prompt-chip:hover{background:var(--gold-soft);color:var(--ink);transform:translateY(-1px)}
+.guest-banner{margin:12px 0;padding:12px 14px;border-radius:14px;background:var(--gold-soft);color:#5d4715;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.guest-banner a{background:var(--ink);color:#fff;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;text-decoration:none}
 @media(max-width:900px){.hero{min-height:930px}.hero-stage{height:420px}.hero-window{right:25px}.app-shot{height:350px;grid-template-columns:120px 1fr}.mini-lists{display:none}.story,.story:nth-of-type(odd){min-height:0;grid-template-columns:1fr;gap:45px}.story:nth-of-type(odd) .story-copy{order:0}.story-copy{max-width:650px}.story.reminder-story{grid-template-columns:.8fr 1.2fr}.care{grid-template-columns:1fr;padding:55px}.plans{grid-template-columns:1fr}.plan.featured{transform:none}}
 @media(max-width:700px){.nav-shell{top:9px;padding:0 10px}.nav{height:56px;border-radius:18px;padding-left:15px}.nav-links{display:none}.menu{display:block}.nav-cta{margin-left:8px}.mobile-menu.open{display:flex;position:fixed;z-index:49;top:71px;left:10px;right:10px;padding:16px;border:1px solid var(--line);border-radius:17px;background:rgba(251,250,246,.97);box-shadow:var(--shadow);flex-direction:column;gap:5px}.mobile-menu a{padding:11px;border-radius:10px;font-size:13px}.hero{min-height:800px;padding:122px 16px 40px}.hero h1{font-size:clamp(45px,13.5vw,66px)}.hero-sub{font-size:15px}.trust span{font-size:10px}.hero-stage{width:calc(100vw - 24px);height:330px;margin-top:55px}.hero-window{inset:0}.window-bar{height:29px}.secure{display:none}.app-shot{height:270px;grid-template-columns:76px 1fr}.shot-side{padding:12px 6px}.shot-brand{font-size:7px}.shot-nav span{font-size:5px;padding:6px 4px}.shot-profile{display:none}.shot-main{padding:16px 12px}.shot-title h3{font-size:14px}.metrics{margin-top:12px;gap:5px}.metric{min-height:90px;padding:8px}.metric strong{font-size:19px}.metric b{font-size:7px}.phone{display:none}.float-card{transform:scale(.8)}.float-card.study{left:-15px;top:225px}.float-card.memory{right:-15px;top:215px}.principles{gap:8px;justify-content:space-between}.principles p{max-width:95px;text-align:center;font-size:10px}.section{padding:90px 0}.section h2,.final h2{font-size:40px}.section-head{margin-bottom:40px}.story,.story:nth-of-type(odd){padding:65px 0}.story h3{font-size:36px}.story.reminder-story{grid-template-columns:1fr}.reminder-visual{min-height:590px}.reminder-visual::before{width:360px;height:360px}.schedule{right:-2%}.story-shot .app-shot{height:270px}.memory-grid{grid-template-columns:1fr}.memory-card:nth-child(3){display:none}.how-grid,.feature-grid{grid-template-columns:1fr}.how-card{min-height:270px}.how-card h3{margin-top:60px}.feature{min-height:285px}.feature h3{margin-top:65px}.care{width:calc(100% - 20px);padding:44px 24px;border-radius:29px}.footer{flex-direction:column}.overlay{padding:0}.chat{height:100vh;border-radius:0}.bubble{max-width:90%}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
-<nav class="nav-shell" aria-label="Main navigation"><div class="nav"><a class="brand" href="/"><span class="orb"></span>Saathi</a><div class="nav-links"><a href="#product">Product</a><a href="#how">How it works</a><a href="#care">Care</a><a href="#pricing">Plans</a></div><button class="menu" id="menuButton" onclick="toggleMenu()" aria-label="Open menu" aria-controls="mobileMenu" aria-expanded="false">☰</button><button class="nav-cta" id="navCta" onclick="openChat()">Start free →</button></div></nav>
+<nav class="nav-shell" aria-label="Main navigation"><div class="nav"><a class="brand" href="/"><span class="orb"></span>Saathi</a><div class="nav-links"><a href="#product">Product</a><a href="#how">How it works</a><a href="#care">Care</a><a href="#pricing">Plans</a></div><div class="lang-switch" id="langSwitch" role="group" aria-label="Language"><button type="button" class="lang-btn active" data-lang="en">EN</button><button type="button" class="lang-btn" data-lang="gu">ગુજ</button><button type="button" class="lang-btn" data-lang="hi">हिં</button></div><button class="menu" id="menuButton" onclick="toggleMenu()" aria-label="Open menu" aria-controls="mobileMenu" aria-expanded="false">☰</button><button class="nav-cta" id="navCta" onclick="openChat()">Start free →</button></div></nav>
 <div class="mobile-menu" id="mobileMenu" aria-hidden="true"><a href="#product" onclick="toggleMenu()">Product</a><a href="#how" onclick="toggleMenu()">How it works</a><a href="#care" onclick="toggleMenu()">Care</a><a href="#pricing" onclick="toggleMenu()">Plans</a></div>
 
-<header class="hero"><div class="glow one"></div><div class="glow two"></div><div class="hero-copy"><p class="badge"><span class="dot"></span>A calmer way to move through your day</p><h1>Life feels lighter when it is <em>held together.</em></h1><p class="hero-sub">Saathi is one thoughtful AI workspace for study, routines, reflection and the details you do not want to carry alone.</p><div class="hero-actions"><button class="btn dark" onclick="openChat()">Meet your Saathi →</button><a class="btn light" href="#product">See how it works</a></div><div class="trust"><span>✓ <b>You control</b> memory</span><span>◇ <b>Private</b> account</span><span>○ <b>Honest</b> AI limits</span></div></div>
+<header class="hero"><div class="glow one"></div><div class="glow two"></div><div class="hero-copy"><p class="badge" id="heroBadge"><span class="dot"></span>A calmer way to move through your day</p><h1 id="heroH1">Life feels lighter when it is <em>held together.</em></h1><p class="hero-sub" id="heroSub">Saathi is one thoughtful AI workspace for study, routines, reflection and the details you do not want to carry alone.</p><div class="hero-actions"><button class="btn dark" id="heroCta" onclick="openChat()">Meet your Saathi →</button><a class="btn light" id="heroSeeWorks" href="#product">See how it works</a></div><div class="trust"><span>✓ <b>You control</b> memory</span><span>◇ <b>Private</b> account</span><span>○ <b>Honest</b> AI limits</span></div></div>
 <div class="hero-stage" aria-label="Preview of the Saathi dashboard and reminder"><div class="window hero-window"><div class="window-bar"><span class="dots"><i></i><i></i><i></i></span><span>Today · Saathi</span><span class="secure">● Private workspace</span></div><div class="app-shot"><aside class="shot-side"><div class="shot-brand"><span class="orb"></span>Saathi</div><div class="shot-nav"><span class="active">◉ &nbsp;Today</span><span>○ &nbsp;Chat</span><span>□ &nbsp;Study</span><span>◇ &nbsp;Check-ins</span></div><div class="shot-profile"><b>J</b><span>Jeel<br><small>Free plan</small></span></div></aside><div class="shot-main"><div class="shot-title"><small>Your day</small><h3>Good morning.</h3><p>One clear view of what matters today.</p></div><div class="metrics"><article class="metric gold"><span>Study progress</span><strong>68%</strong><div class="bar"><i></i></div><small>4 of 6 tasks complete</small></article><article class="metric"><span>Next check-in</span><b>Evening medicine</b><p>Today · 8:00 PM</p><small>● Active</small></article><article class="metric"><span>Memory</span><strong>12</strong><p>details in your control</p><small>Review anytime</small></article></div><div class="mini-lists"><article class="mini-list"><small class="kicker">Today&apos;s plan</small><h4>Small steps, clearly ordered.</h4><div class="mini-row done"><i>✓</i>Revise probability</div><div class="mini-row"><i></i>Read chapter five</div></article><article class="mini-list"><small class="kicker">Daily rhythm</small><h4>Your routines, at a glance.</h4><div class="mini-row done"><i>✓</i>Morning walk</div><div class="mini-row"><i></i>Journal for five minutes</div></article></div></div></div></div>
 <div class="phone"><span class="island"></span><div class="phone-time"><span>9:00</span><span>● ●●</span></div><div class="phone-date"><small>Tuesday, 26 August</small><strong>9:00</strong></div><div class="notification"><div class="note-head"><span class="note-icon">◇</span><b>SAATHI</b><time>now</time></div><h4>Medicine reminder</h4><p>It&apos;s time for the reminder you scheduled.</p><div class="note-actions"><span>✓ Taken</span><span>Remind me in 30 min</span></div></div></div><div class="float-card study"><b>Study plan ready</b>6 clear tasks · ✓</div><div class="float-card memory"><b>Memory is visible</b>Review anytime</div></div></header>
 
@@ -72,25 +81,190 @@
 <section class="final"><span class="orb"></span><p class="eyebrow">Your day, with less noise</p><h2>Make space for what matters.</h2><p>Start with one conversation. Build the rest when you need it.</p><button class="btn dark" onclick="openChat()">Start with Saathi →</button></section>
 <footer class="footer"><span>© 2026 Saathi · Made by Jeel Nandaniya</span><div class="footer-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/limitations">AI limits</a><a href="/support">Support</a><a href="/account">Account</a></div></footer>
 
-<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Chat with Saathi"><div class="chat"><header class="chat-head"><span class="orb"></span><div class="who"><b>Saathi</b><small>AI companion · important information may need verification</small></div><button class="close" onclick="closeChat()" aria-label="Close chat">×</button></header><div class="chat-log" id="chatLog"><div class="bubble ai">Hello, I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?</div></div><div class="composer"><label class="chat-disclaimer" for="chatInput">Message Saathi</label><textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi"></textarea><button class="send" id="chatSend" aria-label="Send message">↑</button></div></div></div>
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Chat with Saathi"><div class="chat"><header class="chat-head"><span class="orb"></span><div class="who"><b>Saathi</b><small id="chatSub">AI companion · Interactive preview</small></div><button class="close" onclick="closeChat()" aria-label="Close chat">×</button></header><div class="prompt-chips" id="promptChips"></div><div class="chat-log" id="chatLog"><div class="bubble ai" id="demoGreeting">Hello, I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?</div></div><div class="composer"><label class="chat-disclaimer" for="chatInput">Message Saathi</label><textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi"></textarea><button class="send" id="chatSend" aria-label="Send message">↑</button></div></div></div>
 
 <script>
-const overlay=document.getElementById('overlay'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput'),chatSend=document.getElementById('chatSend');let conversation=[],historyLoaded=false,currentUser=null;
+const overlay=document.getElementById('overlay'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput'),chatSend=document.getElementById('chatSend'),promptChips=document.getElementById('promptChips');
+let conversation=[],historyLoaded=false,currentUser=null,guestQuestionsCount=0;
+let currentLang=localStorage.getItem('saathi-language')||'en';
+
+const I18N={
+  en:{
+    badge:"A calmer way to move through your day",
+    h1:"Life feels lighter when it is <em>held together.</em>",
+    sub:"Saathi is your calm AI study buddy and everyday companion for learning, routines, reflection and the details you do not want to carry alone.",
+    heroCta:"Meet your Saathi →",
+    navCta:"Start free →",
+    seeWorks:"See how it works",
+    chips:[
+      "Explain photosynthesis simply",
+      "Make a 3-day exam study plan",
+      "I feel stressed about exams, please listen"
+    ],
+    greeting:"Hello! I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?",
+    chatSub:"AI companion · Interactive preview",
+    bannerText:"Enjoying Saathi? Save your chats & routines.",
+    bannerBtn:"Create free account →"
+  },
+  gu:{
+    badge:"તમારા દિવસને સરળ અને શાંત બનાવવાની રીત",
+    h1:"જ્યારે બધું એક સાથે સચવાય છે, ત્યારે <em>જીવન હળવું બને છે.</em>",
+    sub:"સાથી એ તમારો અંગત AI અભ્યાસ મિત્ર અને દિનચર્યા સાથી છે — ભણવા, આયોજન કરવા, યાદ રાખવા અને વિચારો વહેંચવા માટે.",
+    heroCta:"સાથી સાથે વાત કરો →",
+    navCta:"મફત શરૂ કરો →",
+    seeWorks:"જાણો કેવી રીતે કામ કરે છે",
+    chips:[
+      "પ્રકાશસંશ્લેષણ સરળ ભાષામાં સમજાવો",
+      "પરીક્ષા માટે ૩ દિવસનો સ્ટડી પ્લાન બનાવો",
+      "મને ભણવાનું ટેન્શન થાય છે, શું કરવું?"
+    ],
+    greeting:"નમસ્તે! હું સાથી છું. અત્યારે તમારા માટે શું સૌથી વધુ ઉપયોગી થશે: અભ્યાસ, દિવસનું આયોજન, કે કોઈ વાત શેર કરવી?",
+    chatSub:"AI સાથી · લાઈવ ડેમો",
+    bannerText:"સાથી સાથે વાત કરવી ગમી? તમારા ચેટ્સ અને આદતો સાચવો.",
+    bannerBtn:"મફત એકાઉન્ટ બનાવો →"
+  },
+  hi:{
+    badge:"अपने दिन को शांत और व्यवस्थित बनाने का तरीका",
+    h1:"जब सब कुछ संभल जाता है, तब <em>ज़िंदगी आसान लगती है।</em>",
+    sub:"साथी आपका शांत AI स्टडी बडी और रोज़मर्रा का साथी है — पढ़ाई, दिनचर्या, आत्म-चिंतन और वो बातें जो आप अकेले नहीं ढोना चाहते।",
+    heroCta:"साथी से बात करें →",
+    navCta:"मुफ़्त शुरू करें →",
+    seeWorks:"देखें यह कैसे काम करता है",
+    chips:[
+      "प्रकाश संश्लेषण सरल शब्दों में समझाएं",
+      "परीक्षा के लिए 3 दिन का स्टडी प्लान बनाएं",
+      "मुझे पढ़ाई का तनाव महसूस हो रहा है"
+    ],
+    greeting:"नमस्ते! मैं साथी हूँ। अभी आपके लिए क्या सबसे उपयोगी रहेगा: पढ़ाई, दिन की योजना, या कोई बात साझा करना?",
+    chatSub:"AI साथी · लाइव प्रीव्यू",
+    bannerText:"साथी से बात करके अच्छा लगा? अपनी चैट और आदतें सुरक्षित रखें।",
+    bannerBtn:"मुफ़्त अकाउंट बनाएं →"
+  }
+};
+
+function applyLang(lang){
+  if(!I18N[lang])lang='en';
+  currentLang=lang;
+  localStorage.setItem('saathi-language',lang);
+  const data=I18N[lang];
+  document.querySelectorAll('.lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
+  const badge=document.getElementById('heroBadge');if(badge)badge.innerHTML='<span class="dot"></span>'+data.badge;
+  const h1=document.getElementById('heroH1');if(h1)h1.innerHTML=data.h1;
+  const sub=document.getElementById('heroSub');if(sub)sub.textContent=data.sub;
+  const heroCta=document.getElementById('heroCta');if(heroCta&&!currentUser)heroCta.textContent=data.heroCta;
+  const navCta=document.getElementById('navCta');if(navCta&&!currentUser)navCta.textContent=data.navCta;
+  const seeWorks=document.getElementById('heroSeeWorks');if(seeWorks)seeWorks.textContent=data.seeWorks;
+  const greeting=document.getElementById('demoGreeting');if(greeting&&!conversation.length)greeting.textContent=data.greeting;
+  const subTitle=document.getElementById('chatSub');if(subTitle)subTitle.textContent=data.chatSub;
+  renderChips();
+}
+
+function renderChips(){
+  if(!promptChips)return;
+  promptChips.replaceChildren();
+  const list=I18N[currentLang]?.chips||I18N.en.chips;
+  list.forEach(text=>{
+    const chip=document.createElement('button');
+    chip.type='button';
+    chip.className='prompt-chip';
+    chip.textContent=text;
+    chip.addEventListener('click',()=>{
+      chatInput.value=text;
+      sendChat();
+    });
+    promptChips.append(chip);
+  });
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>applyLang(btn.dataset.lang));
+});
+
 function toggleMenu(){const menu=document.getElementById('mobileMenu'),button=document.getElementById('menuButton'),open=menu.classList.toggle('open');menu.setAttribute('aria-hidden',String(!open));button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Close menu':'Open menu')}
 function goAccount(plan){window.location.href='/account?plan='+encodeURIComponent(plan)}
-async function checkSession(){try{const response=await fetch('/api/me',{credentials:'include'});const data=await response.json();currentUser=data.user||null;if(currentUser){const button=document.getElementById('navCta');button.textContent='Open Saathi →';button.onclick=()=>window.location.href='/chat'}}catch(error){console.error('Session check failed',error)}}
-async function openChat(){if(!currentUser){await checkSession()}window.location.href=currentUser?'/chat':'/account'}
+async function checkSession(){try{const response=await fetch('/api/me',{credentials:'include'});const data=await response.json();currentUser=data.user||null;if(currentUser){const button=document.getElementById('navCta');if(button){button.textContent='Open Saathi →';button.onclick=()=>window.location.href='/chat'}}}catch(error){console.error('Session check failed',error)}}
+
+async function openChat(){
+  if(!currentUser){
+    try{await checkSession()}catch(e){}
+  }
+  if(currentUser){
+    window.location.href='/chat';
+    return;
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow='hidden';
+  chatInput.focus();
+}
+
 function closeChat(){overlay.classList.remove('open');document.body.style.overflow=''}
 overlay.addEventListener('click',event=>{if(event.target===overlay)closeChat()});document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(overlay.classList.contains('open'))closeChat();if(document.getElementById('mobileMenu').classList.contains('open'))toggleMenu()});
-async function loadHistory(){if(historyLoaded)return;historyLoaded=true;try{const response=await fetch('/api/history',{credentials:'include'});const data=await response.json();if(data.messages?.length){chatLog.innerHTML='';conversation=[];data.messages.forEach(message=>{addBubble(message.role==='user'?'user':'ai',message.content);conversation.push({role:message.role,content:message.content})})}}catch(error){console.error('History could not load',error)}}
+
 function formatBubbleText(element,text){const source=String(text||''),pattern=/(\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))/g;let last=0;source.replace(pattern,(match,token,offset)=>{if(offset>last)element.append(document.createTextNode(source.slice(last,offset)));let node;const link=token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);if(link){node=document.createElement('a');node.textContent=link[1];node.href=link[2];node.target='_blank';node.rel='noopener noreferrer'}else if(token.startsWith('`')){node=document.createElement('code');node.textContent=token.slice(1,-1)}else{node=document.createElement('strong');node.textContent=token.slice(2,-2)}element.append(node);last=offset+match.length;return match});if(last<source.length)element.append(document.createTextNode(source.slice(last)))}
 function addBubble(role,text){const bubble=document.createElement('div');bubble.className='bubble '+role;formatBubbleText(bubble,text);chatLog.appendChild(bubble);chatLog.scrollTop=chatLog.scrollHeight}
 function showTyping(){const typing=document.createElement('div');typing.id='typing';typing.className='typing';typing.innerHTML='<i></i><i></i><i></i>';chatLog.appendChild(typing);chatLog.scrollTop=chatLog.scrollHeight}
 function hideTyping(){document.getElementById('typing')?.remove()}
-async function sendChat(){const text=chatInput.value.trim();if(!text||chatSend.disabled)return;addBubble('user',text);conversation.push({role:'user',content:text});chatInput.value='';chatInput.style.height='auto';chatSend.disabled=true;showTyping();try{const response=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({messages:conversation.slice(-30)})});const data=await response.json();hideTyping();if(data.login_required){window.location.href='/account';return}if(!response.ok||data.error)throw new Error(data.error||'Request failed');const reply=data.reply||'I could not prepare a response. Please try again.';addBubble('ai',reply);conversation.push({role:'assistant',content:reply})}catch(error){hideTyping();addBubble('ai','I am having trouble connecting right now. Please try again in a moment.');console.error(error)}finally{chatSend.disabled=false;chatInput.focus()}}
-chatInput.addEventListener('input',()=>{chatInput.style.height='auto';chatInput.style.height=Math.min(chatInput.scrollHeight,130)+'px'});chatInput.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}});chatSend.addEventListener('click',sendChat);
+
+async function sendChat(){
+  const text=chatInput.value.trim();
+  if(!text||chatSend.disabled)return;
+  addBubble('user',text);
+  conversation.push({role:'user',content:text});
+  chatInput.value='';
+  chatInput.style.height='auto';
+  chatSend.disabled=true;
+  showTyping();
+
+  const endpoint=currentUser?'/chat':'/api/demo-chat';
+  const payload=currentUser?{messages:conversation.slice(-30)}:{messages:conversation.slice(-10),language:currentLang};
+
+  try{
+    const response=await fetch(endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body:JSON.stringify(payload)
+    });
+    const data=await response.json();
+    hideTyping();
+    if(data.login_required){window.location.href='/account';return}
+    if(!response.ok||data.error)throw new Error(data.error||'Request failed');
+    const reply=data.reply||'I could not prepare a response. Please try again.';
+    addBubble('ai',reply);
+    conversation.push({role:'assistant',content:reply});
+    guestQuestionsCount++;
+
+    if(!currentUser&&guestQuestionsCount>=2&&!document.querySelector('.guest-banner')){
+      const banner=document.createElement('div');
+      banner.className='guest-banner';
+      const langData=I18N[currentLang]||I18N.en;
+      banner.innerHTML=`<span>${langData.bannerText}</span><a href="/account">${langData.bannerBtn}</a>`;
+      chatLog.appendChild(banner);
+      chatLog.scrollTop=chatLog.scrollHeight;
+    }
+  }catch(error){
+    hideTyping();
+    addBubble('ai',error.message||'I am having trouble connecting right now. Please try again.');
+    console.error(error);
+  }finally{
+    chatSend.disabled=false;
+    chatInput.focus();
+  }
+}
+
+chatInput.addEventListener('input',()=>{chatInput.style.height='auto';chatInput.style.height=Math.min(chatInput.scrollHeight,130)+'px'});
+chatInput.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}});
+chatSend.addEventListener('click',sendChat);
+
 document.querySelectorAll('.faq-item').forEach((item,index)=>{const question=item.querySelector('.faq-q'),answer=item.querySelector('.faq-a'),answerId=`faq-answer-${index+1}`;answer.id=answerId;question.setAttribute('aria-controls',answerId);question.setAttribute('aria-expanded','false');question.addEventListener('click',()=>{const open=item.classList.toggle('open');question.setAttribute('aria-expanded',String(open));answer.style.maxHeight=open?answer.scrollHeight+'px':null})});
-const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting)entry.target.classList.add('shown')}),{threshold:.1});document.querySelectorAll('.reveal').forEach(element=>observer.observe(element));(async()=>{await checkSession();if(new URLSearchParams(location.search).get('chat')==='1'&&currentUser)openChat()})();
+const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting)entry.target.classList.add('shown')}),{threshold:.1});
+document.querySelectorAll('.reveal').forEach(element=>observer.observe(element));
+
+(async()=>{
+  applyLang(currentLang);
+  await checkSession();
+  if(new URLSearchParams(location.search).get('chat')==='1')openChat();
+})();
 </script>
 </body>
 </html>

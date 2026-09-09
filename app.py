@@ -63,7 +63,7 @@ GEMINI_CONTEXT_CHARACTER_LIMIT = 24000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
-    "/api/cron/reminders",
+    "/api/cron/reminders", "/api/demo-chat",
 }
 
 ALLOWED_ATTACHMENT_TYPES = {
@@ -4739,6 +4739,36 @@ def chat():
         return jsonify({"error": str(error)}), 502
     except Exception:
         app.logger.exception("Saathi chat failed")
+        return jsonify({"error": "Something went wrong while preparing the reply."}), 500
+
+
+@app.route("/api/demo-chat", methods=["POST"])
+def demo_chat():
+    limit_response = limited("demo_chat", "guest", 6, 10)
+    if limit_response:
+        return limit_response
+
+    if not GEMINI_API_KEY:
+        return jsonify({
+            "error": "The server has no GEMINI_API_KEY set. Add one before this will work."
+        }), 500
+
+    body = request.get_json(force=True, silent=True) or {}
+    messages = body.get("messages", [])
+    if not isinstance(messages, list):
+        return jsonify({"error": "Messages must be a list."}), 400
+    messages = messages[-10:]
+    language = body.get("language", "en")
+    if language not in ("en", "gu", "hi"):
+        language = "en"
+
+    try:
+        reply = generate_gemini_reply(messages, "", language, "normal")
+        return jsonify({"reply": reply, "guest": True})
+    except RuntimeError as error:
+        return jsonify({"error": str(error)}), 502
+    except Exception:
+        app.logger.exception("Saathi demo chat failed")
         return jsonify({"error": "Something went wrong while preparing the reply."}), 500
 
 
