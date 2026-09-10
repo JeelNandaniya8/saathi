@@ -14,7 +14,7 @@ class FakeCursor:
             self.rows = [{"version": version} for version in sorted(self.database.applied)]
         elif normalized.startswith("insert into schema_migrations"):
             self.database.applied.add(params[0])
-        elif len(query) > 300 and "schema_migrations" not in normalized:
+        elif not normalized.startswith("select pg_advisory") and "schema_migrations" not in normalized:
             self.database.migration_bodies.append(query)
 
     def fetchall(self):

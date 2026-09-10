@@ -93,6 +93,33 @@ ALLOWED_ATTACHMENT_TYPES = {
 # public labels and descriptions; the actual behavioural instructions stay
 # here so a modified client cannot invent an unrestricted mode.
 CHAT_MODES = {
+    "healer": {
+        "label": "💚 Healer & Wellness",
+        "description": "Empathetic healing, symptom comfort, and safe medical awareness",
+        "instruction": (
+            "You are Saathi's Holistic Healer and Empathetic Medical Companion. "
+            "When someone is not feeling well (physically sick, in pain, anxious, panic-stricken, fatigued, or overwhelmed), "
+            "your mission is to comfort, calm, inform, and heal their state of mind. "
+            "1. Deep Compassion: First validate their pain or distress with soothing, warm, reassuring words. "
+            "Offer immediate gentle grounding (e.g. 'Take a slow, deep breath with me... you are safe here'). "
+            "2. Medical Knowledge & Anatomy: Explain clearly and calmly what might be happening physiologically in the body "
+            "(e.g., how muscle tension causes tension headaches, how acidity irritates the stomach lining, why fever is an immune response). "
+            "Explain common possible causes without creating panic. "
+            "3. Holistic Healing & Home Care: Suggest safe, nurturing self-care remedies (hydration, oral rehydration/electrolytes, "
+            "warm chamomile or ginger tea, resting in a quiet room, warm/cold compresses, posture, sleep hygiene, light meals). "
+            "4. Medicine & Pharmacology Education: You may explain general classes of common medicines "
+            "(e.g. 'antipyretics/analgesics like paracetamol help reduce fever and pain', 'antacids neutralize excess stomach acid'), "
+            "BUT YOU MUST NEVER directly prescribe, write a prescription, or say 'take 500mg of X'. "
+            "5. CRITICAL MEDICAL SAFETY DISCLAIMER: You MUST ALWAYS explicitly state in warm, responsible terms: "
+            "'⚠️ યાદ રાખો: હું તમારો AI સાથી છું, વાસ્તવિક લાયસન્સ પ્રાપ્ત ડોક્ટર નથી. આ માહિતી માત્ર તમારી સમજણ અને આરામ માટે છે. "
+            "કૃપા કરીને કોઈપણ દવા લેતા પહેલાં તમારા ફેમિલી ડોક્ટર કે ફિઝિશિયન સાથે એકવાર જરૂરથી કન્સલ્ટ કરજો.' "
+            "(or the equivalent in English or Hindi matching user's language). "
+            "6. Red Flags / Emergencies: If symptoms include chest pain, severe breathlessness, sudden numbness, high fever with stiff neck, "
+            "or severe bleeding, immediately advise calling emergency services (108 / 112 in India) or visiting the nearest hospital."
+        ),
+        "temperature": 0.5,
+        "max_output_tokens": 1200,
+    },
     "care": {
         "label": "Talk it through",
         "description": "Space to talk and find a small next step",
@@ -2340,6 +2367,148 @@ def delete_mindmap(mindmap_id):
     conn.close()
 
     return jsonify({"ok": True})
+
+
+# --------------------------------------------------------------------
+# AI HEALER & MEDICAL WELLNESS COMPASS
+# --------------------------------------------------------------------
+@app.route("/api/healer/consult", methods=["POST"])
+def healer_consult():
+    data = request.get_json(force=True, silent=True) or {}
+    symptom_text = (data.get("symptoms") or "").strip()
+    language = data.get("language") if data.get("language") in ("en", "gu", "hi") else "en"
+
+    if not symptom_text:
+        return jsonify({"error": "Please describe what you are feeling or what hurts."}), 400
+
+    limit_response = limited("healer_consult", request.remote_addr or "user", 25, 5)
+    if limit_response:
+        return limit_response
+
+    lang_names = {"en": "English", "gu": "Gujarati", "hi": "Hindi"}
+    chosen_lang_name = lang_names.get(language, "English")
+
+    consult_report = None
+    if GEMINI_API_KEY:
+        system_instruction = (
+            "You are Saathi's Empathetic Medical Healer and Health Educator. "
+            "When someone shares physical discomfort, pain, illness, panic, or exhaustion, your role is to soothe their mind, "
+            "explain the biological/physiological cause calmly without inducing fear, offer gentle home recovery remedies, "
+            "explain general classes of medicines without prescribing dosages, and provide emergency red flags.\n"
+            "CRITICAL SAFETY RULE: You MUST emphasize warmly that you are an AI companion, not a licensed physician, and they "
+            "MUST consult a certified doctor before taking any medications.\n"
+            "Respond strictly in valid JSON without markdown code fences or backticks."
+        )
+
+        user_prompt = (
+            f"The user describes feeling unwell with this symptom/condition: '{symptom_text}'.\n"
+            f"Respond entirely in {chosen_lang_name}.\n"
+            "Return a JSON object following this exact schema:\n"
+            "{\n"
+            "  \"comfort_title\": \"Gentle supportive headline\",\n"
+            "  \"comfort_message\": \"Warm, deeply empathetic message validating their distress and offering reassurance\",\n"
+            "  \"body_explanation\": \"Scientific, crystal-clear explanation of what is happening inside the human body\",\n"
+            "  \"home_remedies\": [\n"
+            "    {\"icon\": \"🍵\", \"title\": \"Natural care 1\", \"tip\": \"Step-by-step guidance\"},\n"
+            "    {\"icon\": \"💧\", \"title\": \"Hydration/Rest\", \"tip\": \"Guidance\"},\n"
+            "    {\"icon\": \"🌿\", \"title\": \"Lifestyle/Position\", \"tip\": \"Guidance\"}\n"
+            "  ],\n"
+            "  \"medical_concepts\": [\n"
+            "    {\"category\": \"Class of medicine (e.g. Antipyretic/Analgesic/Antacid)\", \"explanation\": \"How doctors treat this class of symptom (educational only, NO dosages)\"}\n"
+            "  ],\n"
+            "  \"red_flags\": [\n"
+            "    \"Emergency sign 1 that requires immediate hospital/doctor visit\",\n"
+            "    \"Emergency sign 2\"\n"
+            "  ],\n"
+            "  \"doctor_disclaimer\": \"Warm disclaimer stating: I am an AI companion, not a licensed doctor. Please consult a qualified doctor before taking any medicine.\"\n"
+            "}"
+        )
+
+        try:
+            resp = requests.post(
+                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "systemInstruction": {"parts": [{"text": system_instruction}]},
+                    "generationConfig": {"temperature": 0.35, "responseMimeType": "application/json"},
+                },
+                headers={"Content-Type": "application/json"},
+                timeout=40,
+            )
+            if resp.ok:
+                res_json = resp.json()
+                raw_text = (
+                    res_json.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                if raw_text:
+                    clean_text = re.sub(r"^```json\s*", "", raw_text.strip(), flags=re.IGNORECASE)
+                    clean_text = re.sub(r"^```\s*", "", clean_text)
+                    clean_text = re.sub(r"```$", "", clean_text).strip()
+                    parsed = json.loads(clean_text)
+                    if isinstance(parsed, dict) and "comfort_message" in parsed:
+                        consult_report = parsed
+        except Exception as exc:
+            app.logger.warning("Gemini healer consultation fallback: %s", exc)
+
+    if not consult_report:
+        # Fallback safe medical comfort card
+        disclaimer_text = (
+            "યાદ રાખો: હું તમારો AI સાથી છું, વાસ્તવિક લાયસન્સ પ્રાપ્ત ડોક્ટર નથી. આ માહિતી માત્ર તમારી સમજણ અને આરામ માટે છે. કૃપા કરીને કોઈપણ દવા લેતા પહેલાં તમારા ડોક્ટર સાથે એકવાર જરૂરથી કન્સલ્ટ કરજો."
+            if language == "gu" else
+            "યાદ રાખેં: મેં આપકા AI સાથી હૂં, ડૉક્ટર નહીં. યહ જાનકારી કેવલ આપકી જાગરૂકતા કે લિએ હૈ. કૃપયા કોઈ ભી દવા લેને સે પહેલે અપને ડૉક્ટર સે પરામર્શ અવશ્ય કરેં."
+            if language == "hi" else
+            "Remember: I am your AI companion, not a licensed physician. This guidance is for comfort and awareness only. Please consult a qualified doctor before starting or taking any medication."
+        )
+
+        comfort_title = (
+            "અમે તમારી સાથે છીએ · ધીમેથી ઊંડો શ્વાસ લો" if language == "gu" else
+            "હમ આપકે સાથ હૈં · ગહરી સાઁસ લેં" if language == "hi" else
+            "Take a gentle breath · We are right here with you"
+        )
+
+        comfort_msg = (
+            f"તમે અત્યારે '{symptom_text}' અનુભવી રહ્યા છો અને આ અસ્વસ્થતા પરેશાન કરનારી હોઈ શકે છે. ચિંતા ન કરો, મોટાભાગે યોગ્ય આરામ અને સંભાળથી શરીર ઝડપથી રિકવર થઈ જાય છે."
+            if language == "gu" else
+            f"આપ અભી '{symptom_text}' મહસૂસ કર રહે હૈં. પરેશાન ન હોં, સહી આરામ ઔર દેખભાલ સે શરીર જલ્દી સ્વસ્થ હો જાતા હૈ."
+            if language == "hi" else
+            f"You are experiencing '{symptom_text}', and it is completely natural to feel uncomfortable right now. Rest assured, with gentle care, rest, and hydration, your body knows how to heal."
+        )
+
+        body_expl = (
+            "માનવ શરીરમાં કોઈપણ તકલીફ કે દુખાવો એ નર્વસ સિસ્ટમ અને રોગપ્રતિકારક શક્તિ (Immune System) નો એક સુરક્ષા સંદેશ છે, જે દર્શાવે છે કે શરીરને આરામ અને પુનઃપ્રાપ્તિની જરૂર છે."
+            if language == "gu" else
+            "હમારે શરીર મેં દર્દ યા અસ્વસ્થતા તંત્રિકા તંત્ર (Nervous System) કા એક સંકેત હોતા હૈ કિ શરીર કો આરામ ઔર પુનઃપ્રાપ્તિ કી આવશ્યકતા હૈ."
+            if language == "hi" else
+            "In the human body, symptoms like pain, tension, or fatigue are messages from your nervous and immune systems signaling that tissues need rest, hydration, and recovery."
+        )
+
+        consult_report = {
+            "comfort_title": comfort_title,
+            "comfort_message": comfort_msg,
+            "body_explanation": body_expl,
+            "home_remedies": [
+                {"icon": "💧", "title": "Hydration & Electrolytes", "tip": "Sip lukewarm water or electrolyte water (ORS) slowly to maintain cellular balance."},
+                {"icon": "🍵", "title": "Soothing Warm Care", "tip": "Drink warm ginger-tulsi tea or chamomile, which calms inflammation and soothes the gut."},
+                {"icon": "🛌", "title": "Deep Rest in Dim Light", "tip": "Rest your eyes, step away from screens, and loosen tight clothing to allow circulation."},
+            ],
+            "medical_concepts": [
+                {"category": "Analgesics / Antipyretics", "explanation": "General medicines like Paracetamol are commonly used by physicians to control pain and fever by inhibiting prostaglandin synthesis in the central nervous system."},
+                {"category": "Antacids / PPIs", "explanation": "For stomach discomfort and acidity, antacids neutralize excess gastric acid to soothe the mucosal lining."},
+            ],
+            "red_flags": [
+                "Severe persistent pain that worsens rapidly or does not respond to rest.",
+                "High fever above 102°F (38.9°C), difficulty breathing, sudden chest pressure, or neck stiffness.",
+                "Extreme dizziness, fainting, or signs of severe dehydration.",
+            ],
+            "doctor_disclaimer": disclaimer_text,
+        }
+
+    return jsonify({"ok": True, "report": consult_report})
+
+
 @app.route("/api/forgot-password", methods=["POST"])
 def forgot_password():
     data = request.get_json(force=True, silent=True) or {}

@@ -29,10 +29,11 @@ def test_repository_files_are_not_public(client, path):
 
 
 def test_health_is_honest_without_database(client):
+    backend = importlib.import_module("app")
     response = client.get("/api/health")
     assert response.status_code == 503
     assert response.get_json()["status"] == "configuration_required"
-    assert response.get_json()["release"] == "2026-09-09-workspace-navigation"
+    assert response.get_json()["release"] == backend.RELEASE_ID
 
 
 def test_checkout_is_disabled(client):

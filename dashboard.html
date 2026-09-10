@@ -170,7 +170,37 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 .mm-node.root .mm-desc{color:#cbd5e1;font-size:12px}
 .mm-node .mm-title{font-size:14px;font-weight:750;color:var(--ink);margin:0 0 4px;line-height:1.3}
 .mm-node .mm-desc{font-size:11.5px;color:var(--muted);line-height:1.45;margin:0}
-.referral-banner{background:linear-gradient(135deg,rgba(91,124,250,.07) 0%,rgba(69,167,184,.08) 50%,rgba(164,123,34,.07) 100%);border:1.5px solid rgba(91,124,250,.24);border-radius:24px;padding:24px;margin-bottom:20px;box-shadow:0 10px 32px rgba(91,124,250,.06)}
+/* ── Healer & Wellness Sanctuary ────────────────────────── */
+.healer-hero-card{padding:34px 28px;border-radius:26px;background:linear-gradient(135deg,rgba(46,125,90,.16) 0%,rgba(69,167,184,.14) 50%,rgba(91,124,250,.1) 100%);border:1.5px solid rgba(46,125,90,.28);box-shadow:0 14px 44px rgba(46,125,90,.08);margin-bottom:24px;position:relative;overflow:hidden}
+.healer-hero-card::after{content:"";position:absolute;width:280px;height:280px;right:-80px;top:-80px;border-radius:50%;background:radial-gradient(circle,rgba(69,167,184,.2),transparent 70%);pointer-events:none}
+.doctor-disclaimer-card{padding:18px 22px;border-radius:18px;background:rgba(217,119,6,.08);border:1.5px solid rgba(217,119,6,.3);margin-bottom:20px;display:flex;align-items:flex-start;gap:14px}
+.doctor-disclaimer-icon{font-size:24px;line-height:1}
+.doctor-disclaimer-content b{display:block;font-size:13.5px;color:#b45309;margin-bottom:4px}
+.doctor-disclaimer-content p{font-size:12.5px;color:var(--ink);margin:0;line-height:1.55}
+.symptom-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
+.symptom-chip{padding:8px 14px;border-radius:99px;font-size:12.5px;font-weight:600;background:var(--paper);border:1px solid var(--line);color:var(--ink);cursor:pointer;transition:all .15s}
+.symptom-chip:hover{background:var(--sage-soft);border-color:var(--sage);color:var(--sage);transform:translateY(-1px)}
+.healer-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;margin-top:20px}
+@media(max-width:880px){.healer-grid{grid-template-columns:1fr}}
+.healer-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 6px 24px rgba(0,0,0,.03);margin-bottom:18px}
+.healer-card h3{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.remedy-item{display:flex;gap:12px;padding:12px 14px;border-radius:14px;background:var(--canvas);margin-bottom:8px}
+.remedy-icon{font-size:20px;line-height:1}
+.remedy-body b{display:block;font-size:13px;color:var(--ink)}
+.remedy-body span{font-size:12px;color:var(--muted);line-height:1.45}
+.medicine-pill-row{padding:12px 16px;border-radius:14px;background:rgba(91,124,250,.07);border-left:3.5px solid var(--accent);margin-bottom:8px;font-size:12.5px;line-height:1.55}
+.medicine-pill-row b{color:var(--accent);display:block;margin-bottom:2px}
+.red-flag-alert{padding:12px 16px;border-radius:14px;background:rgba(225,29,72,.07);border-left:3.5px solid var(--danger);margin-bottom:8px;font-size:12.5px;color:var(--danger);line-height:1.5}
+.zen-orb-container{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center}
+.zen-orb{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(46,125,90,.35) 0%,rgba(69,167,184,.15) 60%,transparent 70%);border:2.5px solid rgba(46,125,90,.4);box-shadow:0 0 40px rgba(46,125,90,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform 4s ease-in-out;margin-bottom:20px}
+.zen-orb.expand{transform:scale(1.35)}
+.zen-orb.hold{transform:scale(1.35);border-color:#e5c369;box-shadow:0 0 50px rgba(229,195,105,.35)}
+.zen-orb.contract{transform:scale(0.85);transition-duration:8s}
+.zen-phase{font-size:18px;font-weight:750;color:var(--ink)}
+.zen-counter{font-size:32px;font-weight:800;color:var(--sage);line-height:1;margin-top:4px}
+.sound-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.sound-btn{padding:8px 14px;border-radius:12px;font-size:12px;font-weight:650;border:1px solid var(--line);background:var(--paper);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.sound-btn.playing{background:var(--sage);color:#fff;border-color:var(--sage)}
 </style>
 </head>
 <body>
@@ -187,6 +217,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <button data-view="family"><span class="nav-icon" aria-hidden="true">◎</span><span data-i18n="family">Family Bridge</span></button>
 <button data-view="mocktests"><span class="nav-icon" aria-hidden="true">🎯</span><span data-i18n="mocktests">Mock Tests</span></button>
 <button data-view="mindmaps"><span class="nav-icon" aria-hidden="true">🧠</span><span data-i18n="mindmaps">Mindmaps</span></button>
+<button data-view="healer"><span class="nav-icon" aria-hidden="true">💚</span><span data-i18n="healer">Healer & Care</span></button>
 <button data-view="account"><span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="account">Account</span></button>
 <a class="chat-link" href="/chat"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="openChat">Open conversation</span></a>
 </nav><div class="account-chip"><span class="avatar" id="sideAvatar">S</span><div><b id="sideName">Loading</b><span id="sidePlan">Free plan</span></div></div></aside><button class="scrim" id="scrim" aria-label="Close navigation"></button>
@@ -194,7 +225,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <div class="content" id="workspaceContent" tabindex="-1">
 <div class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"><span id="workspaceStatusText">Loading your workspace…</span><button class="secondary" id="retryWorkspace" type="button" disabled>Retry</button></div>
 <button class="back-to-today" id="backToToday" type="button" hidden>← <span data-i18n="today">Today</span></button>
-<section class="view active" id="overview"><article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire">🔥</span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold">🔥 <span id="streakBadgeText">0 Day Streak</span></span><span class="badge-pill sage">🌱 Early Bird</span><span class="badge-pill accent">⚡ Consistency Builder</span></div>
+<section class="view active" id="overview"><article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, heal physical/mental distress, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">💚 Healer & Care</button><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire">🔥</span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold">🔥 <span id="streakBadgeText">0 Day Streak</span></span><span class="badge-pill sage">🌱 Early Bird</span><span class="badge-pill accent">⚡ Consistency Builder</span></div>
 
 <!-- Viral Referral Banner -->
 <article class="referral-banner">
@@ -414,6 +445,116 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
   <div id="mindmapsHistoryList" class="item-list"></div>
 </article>
 </section>
+
+<!-- Healer & Wellness Sanctuary View -->
+<section class="view" id="healer">
+  <article class="healer-hero-card">
+    <span class="eyebrow" style="color:var(--sage)">💚 Holistic Health & Care</span>
+    <h1 style="font-size:28px;margin:6px 0 10px;color:var(--ink)">Saathi Healer & Wellness Sanctuary</h1>
+    <p style="font-size:14px;color:var(--muted);max-width:640px;margin:0 0 16px;line-height:1.6">
+      When fatigue, exam anxiety, headaches, or physical discomfort arise, Saathi is here to soothe, educate, and guide your recovery with scientific clarity and warmth.
+    </p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="/chat?mode=healer" class="primary" style="background:var(--sage);border-color:var(--sage);color:#fff">💬 Deep Healing Chat →</a>
+      <button type="button" class="secondary" onclick="scrollHealerTo('zenBreathingSection')">🫁 4-7-8 Zen Breathing</button>
+      <button type="button" class="secondary" onclick="scrollHealerTo('ambientSoundSection')">🎧 Ambient Healing Sounds</button>
+    </div>
+  </article>
+
+  <!-- Doctor Disclaimer Notice -->
+  <div class="doctor-disclaimer-card" role="note">
+    <div class="doctor-disclaimer-icon" aria-hidden="true">🛡️</div>
+    <div class="doctor-disclaimer-content">
+      <b>મહત્વપૂર્ણ સલાહ (Important Doctor Disclaimer)</b>
+      <p>
+        સાથી AI એ એક સહાયક સાથી અને માર્ગદર્શક છે, કોઈ વાસ્તવિક લાયસન્સ પ્રાપ્ત ડોક્ટર નથી. અહીં આપેલ માહિતી માત્ર તમારી સમજણ, કુદરતી રાહત અને સંભાળ માટે છે. કૃપા કરીને કોઈપણ દવા લેતા પહેલાં તમારા ફેમિલી ડોક્ટર સાથે એકવાર જરૂરથી કન્સલ્ટ કરજો.
+      </p>
+    </div>
+  </div>
+
+  <!-- Symptom Compass & AI Consult -->
+  <article class="panel" style="margin-bottom:24px">
+    <div class="panel-head">
+      <div>
+        <span class="eyebrow">Symptom & Care Compass</span>
+        <h2>How are you feeling right now?</h2>
+        <p>Select a common issue or describe your symptoms in your own language (Gujarati, Hindi, or English).</p>
+      </div>
+    </div>
+
+    <div class="symptom-chips">
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Headache & Eye Strain from screen studying')">🤕 Headache & Eye Strain</button>
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Severe acidity, burning chest, and stomach ache')">🤢 Acidity & Gas</button>
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Mild fever, body ache, cold and sore throat')">🌡️ Fever & Cold</button>
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Intense exam anxiety, racing heart, and panic')">😰 Exam Panic & Stress</button>
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Insomnia, overthinking at night, inability to sleep')">😴 Insomnia & Restlessness</button>
+      <button type="button" class="symptom-chip" onclick="quickSelectSymptom('Brain fog, exhaustion, mental fatigue, low energy')">🥱 Brain Fog & Fatigue</button>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="healerSymptomInput" placeholder="Describe how you feel (e.g. 'માથું દુખે છે, આંખો ભારે લાગે છે')..." style="flex:1;min-width:240px;min-height:46px;padding:10px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px" onkeydown="if(event.key==='Enter')runHealerConsultation()">
+      <select id="healerLanguageSelect" style="min-height:46px;padding:0 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper);font-size:13px;font-weight:600">
+        <option value="gu">ગુજરાતી</option>
+        <option value="en" selected>English</option>
+        <option value="hi">हिन्दी</option>
+      </select>
+      <button type="button" class="primary" id="healerConsultBtn" onclick="runHealerConsultation()" style="min-height:46px;padding:0 22px;border-radius:14px;background:var(--sage);border-color:var(--sage);color:#fff;font-weight:700">🌿 Find Comfort & Guidance</button>
+    </div>
+
+    <!-- Healer Results Card Output -->
+    <div id="healerResultOutput" style="margin-top:20px;display:none"></div>
+  </article>
+
+  <!-- Interactive Calming Utilities -->
+  <div class="healer-grid">
+    <!-- 4-7-8 Breathing Guide -->
+    <article class="healer-card" id="zenBreathingSection">
+      <h3><span>🫁</span> 4-7-8 Zen Breathing Guide</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Scientifically proven to activate the parasympathetic nervous system, lowering heart rate and soothing adrenaline within 90 seconds.
+      </p>
+
+      <div class="zen-orb-container">
+        <div class="zen-orb" id="zenOrb">
+          <span class="zen-phase" id="zenPhase">Ready</span>
+          <span class="zen-counter" id="zenCounter">4</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px" id="zenInstruction">
+          Inhale gently through nose (4s) · Hold gently (7s) · Exhale through mouth (8s)
+        </p>
+        <button type="button" class="primary" id="zenToggleBtn" onclick="toggleBreathingExercise()" style="background:var(--sage);border-color:var(--sage);color:#fff">
+          ▶ Start Breathing Cycle
+        </button>
+      </div>
+    </article>
+
+    <!-- Ambient Sound Therapy & 5-4-3-2-1 SOS Grounding -->
+    <article class="healer-card" id="ambientSoundSection">
+      <h3><span>🎧</span> Ambient Sound Therapy</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+        Zero external downloads. Procedurally synthesized pure soothing acoustic waves to relieve mental fatigue.
+      </p>
+
+      <div class="sound-bar">
+        <button type="button" class="sound-btn" id="sndRain" onclick="toggleAmbientSound('rain')">🌧️ Gentle Rain</button>
+        <button type="button" class="sound-btn" id="sndDrone" onclick="toggleAmbientSound('om')">🕉️ 432Hz Om Frequency</button>
+        <button type="button" class="sound-btn" id="sndWaves" onclick="toggleAmbientSound('ocean')">🌊 Deep Ocean Waves</button>
+      </div>
+
+      <div style="margin-top:24px;border-top:1px solid var(--line);padding-top:18px">
+        <h3 style="font-size:15px;margin-bottom:8px"><span>🧘</span> 5-4-3-2-1 Anxiety SOS</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Feeling overwhelming panic or dizziness? Anchor your mind right now:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--ink)">
+          <div class="remedy-item" style="padding:8px 12px"><b style="width:22px;color:var(--accent)">5</b> Name 5 things you can see right now</div>
+          <div class="remedy-item" style="padding:8px 12px"><b style="width:22px;color:var(--sage)">4</b> Touch 4 textures near your hands</div>
+          <div class="remedy-item" style="padding:8px 12px"><b style="width:22px;color:var(--gold)">3</b> Listen for 3 subtle ambient sounds</div>
+          <div class="remedy-item" style="padding:8px 12px"><b style="width:22px;color:var(--cyan)">2</b> Notice 2 pleasant scents in the air</div>
+          <div class="remedy-item" style="padding:8px 12px"><b style="width:22px;color:var(--danger)">1</b> Take 1 sip of cool, refreshing water</div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
 </div></main></div>
 <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-icon" id="toastIcon" aria-hidden="true">i</span><span id="toastMessage"></span></div><dialog id="deleteDialog" aria-labelledby="deleteAccountTitle"><div class="dialog-body"><h2 id="deleteAccountTitle">Delete your Saathi account?</h2><p>Enter your password to confirm. All account data will be permanently removed.</p><label class="field">Your password<input id="deletePassword" type="password" autocomplete="current-password" placeholder="Your password"></label><div class="dialog-actions"><button class="secondary" id="cancelDelete" type="button">Cancel</button><button class="danger-button" id="confirmDelete" type="button">Delete permanently</button></div></div></dialog>
 <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage"><div class="dialog-body"><span class="dialog-symbol" id="confirmSymbol" aria-hidden="true">!</span><p class="dialog-kicker" id="confirmKicker">Please confirm</p><h2 id="confirmTitle">Confirm this action</h2><p id="confirmMessage">Please review this action before continuing.</p><div class="dialog-actions"><button class="secondary" id="confirmCancel" type="button">Cancel</button><button class="danger-button" id="confirmAccept" type="button">Confirm</button></div></div></dialog>
@@ -460,7 +601,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
-const translations={en:{today:'Today',planner:'Planner',reminders:'Reminders',habits:'Habits',journal:'Journal',checkins:'Check-ins',memory:'Memory',family:'Family Bridge',account:'Account',mocktests:'Mock Tests',mindmaps:'Mindmaps',openChat:'Open conversation'},gu:{today:'આજ',planner:'યોજના',reminders:'રીમાઇન્ડર્સ',habits:'આદતો',journal:'જર્નલ',checkins:'ચેક-ઇન',memory:'મેમરી',family:'ફેમિલી બ્રિજ',account:'એકાઉન્ટ',mocktests:'મોક ટેસ્ટ',mindmaps:'માઇન્ડમેપ્સ',openChat:'વાતચીત ખોલો'},hi:{today:'आज',planner:'योजना',reminders:'रिमाइंडर',habits:'आदतें',journal:'जर्नल',checkins:'चेक-इन',memory:'मेमोरी',family:'फैमिली ब्रिज',account:'खाता',mocktests:'मॉक टेस्ट',mindmaps:'माइंड मैप्स',openChat:'बातचीत खोलें'}};
+const translations={en:{today:'Today',planner:'Planner',reminders:'Reminders',habits:'Habits',journal:'Journal',checkins:'Check-ins',memory:'Memory',family:'Family Bridge',account:'Account',mocktests:'Mock Tests',mindmaps:'Mindmaps',healer:'Healer & Wellness',openChat:'Open conversation'},gu:{today:'આજ',planner:'યોજના',reminders:'રીમાઇન્ડર્સ',habits:'આદતો',journal:'જર્નલ',checkins:'ચેક-ઇન',memory:'મેમરી',family:'ફેમિલી બ્રિજ',account:'એકાઉન્ટ',mocktests:'મોક ટેસ્ટ',mindmaps:'માઇન્ડમેપ્સ',healer:'હીલર અને વેલનેસ',openChat:'વાતચીત ખોલો'},hi:{today:'आज',planner:'योजना',reminders:'रिमाइंडर',habits:'आदतें',journal:'जर्नल',checkins:'चेक-इन',memory:'मेमोरी',family:'फैमिली ब्रिज',account:'खाता',mocktests:'मॉक टेस्ट',mindmaps:'माइंड मैप्स',healer:'हीलर और वेलनेस',openChat:'बातचीत खोलें'}};
 function applyLanguage(language){const chosen=translations[language]?language:'en';document.documentElement.lang=chosen;document.querySelectorAll('[data-i18n]').forEach(node=>{const value=translations[chosen][node.dataset.i18n];if(value)node.textContent=value});if($('languageSelect'))$('languageSelect').value=chosen;if(state.currentView)openView(state.currentView,{historyMode:'none',focus:false})}
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method),controller=new AbortController();
@@ -479,7 +620,7 @@ function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=S
 function toast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone),box=$('toast');box.className='toast '+kind;$('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];$('toastMessage').textContent=message;box.setAttribute('role',kind==='error'?'alert':'status');box.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>box.classList.add('show'));toastTimer=setTimeout(()=>box.classList.remove('show'),3200)}
 function finishConfirm(result){const resolver=state.confirmResolver,returnFocus=state.confirmReturnFocus;state.confirmResolver=null;state.confirmReturnFocus=null;if($('confirmDialog').open)$('confirmDialog').close();if(resolver)resolver(result);setTimeout(()=>{if(returnFocus?.isConnected)returnFocus.focus()},30)}
 function confirmAction({title,message,confirmLabel='Confirm',tone='danger'}){if(state.confirmResolver)return Promise.resolve(false);state.confirmReturnFocus=document.activeElement;$('confirmTitle').textContent=title;$('confirmMessage').textContent=message;$('confirmAccept').textContent=confirmLabel;$('confirmDialog').dataset.tone=tone;$('confirmKicker').textContent=tone==='warning'?'Security check':'Please confirm';$('confirmSymbol').textContent=tone==='warning'?'i':'!';$('confirmAccept').className=tone==='warning'?'warning-button':'danger-button';$('confirmDialog').showModal();setTimeout(()=>$('confirmCancel').focus(),30);return new Promise(resolve=>{state.confirmResolver=resolve})}
-const workspaceViews=['overview','tasks','reminders','habits','journal','checkins','memory','family','account','mocktests','mindmaps'];
+const workspaceViews=['overview','tasks','reminders','habits','journal','checkins','memory','family','account','mocktests','mindmaps','healer'];
 const navigationMedia=matchMedia('(max-width:780px)');
 function setNavigation(open){
   const mobile=navigationMedia.matches,visible=mobile&&open;
@@ -1645,6 +1786,301 @@ function exportMindmapPng(){
   link.href=canvas.toDataURL('image/png');
   link.click();
   toast('Mindmap PNG poster downloaded! 🌟','success');
+}
+
+/* ── Healer & Wellness Sanctuary Logic ────────────────────────── */
+function scrollHealerTo(id){
+  const el=$(id);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function quickSelectSymptom(text){
+  $('healerSymptomInput').value=text;
+  runHealerConsultation();
+}
+
+async function runHealerConsultation(){
+  const symptomText=($('healerSymptomInput').value||'').trim();
+  if(!symptomText){
+    toast('Please describe your symptoms or select a quick topic above.','warning');
+    $('healerSymptomInput').focus();
+    return;
+  }
+
+  const lang=$('healerLanguageSelect').value||'en';
+  const btn=$('healerConsultBtn');
+  btn.disabled=true;
+  btn.textContent='🌿 Soothing & Consulting…';
+
+  try{
+    const res=await api('/api/healer/consult',{
+      method:'POST',
+      body:JSON.stringify({symptoms:symptomText,language:lang})
+    });
+
+    if(res.ok&&res.report){
+      renderHealerReport(res.report);
+      toast('Gentle comfort & guidance prepared 💚','success');
+    }else{
+      toast('Could not generate healing guidance. Please try again.','error');
+    }
+  }catch(err){
+    toast(err.message||'Connection error while consulting Healer','error');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='🌿 Find Comfort & Guidance';
+  }
+}
+
+function renderHealerReport(report){
+  const out=$('healerResultOutput');
+  out.style.display='block';
+
+  let remediesHtml='';
+  (report.home_remedies||[]).forEach(r=>{
+    remediesHtml+=`
+      <div class="remedy-item">
+        <div class="remedy-icon">${r.icon||'🌿'}</div>
+        <div class="remedy-body">
+          <b>${r.title}</b>
+          <span>${r.tip}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  let medsHtml='';
+  (report.medical_concepts||[]).forEach(m=>{
+    medsHtml+=`
+      <div class="medicine-pill-row">
+        <b>🧬 Medical Concept: ${m.category}</b>
+        <span>${m.explanation}</span>
+      </div>
+    `;
+  });
+
+  let redFlagsHtml='';
+  if(report.red_flags&&report.red_flags.length){
+    redFlagsHtml='<div style="margin-top:14px"><b style="font-size:12.5px;color:var(--danger);display:block;margin-bottom:6px">⚠️ Red Flag Symptoms (Seek Emergency / Doctor Immediately):</b>';
+    report.red_flags.forEach(rf=>{
+      redFlagsHtml+=`<div class="red-flag-alert">🚨 ${rf}</div>`;
+    });
+    redFlagsHtml+='</div>';
+  }
+
+  out.innerHTML=`
+    <div style="background:var(--paper);border:1.5px solid rgba(46,125,90,.3);border-radius:22px;padding:26px;box-shadow:0 10px 32px rgba(46,125,90,.07);animation:fadeIn .3s ease-out">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div>
+          <span class="badge-pill sage" style="margin-bottom:6px">💚 Healing Compass</span>
+          <h2 style="font-size:22px;margin:4px 0 2px;color:var(--ink)">${report.comfort_title||'We are with you'}</h2>
+        </div>
+        <a href="/chat?mode=healer" class="primary" style="background:var(--sage);border-color:var(--sage);color:#fff;font-size:12.5px;padding:8px 16px">💬 Talk with Healer in Chat →</a>
+      </div>
+
+      <div style="padding:16px 20px;border-radius:16px;background:var(--sage-soft);color:var(--sage);font-size:14px;line-height:1.6;margin-bottom:20px;border-left:4px solid var(--sage)">
+        <b>🤍 Gentle Reassurance:</b><br>${report.comfort_message}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <h3 style="font-size:15px;color:var(--ink);margin:0 0 8px">🔬 What is happening inside your body</h3>
+        <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0">${report.body_explanation}</p>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <h3 style="font-size:15px;color:var(--ink);margin:0 0 10px">🍵 Natural Comforts & Home Care</h3>
+        ${remediesHtml}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <h3 style="font-size:15px;color:var(--ink);margin:0 0 8px">💊 Pharmacology & Medical Knowledge</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">General scientific overview of how medical science categorizes these symptoms:</p>
+        ${medsHtml}
+      </div>
+
+      ${redFlagsHtml}
+
+      <div class="doctor-disclaimer-card" style="margin-top:20px;margin-bottom:0">
+        <div class="doctor-disclaimer-icon">🛡️</div>
+        <div class="doctor-disclaimer-content">
+          <b>ડોક્ટર સલાહ અને ચેતવણી (Doctor Consultation Reminder)</b>
+          <p>${report.doctor_disclaimer||'હું તમારો AI સાથી છું, વાસ્તવિક લાયસન્સ પ્રાપ્ત ડોક્ટર નથી. કૃપા કરીને કોઈપણ દવા લેતા પહેલાં તમારા ડોક્ટર સાથે કન્સલ્ટ કરજો.'}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* 4-7-8 Breathing Guide Engine */
+let breathTimer=null;
+let breathState='idle'; // idle | running
+let breathPhase='inhale';
+let breathCount=4;
+
+function toggleBreathingExercise(){
+  const orb=$('zenOrb');
+  const phaseLabel=$('zenPhase');
+  const counter=$('zenCounter');
+  const btn=$('zenToggleBtn');
+
+  if(breathState==='running'){
+    clearInterval(breathTimer);
+    breathState='idle';
+    orb.className='zen-orb';
+    phaseLabel.textContent='Paused';
+    counter.textContent='—';
+    btn.textContent='▶ Resume Breathing';
+    return;
+  }
+
+  breathState='running';
+  btn.textContent='⏸ Pause Breathing';
+  runBreathPhase('inhale',4);
+}
+
+function runBreathPhase(phase,seconds){
+  if(breathState!=='running')return;
+  breathPhase=phase;
+  breathCount=seconds;
+
+  const orb=$('zenOrb');
+  const phaseLabel=$('zenPhase');
+  const counter=$('zenCounter');
+
+  if(phase==='inhale'){
+    orb.className='zen-orb expand';
+    phaseLabel.textContent='Inhale 🌸';
+  }else if(phase==='hold'){
+    orb.className='zen-orb hold';
+    phaseLabel.textContent='Hold 🧘';
+  }else if(phase==='exhale'){
+    orb.className='zen-orb contract';
+    phaseLabel.textContent='Exhale 🍃';
+  }
+
+  counter.textContent=breathCount;
+
+  clearInterval(breathTimer);
+  breathTimer=setInterval(()=>{
+    breathCount--;
+    if(breathCount>0){
+      counter.textContent=breathCount;
+    }else{
+      clearInterval(breathTimer);
+      if(breathPhase==='inhale'){
+        runBreathPhase('hold',7);
+      }else if(breathPhase==='hold'){
+        runBreathPhase('exhale',8);
+      }else{
+        runBreathPhase('inhale',4);
+      }
+    }
+  },1000);
+}
+
+/* Synthesized Ambient Audio Generator (Web Audio API) */
+let audioCtx=null;
+let activeAmbientSound=null;
+let activeAmbientNodes=[];
+
+function getAudioContext(){
+  if(!audioCtx){
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    audioCtx=new AudioContext();
+  }
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+
+function stopAmbientSound(){
+  activeAmbientNodes.forEach(node=>{
+    try{if(node.stop)node.stop();if(node.disconnect)node.disconnect()}catch(e){}
+  });
+  activeAmbientNodes=[];
+  activeAmbientSound=null;
+  document.querySelectorAll('.sound-btn').forEach(b=>b.classList.remove('playing'));
+}
+
+function toggleAmbientSound(type){
+  if(activeAmbientSound===type){
+    stopAmbientSound();
+    toast('Ambient sound paused ⏸','info');
+    return;
+  }
+
+  stopAmbientSound();
+  const ctx=getAudioContext();
+  activeAmbientSound=type;
+
+  if(type==='om'){
+    // 432 Hz Healing Om Drone with subtle binaural beating & warmth
+    const osc1=ctx.createOscillator();
+    const osc2=ctx.createOscillator();
+    const gain=ctx.createGain();
+
+    osc1.type='sine';
+    osc1.frequency.setValueAtTime(432,ctx.currentTime); // 432Hz harmonic
+    osc2.type='sine';
+    osc2.frequency.setValueAtTime(216,ctx.currentTime); // 216Hz undertone
+
+    gain.gain.setValueAtTime(0.08,ctx.currentTime);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start();
+    osc2.start();
+    activeAmbientNodes=[osc1,osc2,gain];
+    $('sndDrone').classList.add('playing');
+    toast('Playing 432Hz Om Frequency 🕉️','success');
+  }else if(type==='rain'||type==='ocean'){
+    // Pink noise synthesis with bandpass filter
+    const bufferSize=2*ctx.sampleRate;
+    const noiseBuffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+    const output=noiseBuffer.getChannelData(0);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+
+    for(let i=0;i<bufferSize;i++){
+      const white=Math.random()*2-1;
+      b0=0.99886*b0+white*0.0555179;
+      b1=0.99332*b1+white*0.0750759;
+      b2=0.96900*b2+white*0.1538520;
+      b3=0.86650*b3+white*0.3104856;
+      b4=0.55000*b4+white*0.5329522;
+      b5=-0.7616*b5-white*0.0168980;
+      output[i]=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.08;
+      b6=white*0.115926;
+    }
+
+    const whiteNoise=ctx.createBufferSource();
+    whiteNoise.buffer=noiseBuffer;
+    whiteNoise.loop=true;
+
+    const filter=ctx.createBiquadFilter();
+    filter.type=type==='rain'?'lowpass':'bandpass';
+    filter.frequency.setValueAtTime(type==='rain'?850:400,ctx.currentTime);
+
+    const gain=ctx.createGain();
+    gain.gain.setValueAtTime(0.09,ctx.currentTime);
+
+    whiteNoise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    whiteNoise.start();
+    activeAmbientNodes=[whiteNoise,filter,gain];
+
+    if(type==='rain'){
+      $('sndRain').classList.add('playing');
+      toast('Gentle soothing rain playing 🌧️','success');
+    }else{
+      $('sndWaves').classList.add('playing');
+      toast('Ocean waves playing 🌊','success');
+    }
+  }
 }
 
 async function init(){

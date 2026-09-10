@@ -277,7 +277,7 @@ def test_launch_readiness_files_are_wired():
     assert "healthCheckPath: /api/health" in render
     assert "sync: false" in render
     assert '"/app.py"' in smoke and '"/api/health"' in smoke
-    assert 'EXPECTED_RELEASE = "2026-09-09-workspace-navigation"' in smoke
+    assert 'EXPECTED_RELEASE = "2026-09-10-phase2-mocktests-googleauth"' in smoke
 
 
 def test_interface_polish_has_readable_core_typography_and_balanced_chat_header():
