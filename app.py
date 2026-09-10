@@ -55,8 +55,11 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-10-phase1-razorpay"
+RELEASE_ID = "2026-09-10-phase2-mocktests-googleauth"
 OTP_LIFETIME = timedelta(minutes=10)
+
+# Google OAuth integration (optional — enabled when client id configured)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID") or ""
 
 # Razorpay payment integration (optional — payment disabled when keys absent)
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID") or ""
@@ -76,6 +79,7 @@ CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
     "/api/cron/reminders", "/api/demo-chat", "/api/payment/verify",
+    "/api/google-auth",
 }
 
 ALLOWED_ATTACHMENT_TYPES = {
@@ -244,10 +248,10 @@ def add_security_headers(response):
     response.headers["Permissions-Policy"] = "camera=(), microphone=" + ("(self)" if request.path == "/chat" else "()") + ", geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
-        "img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; "
-        "frame-src 'self' https://api.razorpay.com; "
-        "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; "
+        "img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://accounts.google.com; "
+        "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://accounts.google.com; "
+        "frame-src 'self' https://api.razorpay.com https://accounts.google.com; "
+        "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://accounts.google.com https://oauth2.googleapis.com; "
         "worker-src 'self'"
     )
     if request.path.startswith("/api/") or request.path in ("/account", "/dashboard", "/chat"):
@@ -689,6 +693,37 @@ def init_db():
     cur.execute("""
         CREATE INDEX IF NOT EXISTS feedback_submissions_created_idx
         ON feedback_submissions (created_at DESC)
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS mock_tests (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            topic TEXT NOT NULL,
+            difficulty TEXT NOT NULL DEFAULT 'medium',
+            question_count INTEGER NOT NULL DEFAULT 10,
+            time_limit_minutes INTEGER NOT NULL DEFAULT 15,
+            questions_json JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_mock_tests_user ON mock_tests(user_id, created_at DESC)
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS mock_test_attempts (
+            id BIGSERIAL PRIMARY KEY,
+            test_id BIGINT NOT NULL REFERENCES mock_tests(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            accuracy_percentage NUMERIC(5, 2) NOT NULL,
+            time_taken_seconds INTEGER NOT NULL,
+            answers_json JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_mock_test_attempts_user ON mock_test_attempts(user_id, created_at DESC)
     """)
     conn.commit()
     cur.close()
@@ -1488,6 +1523,410 @@ def payment_status():
     })
 
 
+
+
+# --------------------------------------------------------------------
+# GOOGLE AUTH (Sign in / Sign up with Google)
+# --------------------------------------------------------------------
+@app.route("/api/google-auth", methods=["POST"])
+def google_auth():
+    data = request.get_json(force=True, silent=True) or {}
+    credential = (data.get("credential") or "").strip()
+    if not credential:
+        return jsonify({"error": "Google credential token is missing."}), 400
+
+    limit_response = limited("google_auth", request.remote_addr or "unknown", 30, 5)
+    if limit_response:
+        return limit_response
+
+    # Verify ID token using Google's public tokeninfo endpoint
+    try:
+        resp = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}",
+            timeout=8,
+        )
+        if not resp.ok:
+            return jsonify({"error": "Invalid or expired Google credential."}), 401
+        token_info = resp.json()
+    except Exception as exc:
+        app.logger.error("Google token verification failed: %s", exc)
+        return jsonify({"error": "Could not verify Google account. Please try again."}), 502
+
+    email = (token_info.get("email") or "").strip().lower()
+    email_verified = token_info.get("email_verified")
+    name = (token_info.get("name") or "").strip() or "Google User"
+
+    if not email or str(email_verified).lower() not in ("true", "1"):
+        return jsonify({"error": "Your Google email address is not verified."}), 400
+
+    # If GOOGLE_CLIENT_ID is configured, verify audience
+    if GOOGLE_CLIENT_ID and token_info.get("aud") != GOOGLE_CLIENT_ID:
+        return jsonify({"error": "Google token audience mismatch."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+
+    now = datetime.now(timezone.utc)
+    if not user:
+        # Create new user
+        base_username = re.sub(r"[^a-zA-Z0-9_]", "", name.lower().replace(" ", "_"))[:14]
+        if len(base_username) < 3:
+            base_username = email.split("@")[0][:14]
+        base_username = re.sub(r"[^a-zA-Z0-9_]", "", base_username) or "user"
+
+        username = base_username
+        suffix = 1
+        while True:
+            cur.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+            if not cur.fetchone():
+                break
+            username = f"{base_username[:12]}_{suffix}"
+            suffix += 1
+
+        dummy_pass = secrets.token_urlsafe(32)
+        password_hash = generate_password_hash(dummy_pass)
+
+        cur.execute(
+            """
+            INSERT INTO users (
+                name, username, email, password_hash, plan, plan_status,
+                session_version, created_at
+            )
+            VALUES (%s, %s, %s, %s, 'free', 'active', 1, %s)
+            RETURNING *
+            """,
+            (name[:50], username, email, password_hash, now),
+        )
+        user = cur.fetchone()
+        conn.commit()
+
+    start_user_session(user, remember=True)
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "user": user_to_dict(user),
+        "csrf_token": session["csrf_token"],
+        "message": f"Welcome, {user['name']}!",
+    })
+
+
+# --------------------------------------------------------------------
+# AI MOCK TEST SIMULATOR & VIRAL SCORECARDS
+# --------------------------------------------------------------------
+@app.route("/api/mock-tests/generate", methods=["POST"])
+def generate_mock_test():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    limit_response = limited("mock_test_generate", str(user_id), 15, 5)
+    if limit_response:
+        return limit_response
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT plan, plan_status FROM users WHERE id = %s", (user_id,))
+    user_row = cur.fetchone()
+    is_plus = user_row and user_row["plan"] == "plus" and user_row["plan_status"] == "active"
+
+    # Enforce free tier entitlement: 1 mock test per day
+    if not is_plus:
+        cur.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM mock_tests
+            WHERE user_id = %s AND created_at >= NOW() - INTERVAL '1 day'
+            """,
+            (user_id,)
+        )
+        daily_tests = cur.fetchone()["count"]
+        if daily_tests >= 1:
+            cur.close()
+            conn.close()
+            return jsonify({
+                "error": "You have reached your daily free Mock Test limit. Upgrade to Saathi Plus for unlimited Mock Tests!",
+                "limit_reached": True,
+                "plan": "free",
+            }), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    if not topic:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Please enter an exam topic or subject."}), 400
+
+    difficulty = data.get("difficulty") if data.get("difficulty") in ("easy", "medium", "hard") else "medium"
+    try:
+        question_count = int(data.get("question_count") or 10)
+        if question_count not in (5, 10, 15, 20):
+            question_count = 10
+    except (TypeError, ValueError):
+        question_count = 10
+
+    try:
+        time_limit = int(data.get("time_limit_minutes") or (question_count * 1.5))
+        if time_limit < 3 or time_limit > 60:
+            time_limit = 15
+    except (TypeError, ValueError):
+        time_limit = 15
+
+    if not GEMINI_API_KEY:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "AI service is currently not connected. Please try again later."}), 503
+
+    system_instruction = (
+        "You are an expert exam question paper creator for Indian students (CBSE, NCERT, ICSE, NEET, JEE, UPSC, State Boards, SSC). "
+        "Generate high-quality, realistic multiple-choice questions with 4 distinct options (A, B, C, D), exactly one correct answer, "
+        "and a clear, crystal-clear explanation for why that answer is correct. "
+        "Your entire output must be a valid JSON array of question objects without markdown wrappers or code fences."
+    )
+
+    prompt = (
+        f"Create an exam mock test with exactly {question_count} multiple-choice questions on the topic: '{topic}'.\n"
+        f"Difficulty level: {difficulty}.\n"
+        f"Respond with a raw JSON array adhering strictly to this schema:\n"
+        f"[\n"
+        f"  {{\n"
+        f"    \"id\": 1,\n"
+        f"    \"question\": \"Question text here?\",\n"
+        f"    \"options\": [\n"
+        f"      {{\"key\": \"A\", \"text\": \"Option text\"}},\n"
+        f"      {{\"key\": \"B\", \"text\": \"Option text\"}},\n"
+        f"      {{\"key\": \"C\", \"text\": \"Option text\"}},\n"
+        f"      {{\"key\": \"D\", \"text\": \"Option text\"}}\n"
+        f"    ],\n"
+        f"    \"correct_option\": \"A\",\n"
+        f"    \"explanation\": \"Clear reasoning explaining why A is correct.\"\n"
+        f"  }}\n"
+        f"]"
+    )
+
+    gemini_payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "generationConfig": {
+            "temperature": 0.4,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        response = requests.post(
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            json=gemini_payload,
+            headers={"Content-Type": "application/json"},
+            timeout=40,
+        )
+        if not response.ok:
+            app.logger.error("Gemini mock test error %s: %s", response.status_code, response.text)
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Could not generate mock test right now. Please retry."}), 502
+        result_data = response.json()
+        raw_text = (
+            result_data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        questions = json.loads(raw_text)
+        if not isinstance(questions, list) or len(questions) == 0:
+            raise ValueError("Empty question list")
+    except Exception as exc:
+        app.logger.error("Failed to parse Gemini mock test: %s", exc)
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Failed to generate mock test. Please check the topic and try again."}), 500
+
+    now = datetime.now(timezone.utc)
+    cur.execute(
+        """
+        INSERT INTO mock_tests (
+            user_id, topic, difficulty, question_count, time_limit_minutes,
+            questions_json, created_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (user_id, topic, difficulty, len(questions), time_limit, json.dumps(questions), now),
+    )
+    test_id = cur.fetchone()["id"]
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Mask correct_option and explanation for the test runner!
+    safe_questions = [
+        {
+            "id": q.get("id", idx + 1),
+            "question": q.get("question"),
+            "options": q.get("options", []),
+        }
+        for idx, q in enumerate(questions)
+    ]
+
+    return jsonify({
+        "ok": True,
+        "test": {
+            "id": test_id,
+            "topic": topic,
+            "difficulty": difficulty,
+            "question_count": len(questions),
+            "time_limit_minutes": time_limit,
+            "questions": safe_questions,
+        },
+    })
+
+
+@app.route("/api/mock-tests/<int:test_id>/submit", methods=["POST"])
+def submit_mock_test(test_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    user_answers = data.get("answers") or {}  # { "1": "B", "2": "C", ... }
+    time_taken = int(data.get("time_taken_seconds") or 0)
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id, topic, difficulty, questions_json FROM mock_tests WHERE id = %s AND user_id = %s",
+        (test_id, user_id),
+    )
+    test_row = cur.fetchone()
+    if not test_row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Mock test not found."}), 404
+
+    questions = test_row["questions_json"]
+    total = len(questions)
+    correct_count = 0
+    incorrect_count = 0
+    unattempted_count = 0
+
+    review_list = []
+    for q in questions:
+        qid = str(q.get("id"))
+        chosen = user_answers.get(qid)
+        correct = q.get("correct_option")
+        is_correct = (chosen == correct) if chosen else False
+
+        if not chosen:
+            unattempted_count += 1
+        elif is_correct:
+            correct_count += 1
+        else:
+            incorrect_count += 1
+
+        review_list.append({
+            "id": q.get("id"),
+            "question": q.get("question"),
+            "options": q.get("options"),
+            "chosen_option": chosen,
+            "correct_option": correct,
+            "is_correct": is_correct,
+            "explanation": q.get("explanation"),
+        })
+
+    accuracy = round((correct_count / total * 100), 1) if total > 0 else 0.0
+    now = datetime.now(timezone.utc)
+
+    cur.execute(
+        """
+        INSERT INTO mock_test_attempts (
+            test_id, user_id, score, total_questions, accuracy_percentage,
+            time_taken_seconds, answers_json, created_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (
+            test_id,
+            user_id,
+            correct_count,
+            total,
+            accuracy,
+            time_taken,
+            json.dumps(user_answers),
+            now,
+        ),
+    )
+    attempt_id = cur.fetchone()["id"]
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "attempt_id": attempt_id,
+        "topic": test_row["topic"],
+        "score": correct_count,
+        "total": total,
+        "accuracy": accuracy,
+        "time_taken_seconds": time_taken,
+        "correct_count": correct_count,
+        "incorrect_count": incorrect_count,
+        "unattempted_count": unattempted_count,
+        "review": review_list,
+    })
+
+
+@app.route("/api/mock-tests/history")
+def mock_tests_history():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"tests": [], "attempts": []})
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT m.id, m.topic, m.difficulty, m.question_count, m.time_limit_minutes, m.created_at,
+               a.score, a.accuracy_percentage, a.time_taken_seconds, a.created_at AS attempted_at
+        FROM mock_tests m
+        LEFT JOIN LATERAL (
+            SELECT score, accuracy_percentage, time_taken_seconds, created_at
+            FROM mock_test_attempts
+            WHERE test_id = m.id
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) a ON true
+        WHERE m.user_id = %s
+        ORDER BY m.created_at DESC
+        LIMIT 20
+        """,
+        (user_id,),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    history_items = [
+        {
+            "id": r["id"],
+            "topic": r["topic"],
+            "difficulty": r["difficulty"],
+            "question_count": r["question_count"],
+            "time_limit_minutes": r["time_limit_minutes"],
+            "score": r["score"],
+            "accuracy": float(r["accuracy_percentage"]) if r["accuracy_percentage"] is not None else None,
+            "created_at": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
+
+    return jsonify({"tests": history_items})
 
 
 # --------------------------------------------------------------------

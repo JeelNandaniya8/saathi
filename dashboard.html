@@ -105,6 +105,53 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 @media(max-width:520px){.section-head h1,.hero-panel h1{font-size:clamp(30px,8vw,39px)}.care-panel{padding:22px}.care-panel h2{font-size:21px}.care-actions>*{flex:1 1 auto;justify-content:center}.item{grid-template-columns:34px minmax(0,1fr)}.item-actions{grid-column:2;justify-content:flex-start}.setting-row{align-items:flex-start;flex-wrap:wrap}.workspace-status{align-items:flex-start}.content{padding-bottom:calc(60px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 .topbar>div:first-child{display:flex;align-items:center;gap:9px;min-width:0}.top-status{min-width:0}.top-status span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.top-actions{flex-shrink:0}
+
+/* ── Mock Tests & Exam Simulator ───────────────────────────── */
+.runner-bar{position:sticky;top:72px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(18px);box-shadow:0 8px 30px rgba(20,25,22,.06);margin-bottom:20px}
+.runner-topic{font-size:15px;font-weight:750;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.runner-timer{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;background:var(--canvas);border:1.5px solid var(--line);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:.02em}
+.runner-timer.urgent{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);animation:timerPulse 1s infinite}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.runner-grid{display:grid;grid-template-columns:1fr 310px;gap:20px}
+@media(max-width:880px){.runner-grid{grid-template-columns:1fr}.runner-bar{top:66px;padding:12px 16px}}
+.question-box{padding:28px;border:1px solid var(--line);border-radius:22px;background:var(--paper);box-shadow:0 8px 28px rgba(20,25,22,.04)}
+.q-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.q-number{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+.q-text{font-size:17px;font-weight:650;line-height:1.55;color:var(--ink);margin:0 0 24px}
+.options-wrap{display:grid;gap:12px}
+.option-btn{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border:1.5px solid var(--line);border-radius:16px;background:var(--canvas);color:var(--ink);font-size:14px;text-align:left;transition:all .18s;line-height:1.45}
+.option-btn:hover{border-color:var(--accent);background:color-mix(in srgb,var(--paper) 90%,var(--accent-soft));transform:translateY(-1px)}
+.option-btn.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent),0 4px 14px rgba(91,124,250,.15);font-weight:650}
+.option-badge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:var(--paper);border:1px solid var(--strong);font-size:12px;font-weight:800;color:var(--muted);flex-shrink:0;transition:all .18s}
+.option-btn.selected .option-badge{background:var(--accent);color:#fff;border-color:var(--accent)}
+.q-nav-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+.palette-card{padding:22px;border:1px solid var(--line);border-radius:20px;background:var(--paper);height:fit-content}
+.palette-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.palette-title{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.palette-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pal-btn{height:40px;border-radius:10px;border:1.5px solid var(--line);background:var(--canvas);font-size:12px;font-weight:750;color:var(--muted);display:grid;place-items:center;transition:all .15s;position:relative}
+.pal-btn:hover{border-color:var(--accent);color:var(--ink)}
+.pal-btn.current{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);color:var(--accent);background:var(--paper)}
+.pal-btn.answered{background:var(--sage-soft);border-color:var(--sage);color:var(--sage)}
+.pal-btn.flagged{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.palette-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--soft)}
+.palette-legend span{display:inline-flex;align-items:center;gap:5px}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+/* Results & Viral Scorecard */
+.results-hero-card{padding:36px 30px;border-radius:26px;background:linear-gradient(135deg,#1b253b 0%,#1e322d 50%,#3d2e13 100%);color:#fff;text-align:center;box-shadow:0 22px 60px rgba(20,25,32,.18);margin-bottom:24px}
+.results-score-ring{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);border:3px solid #e5c369;box-shadow:0 0 35px rgba(229,195,105,.25);margin-bottom:18px}
+.results-score-big{font-size:42px;font-weight:800;line-height:1}
+.results-score-sub{font-size:11px;color:#d0d8d2;margin-top:4px}
+.scorecard-preview-wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}
+@media(max-width:760px){.scorecard-preview-wrap{grid-template-columns:1fr}}
+.scorecard-banner{padding:26px;border-radius:22px;background:linear-gradient(135deg,#121824 0%,#1f2a3e 100%);color:#fff;border:1px solid rgba(255,255,255,.12);position:relative;overflow:hidden}
+.scorecard-banner::before{content:"";position:absolute;width:240px;height:240px;right:-70px;top:-70px;border-radius:50%;background:radial-gradient(circle,rgba(229,195,105,.22),transparent 70%)}
+.review-item{padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--paper);margin-bottom:12px}
+.review-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:750}
+.review-status-pill.correct{background:var(--sage-soft);color:var(--sage)}
+.review-status-pill.wrong{background:var(--danger-soft);color:var(--danger)}
+.review-status-pill.unattempted{background:var(--canvas);color:var(--muted);border:1px solid var(--line)}
+.review-explanation{margin-top:14px;padding:14px 16px;border-radius:14px;background:var(--canvas);border-left:3px solid var(--accent);font-size:13px;line-height:1.6;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -119,6 +166,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <button data-view="checkins"><span class="nav-icon" aria-hidden="true">○</span><span data-i18n="checkins">Check-ins</span></button>
 <button data-view="memory"><span class="nav-icon" aria-hidden="true">✦</span><span data-i18n="memory">Memory</span></button>
 <button data-view="family"><span class="nav-icon" aria-hidden="true">◎</span><span data-i18n="family">Family Bridge</span></button>
+<button data-view="mocktests"><span class="nav-icon" aria-hidden="true">🎯</span><span data-i18n="mocktests">Mock Tests</span></button>
 <button data-view="account"><span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="account">Account</span></button>
 <a class="chat-link" href="/chat"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="openChat">Open conversation</span></a>
 </nav><div class="account-chip"><span class="avatar" id="sideAvatar">S</span><div><b id="sideName">Loading</b><span id="sidePlan">Free plan</span></div></div></aside><button class="scrim" id="scrim" aria-label="Close navigation"></button>
@@ -154,6 +202,102 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 </div>
 <article class="panel" style="margin-top:12px"><div class="setting-row"><div><b>Log out all devices</b><p>Immediately invalidate every Saathi login for this account, including this browser. Use this after signing in on a shared or lost device.</p></div><button class="secondary" id="logoutAllButton" type="button">Log out everywhere</button></div></article>
 <article class="panel danger-zone" style="margin-top:12px"><div class="setting-row"><div><b>Delete account permanently</b><p>This removes conversations, reminders, tasks, habits, journal, check-ins, trusted contacts and saved memory. It cannot be undone.</p></div><button class="danger-button" id="deleteAccountButton" type="button">Delete account</button></div></article>
+</section>
+
+<section class="view" id="mocktests">
+<header class="section-head"><span class="eyebrow">AI Exam Simulator & Practice</span><h1>Master any topic with timed mock tests.</h1><p>Realistic countdown timers, question palette navigation, in-depth AI explanations, and instant viral scorecards to track your progress and challenge peers.</p></header>
+
+<!-- Creator / Launcher -->
+<div id="mockTestCreatorBox">
+<article class="panel form-panel">
+<div class="panel-head"><div><span class="eyebrow">Create New Test</span><h2>Customize your Mock Exam</h2><p>Choose a syllabus chapter, exam standard (Class 10/12, GUJCET, NEET, JEE, UPSC), or enter any custom topic.</p></div></div>
+<form id="mockTestForm">
+<div class="form-grid">
+<label class="field wide">Test Topic or Subject<input id="testTopic" maxlength="150" required placeholder="e.g. Class 12 Physics: Optics, NEET Biology: Genetics, Indian Constitution..."></label>
+<label class="field">Number of Questions<select id="testCount"><option value="5" selected>5 Questions (Quick Drill)</option><option value="10">10 Questions (Standard Test)</option><option value="20">20 Questions (Deep Assessment)</option></select></label>
+<label class="field">Difficulty Level<select id="testDifficulty"><option value="easy">Easy (Foundational)</option><option value="medium" selected>Medium (Exam Standard)</option><option value="hard">Hard (Advanced Competitive)</option></select></label>
+<label class="field">Time Limit<select id="testTimeLimit"><option value="5">5 Minutes</option><option value="10" selected>10 Minutes</option><option value="15">15 Minutes</option><option value="30">30 Minutes</option></select></label>
+<label class="field">Language of Questions<select id="testLanguage"><option value="en" selected>English</option><option value="gu">ગુજરાતી (Gujarati)</option><option value="hi">हिन्दी (Hindi)</option></select></label>
+</div>
+<div class="form-actions" style="margin-top:20px">
+<button class="primary" id="testSubmitBtn" type="submit" style="min-height:48px;font-size:14px">🎯 Generate & Start Mock Test</button>
+<span class="helper">Free users: 1 mock test/day. Saathi Plus: Unlimited tests anytime.</span>
+</div>
+</form>
+</article>
+
+<article class="panel" style="margin-top:16px">
+<div class="panel-head"><div><span class="eyebrow">Past Performance</span><h2>Your Mock Test History</h2></div></div>
+<div class="item-list" id="mockTestHistoryList"><div class="empty">No tests completed yet. Start your first mock test above!</div></div>
+</article>
+</div>
+
+<!-- Active Test Runner -->
+<div id="mockTestRunnerBox" style="display:none">
+<div class="runner-bar">
+<div style="min-width:0"><span class="eyebrow" id="runnerDifficultyBadge">Medium Exam</span><div class="runner-topic" id="runnerTopicTitle">Mock Test Topic</div></div>
+<div style="display:flex;align-items:center;gap:12px;flex-shrink:0"><div class="runner-timer" id="runnerTimerDisplay">⏱️ 10:00</div><button class="primary" id="runnerSubmitBtn" type="button" onclick="confirmSubmitTest()">Finish & Submit</button></div>
+</div>
+
+<div class="runner-grid">
+<div class="question-box">
+<div class="q-meta"><span class="q-number" id="qNumberDisplay">Question 1 of 10</span><button class="mini-button" id="qFlagBtn" type="button" onclick="toggleFlagCurrentQuestion()">🚩 Mark for review</button></div>
+<div class="q-text" id="qTextDisplay">Question loading...</div>
+<div class="options-wrap" id="qOptionsWrap"></div>
+<div class="q-nav-actions"><button class="secondary" id="qPrevBtn" type="button" onclick="navQuestion(-1)">← Previous</button><span class="helper" id="qStatusHelper">Unanswered</span><button class="primary" id="qNextBtn" type="button" onclick="navQuestion(1)">Next →</button></div>
+</div>
+
+<aside class="palette-card">
+<div class="palette-head"><span class="palette-title">Question Palette</span><span class="helper" id="paletteAnsweredCount">0/10 Answered</span></div>
+<div class="palette-grid" id="paletteGrid"></div>
+<div class="palette-legend">
+<span><i class="legend-dot" style="background:var(--sage)"></i> Answered</span>
+<span><i class="legend-dot" style="background:var(--gold)"></i> Flagged</span>
+<span><i class="legend-dot" style="background:var(--line)"></i> Unanswered</span>
+</div>
+</aside>
+</div>
+</div>
+
+<!-- Results & Review -->
+<div id="mockTestResultsBox" style="display:none">
+<div class="results-hero-card">
+<div class="results-score-ring"><span class="results-score-big" id="resScoreNum">8/10</span><span class="results-score-sub" id="resScorePct">80%</span></div>
+<h2 style="font-size:26px;margin:0 0 6px" id="resHeroTitle">Great Work! 🎉</h2>
+<p style="margin:0 auto;max-width:520px;color:#d0d8d2;font-size:14px" id="resHeroSub">You completed the test in 6m 45s with 80% accuracy.</p>
+<div style="display:flex;justify-content:center;gap:12px;margin-top:22px;flex-wrap:wrap">
+<button class="secondary" type="button" onclick="retakeOrNewTest()" style="color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)">← Take Another Test</button>
+<button class="primary" type="button" onclick="downloadScorecardPng()" style="background:var(--gold);border-color:var(--gold);color:#fff">📥 Download Scorecard (PNG)</button>
+<button class="primary" type="button" onclick="shareOnWhatsApp()" style="background:#25D366;border-color:#25D366;color:#fff">📲 Challenge on WhatsApp</button>
+</div>
+</div>
+
+<canvas id="scorecardCanvas" width="1080" height="1350" style="display:none"></canvas>
+
+<div class="scorecard-preview-wrap">
+<div class="scorecard-banner">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span class="orb"></span><strong style="font-size:15px;letter-spacing:.02em">SAATHI EXAM SCORECARD</strong></div>
+<div style="font-size:12px;color:#d0d8d2;margin-bottom:4px" id="previewCandidateName">Candidate: Student</div>
+<h3 style="margin:4px 0 16px;font-size:20px;font-weight:700" id="previewTopicName">Class 12 Physics</h3>
+<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px"><span style="font-size:38px;font-weight:800;color:#f1d97f" id="previewScoreNum">8 / 10</span><span style="font-size:16px;color:#d0d8d2" id="previewScorePct">(80% Accuracy)</span></div>
+<div style="font-size:11px;color:#bac3ba;display:flex;gap:16px;flex-wrap:wrap" id="previewMetaRow"><span>⏱️ Time: 6m 45s</span><span>📅 Today</span><span>⚡ Level: Medium</span></div>
+</div>
+<div class="panel" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px">
+<span style="font-size:36px;margin-bottom:8px">🏆</span>
+<h3 style="margin:0 0 6px;font-size:17px">Share your achievement!</h3>
+<p style="margin:0 0 16px;font-size:13px;color:var(--muted)">Share your scorecard directly to WhatsApp study groups or download it as a high-res image.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+<button class="primary" type="button" onclick="downloadScorecardPng()">📥 Download Image</button>
+<button class="secondary" type="button" onclick="shareOnWhatsApp()">📲 Share Link</button>
+</div>
+</div>
+</div>
+
+<article class="panel">
+<div class="panel-head"><div><span class="eyebrow">Answer Key & Breakdown</span><h2>Detailed Question Review</h2><p>Review every question, check correct answers, and understand the reasoning with AI step-by-step solutions.</p></div></div>
+<div id="reviewQuestionsList"></div>
+</article>
+</div>
 </section>
 </div></main></div>
 <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-icon" id="toastIcon" aria-hidden="true">i</span><span id="toastMessage"></span></div><dialog id="deleteDialog" aria-labelledby="deleteAccountTitle"><div class="dialog-body"><h2 id="deleteAccountTitle">Delete your Saathi account?</h2><p>Enter your password to confirm. All account data will be permanently removed.</p><label class="field">Your password<input id="deletePassword" type="password" autocomplete="current-password" placeholder="Your password"></label><div class="dialog-actions"><button class="secondary" id="cancelDelete" type="button">Cancel</button><button class="danger-button" id="confirmDelete" type="button">Delete permanently</button></div></div></dialog>
@@ -199,9 +343,9 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <canvas id="confettiCanvas"></canvas>
 
 <script>
-const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
+const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
-const translations={en:{today:'Today',planner:'Planner',reminders:'Reminders',habits:'Habits',journal:'Journal',checkins:'Check-ins',memory:'Memory',family:'Family Bridge',account:'Account',openChat:'Open conversation'},gu:{today:'આજ',planner:'યોજના',reminders:'રીમાઇન્ડર્સ',habits:'આદતો',journal:'જર્નલ',checkins:'ચેક-ઇન',memory:'મેમરી',family:'ફેમિલી બ્રિજ',account:'એકાઉન્ટ',openChat:'વાતચીત ખોલો'},hi:{today:'आज',planner:'योजना',reminders:'रिमाइंडर',habits:'आदतें',journal:'जर्नल',checkins:'चेक-इन',memory:'मेमोरी',family:'फैमिली ब्रिज',account:'खाता',openChat:'बातचीत खोलें'}};
+const translations={en:{today:'Today',planner:'Planner',reminders:'Reminders',habits:'Habits',journal:'Journal',checkins:'Check-ins',memory:'Memory',family:'Family Bridge',account:'Account',mocktests:'Mock Tests',openChat:'Open conversation'},gu:{today:'આજ',planner:'યોજના',reminders:'રીમાઇન્ડર્સ',habits:'આદતો',journal:'જર્નલ',checkins:'ચેક-ઇન',memory:'મેમરી',family:'ફેમિલી બ્રિજ',account:'એકાઉન્ટ',mocktests:'મોક ટેસ્ટ',openChat:'વાતચીત ખોલો'},hi:{today:'आज',planner:'योजना',reminders:'रिमाइंडर',habits:'आदतें',journal:'जर्नल',checkins:'चेक-इन',memory:'मेमोरी',family:'फैमिली ब्रिज',account:'खाता',mocktests:'मॉक टेस्ट',openChat:'बातचीत खोलें'}};
 function applyLanguage(language){const chosen=translations[language]?language:'en';document.documentElement.lang=chosen;document.querySelectorAll('[data-i18n]').forEach(node=>{const value=translations[chosen][node.dataset.i18n];if(value)node.textContent=value});if($('languageSelect'))$('languageSelect').value=chosen;if(state.currentView)openView(state.currentView,{historyMode:'none',focus:false})}
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method),controller=new AbortController();
@@ -220,7 +364,7 @@ function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=S
 function toast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone),box=$('toast');box.className='toast '+kind;$('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];$('toastMessage').textContent=message;box.setAttribute('role',kind==='error'?'alert':'status');box.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>box.classList.add('show'));toastTimer=setTimeout(()=>box.classList.remove('show'),3200)}
 function finishConfirm(result){const resolver=state.confirmResolver,returnFocus=state.confirmReturnFocus;state.confirmResolver=null;state.confirmReturnFocus=null;if($('confirmDialog').open)$('confirmDialog').close();if(resolver)resolver(result);setTimeout(()=>{if(returnFocus?.isConnected)returnFocus.focus()},30)}
 function confirmAction({title,message,confirmLabel='Confirm',tone='danger'}){if(state.confirmResolver)return Promise.resolve(false);state.confirmReturnFocus=document.activeElement;$('confirmTitle').textContent=title;$('confirmMessage').textContent=message;$('confirmAccept').textContent=confirmLabel;$('confirmDialog').dataset.tone=tone;$('confirmKicker').textContent=tone==='warning'?'Security check':'Please confirm';$('confirmSymbol').textContent=tone==='warning'?'i':'!';$('confirmAccept').className=tone==='warning'?'warning-button':'danger-button';$('confirmDialog').showModal();setTimeout(()=>$('confirmCancel').focus(),30);return new Promise(resolve=>{state.confirmResolver=resolve})}
-const workspaceViews=['overview','tasks','reminders','habits','journal','checkins','memory','family','account'];
+const workspaceViews=['overview','tasks','reminders','habits','journal','checkins','memory','family','account','mocktests'];
 const navigationMedia=matchMedia('(max-width:780px)');
 function setNavigation(open){
   const mobile=navigationMedia.matches,visible=mobile&&open;
@@ -312,8 +456,10 @@ const workspaceSections=[
   {key:'journal',label:'Journal',url:'/api/journal',apply:data=>{state.journal=data.entries||[];renderJournal()}},
   {key:'checkins',label:'Check-ins',url:'/api/check-ins',apply:data=>{state.checkins=data.check_ins||[];renderCheckins()}},
   {key:'memory',label:'Memory',url:'/api/memories',apply:data=>{state.memories=data.memories||[];renderMemories()}},
-  {key:'family',label:'Family Bridge',url:'/api/trusted-contacts',apply:data=>{state.contacts=data;renderContacts()}}
+  {key:'family',label:'Family Bridge',url:'/api/trusted-contacts',apply:data=>{state.contacts=data;renderContacts()}},
+  {key:'mocktests',label:'Mock Tests',url:'/api/mock-tests/history',apply:data=>{state.mockTests=data.tests||[];renderMockTestHistory()}}
 ];
+$('mockTestForm').addEventListener('submit',generateMockTest);
 async function loadWorkspaceSections(sections=workspaceSections){
   if(state.loadingSections)return;
   state.loadingSections=true;$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent='Loading your workspace…';$('retryWorkspace').disabled=true;
@@ -496,6 +642,544 @@ async function startPayment(){
   }finally{
     if(btn)btn.disabled=false;
   }
+}
+
+function renderMockTestHistory(){
+  const box=$('mockTestHistoryList');
+  if(!box)return;
+  box.replaceChildren();
+  if(!state.mockTests||!state.mockTests.length){
+    box.append(emptyNode('No tests completed yet. Start your first mock test above!'));
+    return;
+  }
+  state.mockTests.forEach(test=>{
+    const card=document.createElement('article');
+    card.className='item';
+    const icon=document.createElement('div');
+    icon.className='avatar';
+    icon.style.cssText='width:36px;height:36px;border-radius:10px;font-size:16px;background:var(--accent-soft);color:var(--accent)';
+    icon.textContent='🎯';
+    const copy=document.createElement('div');
+    copy.className='item-copy';
+    const title=document.createElement('b');
+    title.textContent=test.topic;
+    const diffBadge=document.createElement('span');
+    diffBadge.className='priority '+test.difficulty;
+    diffBadge.textContent=test.difficulty;
+    title.append(diffBadge);
+    const sub=document.createElement('p');
+    const scoreStr=test.best_score!=null?`Best: ${test.best_score}/${test.question_count} (${test.best_accuracy}%)`:'Not attempted yet';
+    sub.textContent=`${test.question_count} Questions · ${test.time_limit_minutes} mins · ${scoreStr}`;
+    const date=document.createElement('small');
+    date.textContent=`Created ${formatDate(test.created_at)}`;
+    copy.append(title,sub,date);
+    const actions=document.createElement('div');
+    actions.className='item-actions';
+    const launchBtn=document.createElement('button');
+    launchBtn.className='mini-button';
+    launchBtn.type='button';
+    launchBtn.textContent='Practice Again';
+    launchBtn.onclick=()=>quickStartFromHistory(test);
+    actions.append(launchBtn);
+    card.append(icon,copy,actions);
+    box.append(card);
+  });
+}
+
+function quickStartFromHistory(test){
+  $('testTopic').value=test.topic;
+  $('testCount').value=String(test.question_count||10);
+  $('testDifficulty').value=test.difficulty||'medium';
+  $('testTimeLimit').value=String(test.time_limit_minutes||10);
+  $('mockTestForm').requestSubmit();
+}
+
+async function generateMockTest(event){
+  if(event)event.preventDefault();
+  const btn=$('testSubmitBtn');
+  btn.disabled=true;
+  const originalText=btn.textContent;
+  btn.textContent='Generating exam with AI... ⏳';
+  const payload={
+    topic:$('testTopic').value.trim(),
+    question_count:parseInt($('testCount').value,10)||10,
+    difficulty:$('testDifficulty').value||'medium',
+    time_limit_minutes:parseInt($('testTimeLimit').value,10)||10,
+    language:$('testLanguage').value||'en'
+  };
+  try{
+    const res=await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
+    state.activeTest=res.test;
+    state.activeTest.questions=res.questions||[];
+    state.activeTestAnswers={};
+    state.activeTestFlags=new Set();
+    state.activeTestIndex=0;
+    state.testTotalSeconds=(res.test.time_limit_minutes||10)*60;
+    state.testSecondsLeft=state.testTotalSeconds;
+    
+    // Switch to runner UI
+    $('mockTestCreatorBox').style.display='none';
+    $('mockTestResultsBox').style.display='none';
+    $('mockTestRunnerBox').style.display='block';
+    
+    $('runnerTopicTitle').textContent=res.test.topic;
+    $('runnerDifficultyBadge').textContent=(res.test.difficulty||'Medium').toUpperCase()+' · '+res.test.question_count+' QUESTIONS';
+    
+    startTestTimer();
+    renderQuestion(0);
+    toast('Mock test ready! Best of luck! 🎯','success');
+  }catch(error){
+    if(error.message&&error.message.includes('Saathi Plus')){
+      openUpgradeModal();
+    }
+    toast(error.message,'error');
+  }finally{
+    btn.disabled=false;
+    btn.textContent=originalText;
+  }
+}
+
+function startTestTimer(){
+  clearInterval(state.testTimerInterval);
+  updateTimerDisplay();
+  state.testTimerInterval=setInterval(()=>{
+    state.testSecondsLeft--;
+    updateTimerDisplay();
+    if(state.testSecondsLeft<=0){
+      clearInterval(state.testTimerInterval);
+      toast('Time is up! Submitting your exam automatically...','warning');
+      submitMockTest(true);
+    }
+  },1000);
+}
+
+function updateTimerDisplay(){
+  const mins=Math.floor(state.testSecondsLeft/60);
+  const secs=state.testSecondsLeft%60;
+  const display=$('runnerTimerDisplay');
+  if(!display)return;
+  display.textContent=`⏱️ ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  if(state.testSecondsLeft<=120){
+    display.classList.add('urgent');
+  }else{
+    display.classList.remove('urgent');
+  }
+}
+
+function renderQuestion(index){
+  const questions=state.activeTest?.questions||[];
+  if(!questions.length)return;
+  if(index<0)index=0;
+  if(index>=questions.length)index=questions.length-1;
+  state.activeTestIndex=index;
+  const q=questions[index];
+  const qId=q.id||(index+1);
+  
+  $('qNumberDisplay').textContent=`Question ${index+1} of ${questions.length}`;
+  $('qTextDisplay').textContent=q.question;
+  
+  const isFlagged=state.activeTestFlags.has(qId);
+  const flagBtn=$('qFlagBtn');
+  flagBtn.textContent=isFlagged?'🚩 Flagged for review':'⚐ Mark for review';
+  flagBtn.style.color=isFlagged?'var(--gold)':'var(--muted)';
+  
+  const optionsWrap=$('qOptionsWrap');
+  optionsWrap.replaceChildren();
+  const letters=['A','B','C','D'];
+  const currentAnswer=state.activeTestAnswers[qId];
+  
+  letters.forEach(letter=>{
+    const optText=q.options?.[letter]||'';
+    const optBtn=document.createElement('button');
+    optBtn.className='option-btn'+(currentAnswer===letter?' selected':'');
+    optBtn.type='button';
+    const badge=document.createElement('span');
+    badge.className='option-badge';
+    badge.textContent=letter;
+    const textSpan=document.createElement('span');
+    textSpan.textContent=optText;
+    optBtn.append(badge,textSpan);
+    optBtn.onclick=()=>selectOption(qId,letter);
+    optionsWrap.append(optBtn);
+  });
+  
+  $('qPrevBtn').disabled=index===0;
+  $('qNextBtn').textContent=index===questions.length-1?'Submit Test →':'Next →';
+  $('qStatusHelper').textContent=currentAnswer?`Selected option ${currentAnswer}`:'Not answered yet';
+  
+  renderPalette();
+}
+
+function selectOption(qId,letter){
+  state.activeTestAnswers[qId]=letter;
+  renderQuestion(state.activeTestIndex);
+}
+
+function toggleFlagCurrentQuestion(){
+  const q=state.activeTest?.questions?.[state.activeTestIndex];
+  if(!q)return;
+  const qId=q.id||(state.activeTestIndex+1);
+  if(state.activeTestFlags.has(qId)){
+    state.activeTestFlags.delete(qId);
+  }else{
+    state.activeTestFlags.add(qId);
+  }
+  renderQuestion(state.activeTestIndex);
+}
+
+function navQuestion(delta){
+  const questions=state.activeTest?.questions||[];
+  const target=state.activeTestIndex+delta;
+  if(target>=questions.length){
+    confirmSubmitTest();
+  }else{
+    renderQuestion(target);
+  }
+}
+
+function renderPalette(){
+  const questions=state.activeTest?.questions||[];
+  const grid=$('paletteGrid');
+  if(!grid)return;
+  grid.replaceChildren();
+  
+  let answeredCount=0;
+  questions.forEach((q,idx)=>{
+    const qId=q.id||(idx+1);
+    const isAnswered=!!state.activeTestAnswers[qId];
+    if(isAnswered)answeredCount++;
+    const isCurrent=idx===state.activeTestIndex;
+    const isFlagged=state.activeTestFlags.has(qId);
+    
+    const btn=document.createElement('button');
+    btn.className='pal-btn'+(isCurrent?' current':'')+(isAnswered?' answered':'')+(isFlagged?' flagged':'');
+    btn.type='button';
+    btn.textContent=String(idx+1);
+    btn.onclick=()=>renderQuestion(idx);
+    grid.append(btn);
+  });
+  
+  if($('paletteAnsweredCount'))$('paletteAnsweredCount').textContent=`${answeredCount}/${questions.length} Answered`;
+}
+
+async function confirmSubmitTest(){
+  const questions=state.activeTest?.questions||[];
+  const total=questions.length;
+  const answered=Object.keys(state.activeTestAnswers).length;
+  const unanswered=total-answered;
+  
+  let message=`You have answered ${answered} of ${total} questions.`;
+  if(unanswered>0){
+    message+=` ${unanswered} question(s) remain unanswered. Are you sure you want to finish and submit now?`;
+  }else{
+    message+=` Are you ready to finish and submit your exam?`;
+  }
+  const confirmed=await confirmAction({
+    title:'Submit Mock Test?',
+    message:message,
+    confirmLabel:'Submit Exam',
+    tone:unanswered>0?'warning':'danger'
+  });
+  if(confirmed){
+    submitMockTest(false);
+  }
+}
+
+async function submitMockTest(isTimeout=false){
+  clearInterval(state.testTimerInterval);
+  const testId=state.activeTest?.id;
+  if(!testId)return;
+  
+  const timeSpent=Math.max(1,state.testTotalSeconds-state.testSecondsLeft);
+  const submitBtn=$('runnerSubmitBtn');
+  if(submitBtn)submitBtn.disabled=true;
+  
+  try{
+    const res=await api(`/api/mock-tests/${testId}/submit`,{
+      method:'POST',
+      body:JSON.stringify({
+        answers:state.activeTestAnswers,
+        time_spent_seconds:timeSpent
+      })
+    });
+    
+    state.lastAttemptResult=res;
+    renderTestResults(res);
+    playChime();
+    blastConfetti();
+    toast('Test evaluated successfully! 🎉','success');
+    
+    // Refresh history in background
+    api('/api/mock-tests/history').then(data=>{
+      state.mockTests=data.tests||[];
+      renderMockTestHistory();
+    }).catch(()=>{});
+  }catch(error){
+    toast(error.message,'error');
+  }finally{
+    if(submitBtn)submitBtn.disabled=false;
+  }
+}
+
+function renderTestResults(data){
+  const attempt=data.attempt;
+  const review=data.review||[];
+  const test=state.activeTest;
+  
+  $('mockTestRunnerBox').style.display='none';
+  $('mockTestCreatorBox').style.display='none';
+  $('mockTestResultsBox').style.display='block';
+  
+  $('resScoreNum').textContent=`${attempt.score}/${attempt.total_questions}`;
+  $('resScorePct').textContent=`${attempt.accuracy_percentage}%`;
+  
+  const pct=attempt.accuracy_percentage;
+  let title='Great Work! 🎉';
+  if(pct>=90)title='Outstanding Mastery! 🏆🌟';
+  else if(pct>=70)title='Solid Performance! 👏';
+  else if(pct<50)title='Keep Practicing! 💪';
+  $('resHeroTitle').textContent=title;
+  
+  const mins=Math.floor(attempt.time_spent_seconds/60);
+  const secs=attempt.time_spent_seconds%60;
+  const timeStr=`${mins}m ${secs}s`;
+  $('resHeroSub').textContent=`You completed the test in ${timeStr} with ${attempt.accuracy_percentage}% accuracy.`;
+  
+  // Update scorecard preview
+  $('previewCandidateName').textContent=`Candidate: ${state.user?.name||'Student'}`;
+  $('previewTopicName').textContent=test?.topic||'Mock Test';
+  $('previewScoreNum').textContent=`${attempt.score} / ${attempt.total_questions}`;
+  $('previewScorePct').textContent=`(${attempt.accuracy_percentage}% Accuracy)`;
+  $('previewMetaRow').innerHTML=`<span>⏱️ Time: ${timeStr}</span><span>📅 ${new Date().toLocaleDateString()}</span><span>⚡ Level: ${test?.difficulty||'Medium'}</span>`;
+  
+  // Render review questions
+  const list=$('reviewQuestionsList');
+  list.replaceChildren();
+  
+  review.forEach((item,idx)=>{
+    const card=document.createElement('div');
+    card.className='review-item';
+    
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+    
+    const qNum=document.createElement('strong');
+    qNum.style.fontSize='13px';
+    qNum.textContent=`Question ${idx+1}`;
+    
+    const pill=document.createElement('span');
+    let pillClass='unattempted';
+    let pillText='Not Attempted';
+    if(item.is_correct){
+      pillClass='correct';
+      pillText='✓ Correct (+1)';
+    }else if(item.user_answer){
+      pillClass='wrong';
+      pillText='× Incorrect';
+    }
+    pill.className=`review-status-pill ${pillClass}`;
+    pill.textContent=pillText;
+    head.append(qNum,pill);
+    
+    const qPrompt=document.createElement('p');
+    qPrompt.style.cssText='font-size:15px;font-weight:600;margin:0 0 14px;color:var(--ink)';
+    qPrompt.textContent=item.question;
+    
+    const answersRow=document.createElement('div');
+    answersRow.style.cssText='display:flex;gap:18px;font-size:13px;flex-wrap:wrap;margin-bottom:12px';
+    
+    const userAns=document.createElement('div');
+    userAns.innerHTML=`<span style="color:var(--muted)">Your Answer:</span> <strong style="color:${item.is_correct?'var(--sage)':'var(--danger)'}">${item.user_answer||'None'} (${item.options?.[item.user_answer]||'Unanswered'})</strong>`;
+    
+    const correctAns=document.createElement('div');
+    correctAns.innerHTML=`<span style="color:var(--muted)">Correct Answer:</span> <strong style="color:var(--sage)">${item.correct_answer} (${item.options?.[item.correct_answer]||''})</strong>`;
+    answersRow.append(userAns,correctAns);
+    
+    const expBox=document.createElement('div');
+    expBox.className='review-explanation';
+    expBox.innerHTML=`<strong>💡 Detailed Explanation:</strong><p style="margin:6px 0 0">${item.explanation||'Review this topic carefully.'}</p>`;
+    
+    card.append(head,qPrompt,answersRow,expBox);
+    list.append(card);
+  });
+  
+  // Render canvas scorecard
+  generateScorecardCanvas(data);
+}
+
+function generateScorecardCanvas(data){
+  const canvas=$('scorecardCanvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const width=1080;
+  const height=1350;
+  
+  const attempt=data.attempt;
+  const test=state.activeTest;
+  const userName=state.user?.name||'Candidate';
+  const topic=test?.topic||'General Subject Exam';
+  const mins=Math.floor(attempt.time_spent_seconds/60);
+  const secs=attempt.time_spent_seconds%60;
+  const timeStr=`${mins}m ${secs}s`;
+  
+  // 1. Background Gradient
+  const bgGrad=ctx.createLinearGradient(0,0,width,height);
+  bgGrad.addColorStop(0,'#0e1420');
+  bgGrad.addColorStop(0.5,'#182338');
+  bgGrad.addColorStop(1,'#2c1f0d');
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,width,height);
+  
+  // 2. Ambient glows
+  const glow1=ctx.createRadialGradient(900,200,50,900,200,600);
+  glow1.addColorStop(0,'rgba(218,174,74,0.22)');
+  glow1.addColorStop(1,'transparent');
+  ctx.fillStyle=glow1;
+  ctx.fillRect(0,0,width,height);
+  
+  const glow2=ctx.createRadialGradient(200,1100,50,200,1100,500);
+  glow2.addColorStop(0,'rgba(91,124,250,0.18)');
+  glow2.addColorStop(1,'transparent');
+  ctx.fillStyle=glow2;
+  ctx.fillRect(0,0,width,height);
+  
+  // 3. Border frame
+  ctx.strokeStyle='rgba(255,255,255,0.1)';
+  ctx.lineWidth=4;
+  ctx.strokeRect(40,40,width-80,height-80);
+  
+  // 4. Header / Brand
+  ctx.fillStyle='#f1d97f';
+  ctx.font='800 24px Inter, -apple-system, sans-serif';
+  ctx.letterSpacing='4px';
+  ctx.fillText('✦ SAATHI AI EXAM SIMULATOR ✦',80,120);
+  
+  // 5. Candidate Info
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 48px Inter, -apple-system, sans-serif';
+  ctx.fillText(userName,80,195);
+  
+  ctx.fillStyle='#a6aba3';
+  ctx.font='500 28px Inter, -apple-system, sans-serif';
+  ctx.fillText('Subject Assessment: '+topic,80,245);
+  
+  // 6. Central Score Hero Card
+  const cardX=80, cardY=310, cardW=width-160, cardH=580;
+  ctx.fillStyle='rgba(255,255,255,0.05)';
+  ctx.strokeStyle='rgba(229,195,105,0.4)';
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.roundRect(cardX,cardY,cardW,cardH,36);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Big Score Number
+  ctx.fillStyle='#f1d97f';
+  ctx.font='800 130px Inter, -apple-system, sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(`${attempt.score} / ${attempt.total_questions}`,width/2,500);
+  
+  // Accuracy & Verdict
+  ctx.fillStyle='#ffffff';
+  ctx.font='800 42px Inter, -apple-system, sans-serif';
+  ctx.fillText(`${attempt.accuracy_percentage}% ACCURACY`,width/2,580);
+  
+  const pct=attempt.accuracy_percentage;
+  let verdict='EXCELLENT PERFORMANCE 🌟';
+  if(pct>=90)verdict='OUTSTANDING MASTERY 🏆';
+  else if(pct<50)verdict='GROWTH IN PROGRESS 💪';
+  ctx.fillStyle='#8fb4a0';
+  ctx.font='700 28px Inter, -apple-system, sans-serif';
+  ctx.fillText(verdict,width/2,640);
+  
+  // Stats Row inside Card
+  ctx.textAlign='left';
+  const statBoxY=710, boxW=(cardW-60)/3;
+  
+  // Stat 1: Time
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.roundRect(cardX+20,statBoxY,boxW,130,20);
+  ctx.fill();
+  ctx.fillStyle='#a6aba3';
+  ctx.font='600 20px Inter, sans-serif';
+  ctx.fillText('TIME SPENT',cardX+40,statBoxY+45);
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 32px Inter, sans-serif';
+  ctx.fillText(timeStr,cardX+40,statBoxY+95);
+  
+  // Stat 2: Difficulty
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.roundRect(cardX+40+boxW,statBoxY,boxW,130,20);
+  ctx.fill();
+  ctx.fillStyle='#a6aba3';
+  ctx.font='600 20px Inter, sans-serif';
+  ctx.fillText('DIFFICULTY',cardX+60+boxW,statBoxY+45);
+  ctx.fillStyle='#ffd166';
+  ctx.font='700 32px Inter, sans-serif';
+  ctx.fillText((test?.difficulty||'Medium').toUpperCase(),cardX+60+boxW,statBoxY+95);
+  
+  // Stat 3: Total Questions
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.roundRect(cardX+60+boxW*2,statBoxY,boxW,130,20);
+  ctx.fill();
+  ctx.fillStyle='#a6aba3';
+  ctx.font='600 20px Inter, sans-serif';
+  ctx.fillText('QUESTIONS',cardX+80+boxW*2,statBoxY+45);
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 32px Inter, sans-serif';
+  ctx.fillText(String(attempt.total_questions),cardX+80+boxW*2,statBoxY+95);
+  
+  // 7. Challenge Callout Box
+  ctx.fillStyle='rgba(91,124,250,0.12)';
+  ctx.strokeStyle='rgba(91,124,250,0.3)';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.roundRect(80,940,width-160,200,26);
+  ctx.fill();
+  ctx.stroke();
+  
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 34px Inter, sans-serif';
+  ctx.fillText('⚡ Think you can beat this score?',120,1015);
+  ctx.fillStyle='#bac3ba';
+  ctx.font='500 24px Inter, sans-serif';
+  ctx.fillText('Take the AI Exam Challenge on Saathi now: saathi-ai.com',120,1070);
+  
+  // 8. Footer Watermark
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='500 22px Inter, sans-serif';
+  ctx.fillText(`Verified by Saathi AI Exam Simulator · ${new Date().toLocaleDateString()}`,80,1230);
+}
+
+function downloadScorecardPng(){
+  const canvas=$('scorecardCanvas');
+  if(!canvas)return;
+  const link=document.createElement('a');
+  const topic=(state.activeTest?.topic||'mock-test').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  link.download=`saathi-scorecard-${topic}.png`;
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+  toast('Scorecard downloaded! 🌟','success');
+}
+
+function shareOnWhatsApp(){
+  const attempt=state.lastAttemptResult?.attempt;
+  const topic=state.activeTest?.topic||'Exam';
+  const score=attempt?.score||0;
+  const total=attempt?.total_questions||10;
+  const pct=attempt?.accuracy_percentage||0;
+  const text=encodeURIComponent(`🎯 I just scored ${score}/${total} (${pct}%) on "${topic}" using Saathi AI Exam Simulator!\n\nCan you beat my score? Challenge me here:\nhttps://saathi-ai.com/chat`);
+  window.open(`https://api.whatsapp.com/send?text=${text}`,'_blank');
+}
+
+function retakeOrNewTest(){
+  $('mockTestResultsBox').style.display='none';
+  $('mockTestRunnerBox').style.display='none';
+  $('mockTestCreatorBox').style.display='block';
+  scrollTo({top:0,behavior:'smooth'});
 }
 
 async function init(){
