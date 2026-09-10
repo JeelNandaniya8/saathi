@@ -41,13 +41,54 @@ body{background:radial-gradient(circle at 78% -10%,color-mix(in srgb,var(--accen
 .main{grid-column:2}.topbar{height:72px;padding:0 32px;background:color-mix(in srgb,var(--canvas) 76%,transparent);box-shadow:0 1px 0 var(--line)}.top-status{font-size:12px}.top-status i{width:8px;height:8px;background:var(--cyan);box-shadow:0 0 0 4px color-mix(in srgb,var(--cyan) 16%,transparent)}.top-actions{gap:9px}.top-button,.icon-button{height:42px;border-radius:13px;font-size:12px;background:var(--surface-glass);box-shadow:0 5px 16px rgba(26,31,27,.045)}.top-button{padding:0 16px}.icon-button{width:42px}.top-button:hover,.icon-button:hover{border-color:color-mix(in srgb,var(--accent) 30%,var(--line));background:var(--accent-soft)}
 .content{width:min(1200px,calc(100% - 64px));padding:52px 0 100px}.section-head{margin-bottom:32px}.eyebrow{font-size:11px;letter-spacing:.12em}.section-head h1{margin:10px 0 12px;font-size:clamp(38px,4.2vw,54px);line-height:1.02}.section-head p{max-width:720px;font-size:14px;line-height:1.7}
 .hero-panel{min-height:268px;padding:40px;border-radius:30px;background:linear-gradient(135deg,#172438 0%,#20322f 55%,#4a3b1c 100%);box-shadow:0 26px 70px rgba(20,28,31,.17)}.hero-panel::before{width:520px;height:520px;right:-110px;top:-285px;background:radial-gradient(circle,rgba(130,107,230,.42),transparent 67%)}.hero-panel::after{content:"";position:absolute;width:360px;height:360px;left:-150px;bottom:-270px;border-radius:50%;background:radial-gradient(circle,rgba(69,167,184,.28),transparent 70%)}.hero-panel h1{font-size:clamp(43px,5vw,64px)}.hero-panel p{max-width:650px;color:#d0d8d2;font-size:14px;line-height:1.7}
-.metrics{margin:14px 0;gap:14px}.metric{min-height:178px;padding:23px;border-radius:22px;background:var(--surface-glass);box-shadow:0 10px 34px rgba(24,30,26,.045);transition:transform .2s,border-color .2s,box-shadow .2s}.metric:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 24%,var(--line));box-shadow:0 18px 40px rgba(24,30,42,.085)}.metric span{font-size:12px}.metric strong{margin:21px 0 9px;font-size:40px}.metric p{font-size:12px}.metric a,.metric button{font-size:12px;color:var(--accent)}
+.metrics{margin:14px 0;gap:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.metric{min-height:178px;padding:23px;border-radius:22px;background:var(--surface-glass);box-shadow:0 10px 34px rgba(24,30,26,.045);transition:transform .2s,border-color .2s,box-shadow .2s}.metric:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 24%,var(--line));box-shadow:0 18px 40px rgba(24,30,42,.085)}.metric span{font-size:12px}.metric strong{margin:21px 0 9px;font-size:40px}.metric p{font-size:12px}.metric a,.metric button{font-size:12px;color:var(--accent)}
 .grid2{gap:14px}.panel{padding:26px;border-radius:23px;background:var(--surface-glass);box-shadow:0 10px 34px rgba(24,30,26,.04)}.panel-head{margin-bottom:21px}.panel-head h2{font-size:21px}.panel-head p{font-size:13px;line-height:1.6}.quiet{min-height:36px;font-size:12px;color:var(--accent)}.empty{padding:38px 14px;font-size:13px}.quick-list,.item-list{gap:10px}.quick-row{padding:14px;border-radius:15px}.quick-row b{font-size:13px}.quick-row small{font-size:11px}
 .form-grid{gap:14px}.field{gap:8px;font-size:12px}.field input,.field textarea,.field select{border-radius:14px;font-size:14px}.field input,.field select{height:48px;padding:0 14px}.field textarea{min-height:100px;padding:13px 14px}.form-actions{margin-top:18px;gap:10px;flex-wrap:wrap}.primary,.secondary,.danger-button{min-height:44px;padding:0 18px;border-radius:13px;font-size:13px}.primary{border-color:var(--accent);background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#fff;box-shadow:0 10px 22px color-mix(in srgb,var(--accent) 20%,transparent)}.helper{font-size:11px}.filters{gap:8px}.filter{height:38px;padding:0 14px;font-size:11px}.filter.active{border-color:var(--accent);background:var(--accent);color:#fff}
 .item{padding:17px;border-radius:17px;grid-template-columns:34px minmax(0,1fr) auto;gap:13px;background:var(--surface-glass)}.item-check{width:29px;height:29px}.item-copy b{font-size:14px}.item-copy p{font-size:12px;line-height:1.6}.item-copy small{font-size:11px}.mini-button{min-height:36px;padding:0 11px;border-radius:11px;font-size:11px}.priority{font-size:10px;padding:4px 8px}
 .mood-option{min-height:76px;border-radius:15px;font-size:12px}.mood-option span{font-size:20px}.range-value{width:39px;height:39px;font-size:13px}.stat-card{padding:20px}.stat-card span{font-size:11px}.stat-card strong{font-size:32px}.memory-icon{width:42px;height:42px}.toggle{width:44px;height:26px}.toggle i{width:22px;height:22px}.toggle.on i{transform:translateX(18px)}
 .profile-card p{font-size:12px}.plan-badge{font-size:11px}.setting-row{padding:18px 0}.setting-row b{font-size:13px}.setting-row p{font-size:11px}.consent-note{padding:17px;font-size:12px}.language-select{height:44px;font-size:13px}.toast{padding:14px 17px;border-radius:14px;font-size:12px}.dialog-body{padding:27px}.dialog-body h2{font-size:22px}.dialog-body p,.dialog-note{font-size:12px}.dialog-body input{height:48px;font-size:14px}.memory-dialog .field textarea{min-height:170px}
 @media(max-width:780px){.sidebar{width:min(310px,88vw);padding:20px 14px}.topbar{height:66px;padding:0 14px}.content{width:calc(100% - 30px);padding-top:32px}.hero-panel{min-height:285px;padding:28px}.hero-panel h1{font-size:44px}.hero-panel p{font-size:13px}.panel{padding:21px}}
+
+/* ── Gamification & Payment ─────────────────────────────────── */
+/* Streak Fire Badge */
+.streak-card{background:linear-gradient(135deg,#2a1f10 0%,#3d2a0c 100%);color:#ffd166;border-color:rgba(255,180,60,.18)}
+.streak-card .streak-num{font-size:44px;font-weight:780;line-height:1;margin:10px 0 4px;letter-spacing:-.02em}
+.streak-card .streak-label{font-size:11px;color:#e8b55a;opacity:.9}
+.streak-fire{font-size:26px;animation:firePulse 1.4s ease-in-out infinite}
+@keyframes firePulse{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.12) rotate(3deg)}}
+/* Badges row */
+.badges-row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.badge-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;font-size:11px;font-weight:720;border:1px solid transparent}
+.badge-pill.gold{background:rgba(157,118,36,.13);color:var(--gold);border-color:rgba(157,118,36,.22)}
+.badge-pill.sage{background:var(--sage-soft);color:var(--sage);border-color:color-mix(in srgb,var(--sage) 20%,transparent)}
+.badge-pill.accent{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 20%,transparent)}
+/* Plus badge in sidebar chip */
+.plus-badge{display:inline-flex;padding:3px 8px;margin-left:6px;border-radius:99px;background:linear-gradient(135deg,var(--gold),#b8890a);color:#fff;font-size:9px;font-weight:850;vertical-align:middle;letter-spacing:.03em}
+/* Upgrade modal */
+.upgrade-modal{width:min(520px,calc(100% - 28px))!important;border-radius:28px!important}
+.upgrade-modal .dialog-body{padding:0!important}
+.upgrade-hero{padding:32px 28px 24px;background:linear-gradient(135deg,#172438 0%,#20322f 55%,#4a3b1c 100%);border-radius:28px 28px 0 0;color:#fff;text-align:center}
+.upgrade-hero .orb-large{width:52px;height:52px;border-radius:50%;margin:0 auto 16px;background:radial-gradient(circle at 32% 28%,#f1d97f,#b48b2b 58%,#755713);box-shadow:0 0 0 12px rgba(180,139,43,.12)}
+.upgrade-hero h2{margin:0 0 8px;font-size:24px;font-weight:680;line-height:1.2}
+.upgrade-hero p{margin:0;font-size:13px;color:#d0d8d2;line-height:1.6}
+.upgrade-plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:22px 28px}
+.plan-option{padding:16px;border:2px solid var(--line);border-radius:16px;background:var(--canvas);cursor:pointer;transition:border-color .18s,transform .18s}
+.plan-option:hover,.plan-option.selected{border-color:var(--gold);transform:translateY(-2px)}
+.plan-option .plan-price{font-size:22px;font-weight:770;color:var(--ink);margin:8px 0 2px}
+.plan-option .plan-save{font-size:10px;color:var(--sage);font-weight:750}
+.plan-option .plan-name{font-size:11px;color:var(--muted);font-weight:720}
+.upgrade-features{padding:0 28px 18px}
+.upgrade-features li{padding:7px 0;border-top:1px solid var(--line);font-size:13px;display:flex;align-items:center;gap:9px;color:var(--ink)}
+.upgrade-features li:first-child{border-top:0}
+.upgrade-features li span{color:var(--sage);font-size:16px}
+.upgrade-cta{padding:0 28px 28px;display:flex;flex-direction:column;gap:9px}
+.upgrade-cta .primary{width:100%;font-size:14px;min-height:48px;border-radius:14px}
+.upgrade-cta .secondary{width:100%;font-size:13px}
+/* Confetti canvas */
+#confettiCanvas{position:fixed;inset:0;z-index:9999;pointer-events:none}
+/* CSP-safe Audio indicator */
+@keyframes soundRipple{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+
 @media(max-width:520px){.metrics{gap:10px}.metric{min-height:160px;padding:18px}.metric strong{font-size:34px}.metric span,.metric p,.metric a,.metric button{font-size:11px}.item-copy b{font-size:13px}.mood-option{font-size:11px}.section-head h1{font-size:39px}.form-actions>*{max-width:100%}}
 .toast{min-width:min(360px,calc(100% - 28px));display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:10px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));background:color-mix(in srgb,var(--paper) 96%,var(--accent-soft));color:var(--ink)}.toast-icon{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:850}.toast.success{border-color:color-mix(in srgb,var(--sage) 40%,var(--line))}.toast.success .toast-icon{background:var(--sage-soft);color:var(--sage)}.toast.warning{border-color:color-mix(in srgb,var(--gold) 42%,var(--line))}.toast.warning .toast-icon{background:var(--gold-soft);color:var(--gold)}.toast.error{border-color:color-mix(in srgb,var(--danger) 42%,var(--line))}.toast.error .toast-icon{background:var(--danger-soft);color:var(--danger)}
 .dialog-symbol{width:42px;height:42px;margin-bottom:17px;border-radius:14px;background:var(--danger-soft);color:var(--danger);display:grid;place-items:center;font-size:18px;font-weight:850}.dialog-kicker{margin:0 0 7px!important;color:var(--accent)!important;font-size:10px!important;font-weight:850;letter-spacing:.1em;text-transform:uppercase}.confirm-dialog[data-tone="warning"] .dialog-symbol{background:var(--gold-soft);color:var(--gold)}.confirm-dialog[data-tone="warning"] .dialog-kicker{color:var(--gold)!important}.warning-button{min-height:44px;padding:0 18px;border:1px solid var(--gold);border-radius:13px;background:var(--gold);color:#fff;font-size:13px;font-weight:780}.habit-dialog{width:min(560px,calc(100% - 28px))}
@@ -85,7 +126,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <div class="content" id="workspaceContent" tabindex="-1">
 <div class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"><span id="workspaceStatusText">Loading your workspace…</span><button class="secondary" id="retryWorkspace" type="button" disabled>Retry</button></div>
 <button class="back-to-today" id="backToToday" type="button" hidden>← <span data-i18n="today">Today</span></button>
-<section class="view active" id="overview"><article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="grid2"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Next steps</span><h2>Your planner</h2></div><button class="quiet" data-open="tasks">View all →</button></div><div class="quick-list" id="overviewTasks"></div></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Schedule</span><h2>Next reminder</h2></div><button class="quiet" data-open="reminders">Manage →</button></div><div class="quick-list" id="overviewReminder"></div></article></div></section>
+<section class="view active" id="overview"><article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire">🔥</span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold">🔥 <span id="streakBadgeText">0 Day Streak</span></span><span class="badge-pill sage">🌱 Early Bird</span><span class="badge-pill accent">⚡ Consistency Builder</span></div><div class="grid2"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Next steps</span><h2>Your planner</h2></div><button class="quiet" data-open="tasks">View all →</button></div><div class="quick-list" id="overviewTasks"></div></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Schedule</span><h2>Next reminder</h2></div><button class="quiet" data-open="reminders">Manage →</button></div><div class="quick-list" id="overviewReminder"></div></article></div></section>
 
 <section class="view" id="tasks"><header class="section-head"><span class="eyebrow">Study and everyday planning</span><h1>Make the next step clear.</h1><p>Keep tasks realistic, give important work a due time and mark it complete when it is actually done.</p></header><article class="panel form-panel"><form id="taskForm"><div class="form-grid"><label class="field">Task title<input id="taskTitle" maxlength="180" required placeholder="Revise probability chapter"></label><label class="field">Due date and time<input id="taskDue" type="datetime-local"></label><label class="field">Priority<select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label><label class="field wide">Details, optional<textarea id="taskDetails" maxlength="1000" placeholder="What exactly needs to be completed?"></textarea></label></div><div class="form-actions"><button class="primary" id="taskSubmit" type="submit">Add task</button><button class="secondary" id="taskCancel" type="button" hidden>Cancel edit</button><span class="helper">Your plan is private to your account.</span></div></form></article><div class="filters" id="taskFilters"><button class="filter active" aria-pressed="true" data-filter="open">Open</button><button class="filter" aria-pressed="false" data-filter="all">All</button><button class="filter" aria-pressed="false" data-filter="done">Completed</button></div><div class="item-list" id="taskList"></div></section>
 
@@ -105,7 +146,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <header class="section-head"><span class="eyebrow">Account and privacy</span><h1>Your space stays yours.</h1><p>Update your account details, protect your password, review policies, export your information or remove the account.</p></header>
 <div class="grid2">
 <article class="panel"><div class="profile-card"><span class="avatar" id="profileAvatar">S</span><div><h2 id="profileDisplayName">Saathi user</h2><p id="profileEmail">—</p></div></div><form id="profileForm"><div class="form-grid"><label class="field">Name<input id="profileName" maxlength="50" required></label><label class="field">Username<input id="profileUsername" maxlength="20" required></label></div><div class="form-actions"><button class="primary" type="submit">Save profile</button></div></form></article>
-<article class="panel plan-card"><span class="plan-badge" id="planBadge">Free plan</span><div class="panel-head"><div><h2 style="margin-top:14px">Your Saathi plan</h2><p id="planStatus">Active</p></div></div><p>Saathi Plus and Saathi Family are Coming Soon. Checkout is disabled and no plan selection can charge money or change this account.</p><div class="form-actions"><button class="secondary" type="button" disabled>Plus ₹249 · Coming soon</button><button class="secondary" type="button" disabled>Family ₹599 · Coming soon</button></div></article>
+<article class="panel plan-card"><span class="plan-badge" id="planBadge">Free plan</span><div class="panel-head"><div><h2 style="margin-top:14px" id="planHeaderTitle">Your Saathi plan</h2><p id="planStatus">Active</p></div></div><p id="planDescription">Unlock unlimited PDF uploads, smart quiz & mock tests, voice companion, and mindmaps with Saathi Plus.</p><div class="form-actions" id="planActions"><button class="primary" id="upgradeBtnAccount" type="button" onclick="openUpgradeModal()" style="background:linear-gradient(135deg,var(--gold),#8d6b1d);border-color:var(--gold);color:#fff">⭐ Upgrade to Saathi Plus · ₹199/mo</button></div></article>
 </div>
 <div class="grid2" style="margin-top:12px">
 <article class="panel"><div class="panel-head"><div><span class="eyebrow">Security</span><h2>Change password</h2></div></div><form id="passwordForm"><div class="form-grid"><label class="field">Current password<input id="currentPassword" type="password" autocomplete="current-password" required></label><label class="field">New password<input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label></div><div class="form-actions"><button class="primary" type="submit">Change password</button></div></form></article>
@@ -119,6 +160,44 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage"><div class="dialog-body"><span class="dialog-symbol" id="confirmSymbol" aria-hidden="true">!</span><p class="dialog-kicker" id="confirmKicker">Please confirm</p><h2 id="confirmTitle">Confirm this action</h2><p id="confirmMessage">Please review this action before continuing.</p><div class="dialog-actions"><button class="secondary" id="confirmCancel" type="button">Cancel</button><button class="danger-button" id="confirmAccept" type="button">Confirm</button></div></div></dialog>
 <dialog class="habit-dialog" id="habitDialog" aria-labelledby="habitDialogTitle"><form class="dialog-body" id="habitEditForm"><p class="dialog-kicker">Routine settings</p><h2 id="habitDialogTitle">Edit habit</h2><p>Update the routine, schedule, or active status without losing its completion history.</p><div class="form-grid"><label class="field wide">Habit name<input id="habitEditName" maxlength="100" required></label><label class="field">Schedule<select id="habitEditFrequency"><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="weekly">Once a week</option></select></label><label class="field">Status<select id="habitEditActive"><option value="active">Active</option><option value="paused">Paused</option></select></label></div><div class="dialog-actions"><button class="secondary" id="habitEditCancel" type="button">Cancel</button><button class="primary" type="submit">Save habit</button></div></form></dialog>
 <dialog class="memory-dialog" id="memoryDialog" aria-labelledby="memoryDialogTitle"><form class="dialog-body" id="memoryEditForm"><h2 id="memoryDialogTitle">View and edit memory</h2><p>Only active memories are included as context in future Saathi conversations. Nothing here is shared with trusted contacts.</p><div class="form-grid"><label class="field wide">Short label<input id="memoryEditLabel" maxlength="60" required></label><label class="field wide">Saved detail<textarea id="memoryEditContent" maxlength="500" required></textarea></label><label class="field">Status<select id="memoryEditActive"><option value="active">Active in future conversations</option><option value="paused">Paused</option></select></label></div><p class="dialog-note" id="memoryEditMeta"></p><div class="dialog-actions"><button class="danger-button" id="memoryEditDelete" type="button">Delete</button><button class="secondary" id="memoryEditCancel" type="button">Cancel</button><button class="primary" type="submit">Save changes</button></div></form></dialog>
+
+<!-- Upgrade Modal -->
+<dialog class="upgrade-modal" id="upgradeDialog" aria-labelledby="upgradeDialogTitle">
+<div class="dialog-body">
+<div class="upgrade-hero">
+<div class="orb-large"></div>
+<h2 id="upgradeDialogTitle">Upgrade to Saathi Plus</h2>
+<p>Unlimited files, mock tests, real-time voice & mindmaps. Everything you need to study smarter.</p>
+</div>
+<div class="upgrade-plans">
+<div class="plan-option selected" data-price-key="plus_monthly" onclick="selectPlan('plus_monthly',this)">
+<div class="plan-name">Monthly</div>
+<div class="plan-price">₹199<span style="font-size:13px;font-weight:500;color:var(--muted)">/mo</span></div>
+<div class="plan-save">Cancel anytime</div>
+</div>
+<div class="plan-option" data-price-key="plus_yearly" onclick="selectPlan('plus_yearly',this)">
+<div class="plan-name">Yearly ⭐ Best deal</div>
+<div class="plan-price">₹1,499<span style="font-size:13px;font-weight:500;color:var(--muted)">/yr</span></div>
+<div class="plan-save">Save ₹889 — 2 months free!</div>
+</div>
+</div>
+<ul class="upgrade-features" style="margin:0;padding-left:28px;list-style:none">
+<li><span>✓</span> Unlimited PDF & image uploads</li>
+<li><span>✓</span> Unlimited Quiz & Mock Tests</li>
+<li><span>✓</span> Real-time AI Voice companion</li>
+<li><span>✓</span> Interactive Mindmaps & Flowcharts</li>
+<li><span>✓</span> Priority AI speed & longer answers</li>
+<li><span>✓</span> Gold ⭐ Plus badge</li>
+</ul>
+<div class="upgrade-cta">
+<button class="primary" id="upgradePayBtn" type="button" onclick="startPayment()">Upgrade now →</button>
+<button class="secondary" onclick="closeUpgradeModal()" type="button">Maybe later</button>
+</div>
+</div>
+</dialog>
+
+<canvas id="confettiCanvas"></canvas>
+
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
@@ -175,20 +254,20 @@ function applyTheme(theme){document.documentElement.dataset.theme=theme;localSto
 function localInputToIso(value){return value?new Date(value).toISOString():null}function isoToLocalInput(value){if(!value)return'';const date=new Date(value),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,16)}function localDate(){const date=new Date(),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,10)}function formatDate(value){if(!value)return'No due date';const date=new Date(value);return date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}function average(values){if(!values.length)return'—';return(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1)}
 function emptyNode(text){const node=document.createElement('div');node.className='empty';node.textContent=text;return node}
 function quickRow(title,detail){const row=document.createElement('div');row.className='quick-row';const dot=document.createElement('i'),copy=document.createElement('div'),b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;copy.append(b,small);row.append(dot,copy);return row}
-function setUser(user){state.user=user;const initial=(user.name?.[0]||'S').toUpperCase();$('sideAvatar').textContent=initial;$('profileAvatar').textContent=initial;$('sideName').textContent=user.name;$('sidePlan').textContent=user.plan+' plan';$('profileDisplayName').textContent=user.name;$('profileEmail').textContent=user.email;$('profileName').value=user.name;$('profileUsername').value=user.username;$('planBadge').textContent=user.plan+' plan';$('planStatus').textContent=user.plan_status==='pending_payment'?'Pending payment setup':'Active';applyLanguage(user.language||'en')}
-function renderOverview(){const o=state.overview;$('metricTasks').textContent=o.pending_tasks||0;$('metricReminders').textContent=o.active_reminders||0;$('metricChats').textContent=o.conversations||0;$('metricMemory').textContent=o.active_memories||0;const taskBox=$('overviewTasks');taskBox.replaceChildren();const openTasks=state.tasks.filter(task=>!task.completed).slice(0,3);if(!openTasks.length)taskBox.append(emptyNode('No open tasks. Add one when there is something worth tracking.'));else openTasks.forEach(task=>taskBox.append(quickRow(task.title,task.due_at?formatDate(task.due_at):task.priority+' priority')));const reminderBox=$('overviewReminder');reminderBox.replaceChildren();if(!o.next_reminder)reminderBox.append(emptyNode('Nothing scheduled. Your day is clear.'));else reminderBox.append(quickRow(o.next_reminder.title,formatDate(o.next_reminder.next_run_at)));}
+function setUser(user){state.user=user;const initial=(user.name?.[0]||'S').toUpperCase();$('sideAvatar').textContent=initial;$('profileAvatar').textContent=initial;$('sideName').textContent=user.name;const isPlus=user.plan==='plus'&&user.plan_status==='active';$('sidePlan').innerHTML=isPlus?'Saathi Plus <span class="plus-badge">PRO</span>':'Free plan';$('profileDisplayName').textContent=user.name;$('profileEmail').textContent=user.email;$('profileName').value=user.name;$('profileUsername').value=user.username;$('planBadge').textContent=isPlus?'Saathi Plus ⭐':'Free plan';if($('planHeaderTitle'))$('planHeaderTitle').textContent=isPlus?'Saathi Plus Membership':'Your Saathi plan';if($('planDescription'))$('planDescription').textContent=isPlus?'Your account has all Saathi Plus entitlements active: unlimited files, mock tests, voice companion, and mindmaps.':'Unlock unlimited PDF uploads, smart quiz & mock tests, voice companion, and mindmaps with Saathi Plus.';if($('planActions')){$('planActions').innerHTML=isPlus?'<button class="secondary" type="button" disabled style="opacity:.85">✓ Active Subscription · Renews Monthly</button>':'<button class="primary" id="upgradeBtnAccount" type="button" onclick="openUpgradeModal()" style="background:linear-gradient(135deg,var(--gold),#8d6b1d);border-color:var(--gold);color:#fff">⭐ Upgrade to Saathi Plus · ₹199/mo</button>'}applyLanguage(user.language||'en')}
+function renderOverview(){const o=state.overview;$('metricTasks').textContent=o.pending_tasks||0;$('metricReminders').textContent=o.active_reminders||0;$('metricChats').textContent=o.conversations||0;$('metricMemory').textContent=o.active_memories||0;const streaks=state.habits.map(h=>h.streak||0);const maxStreak=streaks.length?Math.max(...streaks):0;const anyDoneToday=state.habits.some(h=>h.completed_today);if($('metricStreak'))$('metricStreak').textContent=maxStreak;if($('metricStreakSub'))$('metricStreakSub').textContent=anyDoneToday?'Active today! 🔥':(maxStreak>0?'Check in today to keep it':'Complete a habit today');if($('streakBadgeText'))$('streakBadgeText').textContent=maxStreak+' Day Streak';const taskBox=$('overviewTasks');taskBox.replaceChildren();const openTasks=state.tasks.filter(task=>!task.completed).slice(0,3);if(!openTasks.length)taskBox.append(emptyNode('No open tasks. Add one when there is something worth tracking.'));else openTasks.forEach(task=>taskBox.append(quickRow(task.title,task.due_at?formatDate(task.due_at):task.priority+' priority')));const reminderBox=$('overviewReminder');reminderBox.replaceChildren();if(!o.next_reminder)reminderBox.append(emptyNode('Nothing scheduled. Your day is clear.'));else reminderBox.append(quickRow(o.next_reminder.title,formatDate(o.next_reminder.next_run_at)));}
 function taskItem(task){const row=document.createElement('article');row.className='item'+(task.completed?' done':'');const check=document.createElement('button');check.className='item-check';check.type='button';check.textContent='✓';check.setAttribute('aria-label',task.completed?'Mark task open':'Mark task complete');check.onclick=()=>toggleTask(task);const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=task.title;const badge=document.createElement('span');badge.className='priority '+task.priority;badge.textContent=task.priority;title.append(badge);const details=document.createElement('p');details.textContent=task.details||'No additional details.';const due=document.createElement('small');due.textContent=task.due_at?formatDate(task.due_at):'No due date';copy.append(title,details,due);const actions=document.createElement('div');actions.className='item-actions';const edit=document.createElement('button');edit.className='mini-button';edit.type='button';edit.textContent='Edit';edit.onclick=()=>editTask(task);const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Delete';remove.onclick=()=>deleteTask(task.id);actions.append(edit,remove);row.append(check,copy,actions);return row}
 function renderTasks(){const box=$('taskList');box.replaceChildren();let tasks=state.tasks;if(state.taskFilter==='open')tasks=tasks.filter(task=>!task.completed);if(state.taskFilter==='done')tasks=tasks.filter(task=>task.completed);if(!tasks.length)box.append(emptyNode(state.taskFilter==='done'?'No completed tasks yet.':'No tasks in this view.'));else tasks.forEach(task=>box.append(taskItem(task)));renderOverview()}
-async function toggleTask(task){try{const data=await api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:!task.completed})});state.tasks=state.tasks.map(item=>item.id===task.id?data.task:item);state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;renderTasks()}catch(error){toast(error.message)}}
+async function toggleTask(task){try{const data=await api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:!task.completed})});state.tasks=state.tasks.map(item=>item.id===task.id?data.task:item);state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;renderTasks();if(!task.completed){playChime();blastConfetti();toast('Task completed! 🎯','success')}}catch(error){toast(error.message)}}
 async function deleteTask(id){const task=state.tasks.find(item=>item.id===id),confirmed=await confirmAction({title:'Delete this task?',message:`${task?.title||'This task'} will be permanently removed from your planner.`,confirmLabel:'Delete task'});if(!confirmed)return;try{await api('/api/tasks/'+id,{method:'DELETE'});state.tasks=state.tasks.filter(item=>item.id!==id);state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;renderTasks();toast('Task deleted.','success')}catch(error){toast(error.message,'error')}}
 function editTask(task){state.taskEditingId=task.id;$('taskTitle').value=task.title;$('taskDue').value=isoToLocalInput(task.due_at);$('taskPriority').value=task.priority;$('taskDetails').value=task.details||'';$('taskSubmit').textContent='Save changes';$('taskCancel').hidden=false;$('taskTitle').focus();scrollTo({top:0,behavior:'smooth'})}function cancelTaskEdit(){state.taskEditingId=null;$('taskForm').reset();$('taskPriority').value='medium';$('taskSubmit').textContent='Add task';$('taskCancel').hidden=true}
 function reminderItem(reminder){const row=document.createElement('article');row.className='item'+(!reminder.active?' done':'');const check=document.createElement('button');check.className='item-check';check.type='button';check.textContent=reminder.active?'':'✓';check.setAttribute('aria-label',reminder.active?'Pause reminder':'Resume reminder');check.onclick=()=>reminderAction(reminder.id,'toggle');const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=reminder.title;const note=document.createElement('p');note.textContent=reminder.note||'No note.';const due=document.createElement('small');due.textContent=`${formatDate(reminder.next_run_at)} · ${reminder.recurrence} · ${reminder.email_enabled?'email enabled':'browser only'}`;copy.append(title,note,due);const actions=document.createElement('div');actions.className='item-actions';[['Done','complete'],['30 min','snooze']].forEach(([label,action])=>{const button=document.createElement('button');button.className='mini-button';button.type='button';button.textContent=label;button.onclick=()=>reminderAction(reminder.id,action);actions.append(button)});const edit=document.createElement('button');edit.className='mini-button';edit.type='button';edit.textContent='Edit';edit.onclick=()=>editReminder(reminder);const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Delete';remove.onclick=()=>deleteReminder(reminder.id);actions.append(edit,remove);row.append(check,copy,actions);return row}
 function renderReminders(){const box=$('reminderList');box.replaceChildren();if(!state.reminders.length)box.append(emptyNode('No reminders yet. Create one only when it will genuinely help.'));else state.reminders.forEach(reminder=>box.append(reminderItem(reminder)));renderOverview()}
-async function reminderAction(id,action){try{const body={action};if(action==='snooze')body.minutes=30;const data=await api('/api/reminders/'+id,{method:'PATCH',body:JSON.stringify(body)});state.reminders=state.reminders.map(item=>item.id===id?data.reminder:item).sort((a,b)=>new Date(a.next_run_at)-new Date(b.next_run_at));state.overview.active_reminders=state.reminders.filter(item=>item.active).length;state.overview.next_reminder=state.reminders.filter(item=>item.active)[0]||null;renderReminders()}catch(error){toast(error.message)}}
+async function reminderAction(id,action){try{const body={action};if(action==='snooze')body.minutes=30;const data=await api('/api/reminders/'+id,{method:'PATCH',body:JSON.stringify(body)});state.reminders=state.reminders.map(item=>item.id===id?data.reminder:item).sort((a,b)=>new Date(a.next_run_at)-new Date(b.next_run_at));state.overview.active_reminders=state.reminders.filter(item=>item.active).length;state.overview.next_reminder=state.reminders.filter(item=>item.active)[0]||null;renderReminders();if(action==='complete'){playChime();toast('Reminder completed! ✓','success')}}catch(error){toast(error.message)}}
 async function deleteReminder(id){const reminder=state.reminders.find(item=>item.id===id),confirmed=await confirmAction({title:'Delete this reminder?',message:`${reminder?.title||'This reminder'} and its schedule will be permanently removed.`,confirmLabel:'Delete reminder'});if(!confirmed)return;try{await api('/api/reminders/'+id,{method:'DELETE'});state.reminders=state.reminders.filter(item=>item.id!==id);state.overview.active_reminders=state.reminders.filter(item=>item.active).length;state.overview.next_reminder=state.reminders.filter(item=>item.active)[0]||null;renderReminders();toast('Reminder deleted.','success')}catch(error){toast(error.message,'error')}}
 function editReminder(reminder){state.reminderEditingId=reminder.id;$('reminderTitle').value=reminder.title;$('reminderTime').value=isoToLocalInput(reminder.next_run_at);$('reminderRecurrence').value=reminder.recurrence;$('reminderDelivery').value=reminder.email_enabled?'email':'browser';$('reminderNote').value=reminder.note||'';$('reminderSubmit').textContent='Save changes';$('reminderCancel').hidden=false;$('reminderTitle').focus();scrollTo({top:0,behavior:'smooth'})}function cancelReminderEdit(){state.reminderEditingId=null;$('reminderForm').reset();$('reminderSubmit').textContent='Create reminder';$('reminderCancel').hidden=true}
 function habitItem(habit){const row=document.createElement('article');row.className='item'+((!habit.active||habit.completed_today)?' done':'');const check=document.createElement('button');check.className='item-check';check.type='button';check.textContent='✓';check.setAttribute('aria-label',habit.completed_today?'Mark habit incomplete today':'Mark habit complete today');check.onclick=()=>toggleHabitToday(habit);const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=habit.name;const detail=document.createElement('p');detail.textContent=`${habit.frequency} · ${habit.streak} ${habit.frequency==='weekly'?'week':'day'} streak${habit.active?'':' · paused'}`;const calendar=document.createElement('div');calendar.className='habit-calendar';const recent=new Set(habit.recent_dates);for(let index=6;index>=0;index--){const day=new Date();day.setDate(day.getDate()-index);const marker=document.createElement('i');if(recent.has(day.toLocaleDateString('en-CA')))marker.className='done';marker.title=day.toLocaleDateString();calendar.append(marker)}copy.append(title,detail,calendar);const actions=document.createElement('div');actions.className='item-actions';const edit=document.createElement('button');edit.className='mini-button';edit.type='button';edit.textContent='Edit';edit.onclick=()=>editHabit(habit);const pause=document.createElement('button');pause.className='mini-button';pause.type='button';pause.textContent=habit.active?'Pause':'Resume';pause.onclick=()=>updateHabit(habit,{active:!habit.active});const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Delete';remove.onclick=()=>deleteHabit(habit.id);actions.append(edit,pause,remove);row.append(check,copy,actions);return row}
-function renderHabits(){const box=$('habitList');box.replaceChildren();if(!state.habits.length)box.append(emptyNode('No habits yet. Start with one small routine.'));else state.habits.forEach(habit=>box.append(habitItem(habit)))}async function refreshHabits(){const data=await api('/api/habits?date='+localDate());state.habits=data.habits||[];renderHabits()}async function toggleHabitToday(habit){try{await api('/api/habits/'+habit.id+'/entries',{method:'POST',body:JSON.stringify({date:localDate(),completed:!habit.completed_today})});await refreshHabits()}catch(error){toast(error.message,'error')}}async function updateHabit(habit,changes){try{const data=await api('/api/habits/'+habit.id,{method:'PATCH',body:JSON.stringify(changes)});state.habits=state.habits.map(item=>item.id===habit.id?data.habit:item);renderHabits();return data.habit}catch(error){toast(error.message,'error');throw error}}function editHabit(habit){state.habitEditingId=habit.id;$('habitEditName').value=habit.name;$('habitEditFrequency').value=habit.frequency;$('habitEditActive').value=habit.active?'active':'paused';$('habitDialog').showModal();setTimeout(()=>$('habitEditName').select(),30)}function closeHabitEdit(){state.habitEditingId=null;if($('habitDialog').open)$('habitDialog').close()}async function deleteHabit(id){const habit=state.habits.find(item=>item.id===id),confirmed=await confirmAction({title:'Delete this habit?',message:`${habit?.name||'This habit'} and its completion history will be permanently removed.`,confirmLabel:'Delete habit'});if(!confirmed)return;try{await api('/api/habits/'+id,{method:'DELETE'});state.habits=state.habits.filter(item=>item.id!==id);renderHabits();toast('Habit deleted.','success')}catch(error){toast(error.message,'error')}}
+function renderHabits(){const box=$('habitList');box.replaceChildren();if(!state.habits.length)box.append(emptyNode('No habits yet. Start with one small routine.'));else state.habits.forEach(habit=>box.append(habitItem(habit)));renderOverview()}async function refreshHabits(){const data=await api('/api/habits?date='+localDate());state.habits=data.habits||[];renderHabits()}async function toggleHabitToday(habit){try{const willComplete=!habit.completed_today;await api('/api/habits/'+habit.id+'/entries',{method:'POST',body:JSON.stringify({date:localDate(),completed:willComplete})});await refreshHabits();if(willComplete){playChime();blastConfetti();toast('🎉 Habit completed! Streak extended. Keep it up!','success')}}catch(error){toast(error.message,'error')}}async function updateHabit(habit,changes){try{const data=await api('/api/habits/'+habit.id,{method:'PATCH',body:JSON.stringify(changes)});state.habits=state.habits.map(item=>item.id===habit.id?data.habit:item);renderHabits();return data.habit}catch(error){toast(error.message,'error');throw error}}function editHabit(habit){state.habitEditingId=habit.id;$('habitEditName').value=habit.name;$('habitEditFrequency').value=habit.frequency;$('habitEditActive').value=habit.active?'active':'paused';$('habitDialog').showModal();setTimeout(()=>$('habitEditName').select(),30)}function closeHabitEdit(){state.habitEditingId=null;if($('habitDialog').open)$('habitDialog').close()}async function deleteHabit(id){const habit=state.habits.find(item=>item.id===id),confirmed=await confirmAction({title:'Delete this habit?',message:`${habit?.name||'This habit'} and its completion history will be permanently removed.`,confirmLabel:'Delete habit'});if(!confirmed)return;try{await api('/api/habits/'+id,{method:'DELETE'});state.habits=state.habits.filter(item=>item.id!==id);renderHabits();toast('Habit deleted.','success')}catch(error){toast(error.message,'error')}}
 function journalItem(entry){const row=document.createElement('article');row.className='item journal-card';const icon=document.createElement('div');icon.className='memory-icon';icon.textContent='▤';const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=entry.title;const content=document.createElement('p');content.className='journal-preview';content.textContent=entry.content.length>260?entry.content.slice(0,260)+'…':entry.content;const date=document.createElement('small');date.textContent=entry.entry_date;copy.append(title,content,date);const actions=document.createElement('div');actions.className='item-actions';const edit=document.createElement('button');edit.className='mini-button';edit.type='button';edit.textContent='Edit';edit.onclick=()=>editJournal(entry);const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Delete';remove.onclick=()=>deleteJournal(entry.id);actions.append(edit,remove);row.append(icon,copy,actions);return row}function renderJournal(){const box=$('journalList');box.replaceChildren();if(!state.journal.length)box.append(emptyNode('No journal entries found. Your private writing can begin whenever you are ready.'));else state.journal.forEach(entry=>box.append(journalItem(entry)))}async function refreshJournal(search=''){const requested=search;const data=await api('/api/journal?search='+encodeURIComponent(search));if($('journalSearch').value.trim()!==requested.trim())return;state.journal=data.entries||[];renderJournal()}function resetJournalForm(){$('journalForm').reset();$('journalId').value='';$('journalDate').value=localDate();$('journalSave').textContent='Save entry';$('journalCancel').hidden=true}function editJournal(entry){$('journalId').value=entry.id;$('journalTitle').value=entry.title;$('journalDate').value=entry.entry_date;$('journalContent').value=entry.content;$('journalSave').textContent='Save changes';$('journalCancel').hidden=false;$('journalTitle').focus();scrollTo({top:0,behavior:'smooth'})}async function deleteJournal(id){const entry=state.journal.find(item=>item.id===id),confirmed=await confirmAction({title:'Delete this journal entry?',message:`${entry?.title||'This private entry'} will be permanently removed.`,confirmLabel:'Delete entry'});if(!confirmed)return;try{await api('/api/journal/'+id,{method:'DELETE'});state.journal=state.journal.filter(item=>item.id!==id);renderJournal();toast('Journal entry deleted.','success')}catch(error){toast(error.message,'error')}}
 function contactItem(contact){const row=document.createElement('article');row.className='item memory-item';const icon=document.createElement('div');icon.className='memory-icon';icon.textContent='◎';const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=contact.name;const detail=document.createElement('p');detail.textContent=contact.email;const status=document.createElement('small');status.textContent=contact.status==='accepted'?`Accepted · tasks ${contact.allow_tasks?'allowed':'off'} · reminders ${contact.allow_reminders?'allowed':'off'}`:contact.status;copy.append(title,detail,status);const actions=document.createElement('div');actions.className='item-actions';if(contact.direction==='incoming'&&contact.status==='pending'){const accept=document.createElement('button');accept.className='mini-button';accept.type='button';accept.textContent='Allow tasks + reminders';accept.setAttribute('aria-label',`Accept ${contact.name}'s invitation and allow shared tasks and reminders`);accept.onclick=()=>respondContact(contact.id,'accept');const decline=document.createElement('button');decline.className='mini-button danger';decline.type='button';decline.textContent='Decline';decline.onclick=()=>respondContact(contact.id,'decline');actions.append(accept,decline)}const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Remove';remove.onclick=()=>removeContact(contact.id);actions.append(remove);row.append(icon,copy,actions);return row}function renderContacts(){for(const [key,id] of [['sent','contactSent'],['incoming','contactIncoming']]){const box=$(id);box.replaceChildren();const items=state.contacts[key]||[];if(!items.length)box.append(emptyNode(key==='sent'?'No invitations sent.':'No invitations received.'));else items.forEach(item=>box.append(contactItem(item)))}}async function refreshContacts(){state.contacts=await api('/api/trusted-contacts');renderContacts()}async function respondContact(id,action){try{const body={action,allow_tasks:action==='accept',allow_reminders:action==='accept'};await api('/api/trusted-contacts/'+id,{method:'PATCH',body:JSON.stringify(body)});await refreshContacts();toast(action==='accept'?'Invitation accepted with task and reminder consent.':'Invitation declined.')}catch(error){toast(error.message,'error')}}async function removeContact(id){const contact=[...(state.contacts.sent||[]),...(state.contacts.incoming||[])].find(item=>item.id===id),confirmed=await confirmAction({title:'Remove this contact?',message:`${contact?.name||'This trusted contact'} will no longer be connected to your account.`,confirmLabel:'Remove contact'});if(!confirmed)return;try{await api('/api/trusted-contacts/'+id,{method:'DELETE'});await refreshContacts();toast('Contact removed.','success')}catch(error){toast(error.message,'error')}}
 function checkinItem(item){const row=document.createElement('article');row.className='item';const icon=document.createElement('div');icon.className='memory-icon';icon.textContent=item.mood;const copy=document.createElement('div');copy.className='item-copy';const title=document.createElement('b');title.textContent=`Mood ${item.mood}/5 · Energy ${item.energy}/5`;const note=document.createElement('p');note.textContent=item.note||'No reflection added.';const date=document.createElement('small');date.textContent=formatDate(item.created_at);copy.append(title,note,date);const actions=document.createElement('div');actions.className='item-actions';const remove=document.createElement('button');remove.className='mini-button danger';remove.type='button';remove.textContent='Delete';remove.onclick=()=>deleteCheckin(item.id);actions.append(remove);row.append(icon,copy,actions);return row}
@@ -252,6 +331,173 @@ async function loadWorkspaceSections(sections=workspaceSections){
   }finally{state.loadingSections=false;$('retryWorkspace').disabled=false}
 }
 function updateGreeting(){const hour=new Date().getHours(),language=state.user?.language||'en',words={en:hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
+function playChime(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const now=ctx.currentTime;
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.type='sine';
+    osc.frequency.setValueAtTime(587.33,now);
+    osc.frequency.exponentialRampToValueAtTime(880,now+0.12);
+    gain.gain.setValueAtTime(0.18,now);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+0.45);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now+0.45);
+  }catch(e){}
+}
+
+function blastConfetti(){
+  const canvas=$('confettiCanvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  const pieces=[];
+  const colors=['#f1d97f','#5b7cfa','#567364','#e08b82','#ae9af4','#45a7b8','#ffd166'];
+  for(let i=0;i<70;i++){
+    pieces.push({
+      x:canvas.width/2+(Math.random()-0.5)*300,
+      y:canvas.height/2+(Math.random()-0.5)*80,
+      vx:(Math.random()-0.5)*14,
+      vy:-Math.random()*12-4,
+      size:Math.random()*9+4,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      rotation:Math.random()*360,
+      vRot:(Math.random()-0.5)*12,
+      opacity:1
+    });
+  }
+  let frame=0;
+  function step(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    for(const p of pieces){
+      p.x+=p.vx;
+      p.y+=p.vy;
+      p.vy+=0.38;
+      p.rotation+=p.vRot;
+      p.opacity-=0.014;
+      if(p.opacity>0){
+        alive=true;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate((p.rotation*Math.PI)/180);
+        ctx.fillStyle=p.color;
+        ctx.globalAlpha=Math.max(0,p.opacity);
+        ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);
+        ctx.restore();
+      }
+    }
+    frame++;
+    if(alive&&frame<130){
+      requestAnimationFrame(step);
+    }else{
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+let selectedPlanKey='plus_monthly';
+
+function selectPlan(key,el){
+  selectedPlanKey=key;
+  document.querySelectorAll('.plan-option').forEach(opt=>opt.classList.toggle('selected',opt===el));
+  const payBtn=$('upgradePayBtn');
+  if(payBtn){
+    payBtn.textContent=key==='plus_yearly'?'Upgrade Yearly · ₹1,499 →':'Upgrade Monthly · ₹199 →';
+  }
+}
+
+function openUpgradeModal(){
+  const dialog=$('upgradeDialog');
+  if(dialog)dialog.showModal();
+}
+
+function closeUpgradeModal(){
+  const dialog=$('upgradeDialog');
+  if(dialog)dialog.close();
+}
+
+function loadRazorpayScript(){
+  if(window.Razorpay)return Promise.resolve(true);
+  return new Promise((resolve)=>{
+    const script=document.createElement('script');
+    script.src='https://checkout.razorpay.com/v1/checkout.js';
+    script.onload=()=>resolve(true);
+    script.onerror=()=>resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+async function startPayment(){
+  const btn=$('upgradePayBtn');
+  if(btn)btn.disabled=true;
+  try{
+    toast('Creating payment order…','info');
+    const orderData=await api('/api/payment/create-order',{
+      method:'POST',
+      body:JSON.stringify({price_key:selectedPlanKey})
+    });
+    
+    const loaded=await loadRazorpayScript();
+    if(!loaded||!window.Razorpay){
+      throw new Error('Payment checkout unavailable. Please check your internet connection.');
+    }
+
+    const options={
+      key:orderData.key_id,
+      amount:orderData.amount,
+      currency:orderData.currency,
+      name:'Saathi',
+      description:orderData.label||'Saathi Plus Membership',
+      image:'/saathi-icon.svg',
+      order_id:orderData.order_id,
+      handler:async function(response){
+        try{
+          toast('Verifying payment…','info');
+          const verifyData=await api('/api/payment/verify',{
+            method:'POST',
+            body:JSON.stringify({
+              razorpay_order_id:response.razorpay_order_id,
+              razorpay_payment_id:response.razorpay_payment_id,
+              razorpay_signature:response.razorpay_signature,
+              plan:'plus'
+            })
+          });
+          closeUpgradeModal();
+          setUser(verifyData.user);
+          playChime();
+          blastConfetti();
+          toast('🎉 Welcome to Saathi Plus! Premium features are now unlocked.','success');
+        }catch(err){
+          toast(err.message,'error');
+        }
+      },
+      prefill:{
+        name:state.user?.name||'',
+        email:state.user?.email||''
+      },
+      theme:{
+        color:'#9d7624'
+      }
+    };
+
+    const rzp=new window.Razorpay(options);
+    rzp.on('payment.failed',function(resp){
+      toast(resp.error?.description||'Payment was not completed.','error');
+    });
+    rzp.open();
+  }catch(error){
+    toast(error.message,'error');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
 async function init(){
   $('retryWorkspace').disabled=true;
   try{

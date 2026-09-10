@@ -19,6 +19,7 @@ import os
 import re
 import secrets
 import hashlib
+import hmac
 import json
 import base64
 from datetime import date, datetime, timedelta, timezone
@@ -54,8 +55,19 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-09-workspace-navigation"
+RELEASE_ID = "2026-09-10-phase1-razorpay"
 OTP_LIFETIME = timedelta(minutes=10)
+
+# Razorpay payment integration (optional — payment disabled when keys absent)
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID") or ""
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET") or ""
+
+# Pricing (in paise — INR × 100)
+PLAN_PRICES = {
+    "plus_monthly": {"amount": 19900, "currency": "INR", "label": "Saathi Plus · Monthly", "plan": "plus"},
+    "plus_yearly": {"amount": 149900, "currency": "INR", "label": "Saathi Plus · Yearly", "plan": "plus"},
+}
+
 PDF_PAGE_LIMIT = 80
 PDF_PAGE_CHARACTER_LIMIT = 8000
 PDF_GROUNDING_CHARACTER_LIMIT = 32000
@@ -63,7 +75,7 @@ GEMINI_CONTEXT_CHARACTER_LIMIT = 24000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
-    "/api/cron/reminders", "/api/demo-chat",
+    "/api/cron/reminders", "/api/demo-chat", "/api/payment/verify",
 }
 
 ALLOWED_ATTACHMENT_TYPES = {
@@ -232,8 +244,11 @@ def add_security_headers(response):
     response.headers["Permissions-Policy"] = "camera=(), microphone=" + ("(self)" if request.path == "/chat" else "()") + ", geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
-        "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'"
+        "img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; "
+        "frame-src 'self' https://api.razorpay.com; "
+        "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; "
+        "worker-src 'self'"
     )
     if request.path.startswith("/api/") or request.path in ("/account", "/dashboard", "/chat"):
         response.headers["Cache-Control"] = "no-store, no-transform" if response.mimetype == "application/x-ndjson" else "no-store"
@@ -441,6 +456,11 @@ def init_db():
     cur.execute("""
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 1
+    """)
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT,
+        ADD COLUMN IF NOT EXISTS subscription_end_at TIMESTAMPTZ
     """)
     # Signups sit here first, unverified, until the right OTP is entered.
     cur.execute("""
@@ -1298,6 +1318,9 @@ def me():
     return jsonify({
         "user": user_to_dict(user),
         "csrf_token": session["csrf_token"],
+        "razorpay_key_id": RAZORPAY_KEY_ID or None,
+        "payment_enabled": bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET),
+        "plan_prices": PLAN_PRICES,
         "chat_modes": [
             {
                 "id": mode_id,
@@ -1316,6 +1339,155 @@ def me():
             "accepted_types": list(ALLOWED_ATTACHMENT_TYPES),
         },
     })
+
+
+# --------------------------------------------------------------------
+# RAZORPAY PAYMENT GATEWAY
+# --------------------------------------------------------------------
+@app.route("/api/payment/create-order", methods=["POST"])
+def create_payment_order():
+    """Create a Razorpay order for the requested plan. Returns order details
+    the frontend uses to open Razorpay's checkout modal."""
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        return jsonify({"error": "Payment is not configured on this server yet."}), 503
+
+    data = request.get_json(force=True, silent=True) or {}
+    price_key = str(data.get("price_key") or "").strip()
+    if price_key not in PLAN_PRICES:
+        return jsonify({"error": "Choose a valid plan."}), 400
+
+    price = PLAN_PRICES[price_key]
+
+    limit_response = limited("create_order", str(user_id), 5, 5)
+    if limit_response:
+        return limit_response
+
+    try:
+        response = requests.post(
+            "https://api.razorpay.com/v1/orders",
+            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+            json={
+                "amount": price["amount"],
+                "currency": price["currency"],
+                "receipt": f"saathi_user_{user_id}",
+                "notes": {"plan": price["plan"], "price_key": price_key},
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        order = response.json()
+    except requests.exceptions.HTTPError as err:
+        app.logger.warning("Razorpay order creation failed: %s", err)
+        return jsonify({"error": "Could not create a payment order. Please try again."}), 502
+    except Exception:
+        app.logger.exception("Razorpay order creation error")
+        return jsonify({"error": "Payment service unavailable. Please try again shortly."}), 502
+
+    return jsonify({
+        "order_id": order["id"],
+        "amount": order["amount"],
+        "currency": order["currency"],
+        "key_id": RAZORPAY_KEY_ID,
+        "plan": price["plan"],
+        "label": price["label"],
+    })
+
+
+@app.route("/api/payment/verify", methods=["POST"])
+def verify_payment():
+    """Verify Razorpay payment signature and upgrade the user's plan.
+    This endpoint is CSRF-exempt because the call comes from Razorpay's
+    checkout handler in the browser immediately after payment success."""
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        return jsonify({"error": "Payment is not configured on this server yet."}), 503
+
+    data = request.get_json(force=True, silent=True) or {}
+    order_id = str(data.get("razorpay_order_id") or "").strip()
+    payment_id = str(data.get("razorpay_payment_id") or "").strip()
+    signature = str(data.get("razorpay_signature") or "").strip()
+    plan = str(data.get("plan") or "plus").strip()
+
+    if not order_id or not payment_id or not signature:
+        return jsonify({"error": "Incomplete payment information."}), 400
+
+    if plan not in ("plus", "family"):
+        plan = "plus"
+
+    # Verify HMAC-SHA256 signature: key=secret, message=order_id|payment_id
+    expected_signature = hmac.new(
+        RAZORPAY_KEY_SECRET.encode("utf-8"),
+        f"{order_id}|{payment_id}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not secrets.compare_digest(expected_signature, signature):
+        app.logger.warning("Razorpay signature mismatch for user %s", user_id)
+        return jsonify({"error": "Payment verification failed. Please contact support."}), 400
+
+    # Upgrade the user's plan
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE users
+        SET plan = %s, plan_status = 'active',
+            razorpay_subscription_id = %s
+        WHERE id = %s
+        RETURNING *
+        """,
+        (plan, payment_id, user_id),
+    )
+    user = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if not user:
+        return jsonify({"error": "Account not found."}), 404
+
+    app.logger.info(
+        "User %s upgraded to plan=%s via payment %s", user_id, plan, payment_id
+    )
+    return jsonify({"ok": True, "plan": plan, "user": user_to_dict(user)})
+
+
+@app.route("/api/payment/status")
+def payment_status():
+    """Return current plan details for the logged-in user."""
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first.", "login_required": True}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT plan, plan_status, razorpay_subscription_id FROM users WHERE id = %s",
+        (user_id,)
+    )
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not user:
+        return jsonify({"error": "Account not found."}), 404
+
+    plan = user["plan"] if user["plan_status"] == "active" else "free"
+    return jsonify({
+        "plan": plan,
+        "plan_status": user["plan_status"],
+        "payment_enabled": bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET),
+        "plan_prices": PLAN_PRICES,
+    })
+
+
 
 
 # --------------------------------------------------------------------
