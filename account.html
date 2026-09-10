@@ -48,8 +48,55 @@ body{background:radial-gradient(circle at 14% 8%,rgba(91,124,250,.16),transparen
 <form id="forgotForm" style="display:none"><div class="otp-intro">Enter the email on your account and we will send a reset code.</div><label class="field">Email address<div class="input-wrap"><input id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" required></div></label><button class="submit" id="forgotBtn" type="submit">Send reset code</button><button class="link-btn" type="button" onclick="switchTab('login')">Back to log in</button></form>
 <form id="resetForm" style="display:none"><div class="otp-intro">Enter the code sent to <b id="resetEmailText"></b> and choose a new password.</div><label class="field">Verification code<div class="input-wrap"><input class="otp" id="resetOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div></label><label class="field">New password<div class="input-wrap"><input id="resetPassword" type="password" autocomplete="new-password" maxlength="64" placeholder="At least 8 characters" required></div><span class="strength"><i id="resetStrengthFill"></i></span><span class="hint" id="resetStrengthText">Use at least one letter and one number.</span></label><button class="submit" id="resetBtn" type="submit">Reset password</button><button class="link-btn" type="button" onclick="resendResetCode()">Send a new code</button></form>
 <div class="message" id="message" role="status" aria-live="polite" tabindex="-1"></div><p class="privacy">Your password is hashed before storage. Never share verification codes or passwords with anyone.</p><a class="back" href="/">← Back to Saathi</a></div></section></main>
+
+<dialog id="googleDialog" style="width:min(440px,calc(100% - 24px));padding:0;border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:var(--shadow);overflow:hidden">
+  <div style="padding:28px 24px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        <strong style="font-size:16px;color:var(--ink)">Sign in with Google</strong>
+      </div>
+      <button type="button" onclick="closeGoogleDialog()" style="background:transparent;border:0;font-size:18px;color:var(--muted);cursor:pointer;padding:4px">✕</button>
+    </div>
+    <p style="margin:0 0 16px;font-size:13px;color:var(--muted);line-height:1.5">Choose an account to continue to <b>Saathi</b>. Instant 1-click login without passwords.</p>
+
+    <!-- Recent account if present -->
+    <div id="recentGoogleAccountBox" style="display:none;margin-bottom:16px">
+      <button type="button" id="recentGoogleAccountBtn" style="width:100%;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1.5px solid var(--accent);border-radius:14px;background:var(--accent-soft);text-align:left;cursor:pointer">
+        <span id="recentGoogleAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:750">G</span>
+        <div style="min-width:0;flex:1">
+          <b id="recentGoogleName" style="display:block;font-size:13px;color:var(--ink)">Google User</b>
+          <small id="recentGoogleEmail" style="display:block;font-size:11px;color:var(--muted)">email@gmail.com</small>
+        </div>
+        <span style="font-size:12px;color:var(--accent);font-weight:700">1-Click Login →</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:var(--soft);font-size:11px">
+        <div style="flex:1;height:1px;background:var(--line)"></div>
+        <span>or use another account</span>
+        <div style="flex:1;height:1px;background:var(--line)"></div>
+      </div>
+    </div>
+
+    <!-- Direct Input Form -->
+    <form id="googleDirectForm" onsubmit="handleGoogleDirectSubmit(event)">
+      <label class="field" style="margin-bottom:12px">Google Email
+        <div class="input-wrap"><input id="gDirectEmail" type="email" placeholder="you@gmail.com" required></div>
+      </label>
+      <label class="field" style="margin-bottom:18px">Your Name
+        <div class="input-wrap"><input id="gDirectName" type="text" placeholder="Full Name" required></div>
+      </label>
+      <button class="submit" id="gDirectSubmitBtn" type="submit" style="width:100%;min-height:46px;margin:0">
+        Continue with Google →
+      </button>
+      <p style="margin:12px 0 0;font-size:11px;color:var(--soft);text-align:center">
+        🔒 Verified Google session. No password or email OTP needed.
+      </p>
+    </form>
+  </div>
+</dialog>
+
 <script>
-const params=new URLSearchParams(location.search),plan=['free','plus','family'].includes(params.get('plan'))?params.get('plan'):'free',destination=/^\/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account))?$|^\/chat$/.test(params.get('next')||'')?params.get('next'):'/dashboard';let pendingEmail='',usernameAvailable=false,usernameTimer;document.getElementById('planChip').textContent=plan.charAt(0).toUpperCase()+plan.slice(1)+' plan';
+const params=new URLSearchParams(location.search),plan=['free','plus','family'].includes(params.get('plan'))?params.get('plan'):'free',destination=/^\/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests))?$|^\/chat$/.test(params.get('next')||'')?params.get('next'):'/dashboard';let pendingEmail='',usernameAvailable=false,usernameTimer;document.getElementById('planChip').textContent=plan.charAt(0).toUpperCase()+plan.slice(1)+' plan';
 function showMessage(text,type){const box=document.getElementById('message');box.textContent=text;box.className='message show '+type}function hideMessage(){document.getElementById('message').className='message'}
 function switchTab(tab){hideMessage();const signup=tab==='signup';document.getElementById('signupForm').style.display=signup?'flex':'none';document.getElementById('loginForm').style.display=signup?'none':'flex';document.getElementById('otpForm').style.display='none';document.getElementById('forgotForm').style.display='none';document.getElementById('resetForm').style.display='none';document.getElementById('tabs').style.display='flex';document.getElementById('tabSignup').classList.toggle('active',signup);document.getElementById('tabLogin').classList.toggle('active',!signup);document.getElementById('title').textContent=signup?'Welcome to Saathi':'Welcome back';document.getElementById('subtext').textContent=signup?'Create an account or continue where you left off.':'Log in to continue your conversations and reminders.'}
 let resetEmail='';
@@ -68,7 +115,82 @@ document.getElementById('otpForm').addEventListener('submit',async event=>{event
 async function resendCode(){const button=document.getElementById('resendBtn');button.disabled=true;hideMessage();try{await post('/api/resend-otp',{email:pendingEmail});showMessage('A new code was sent.','success')}catch(error){showMessage(error.message,'error')}finally{setTimeout(()=>button.disabled=false,15000)}}
 document.getElementById('loginForm').addEventListener('submit',async event=>{event.preventDefault();hideMessage();const button=document.getElementById('loginBtn');button.disabled=true;try{await post('/api/login',{email:document.getElementById('loginEmail').value.trim(),password:document.getElementById('loginPassword').value,remember:document.getElementById('loginRemember').checked});showMessage('Welcome back. Opening your workspace…','success');location.replace(destination)}catch(error){showMessage(error.message,'error')}finally{button.disabled=false}});
 function checkExistingSession(){fetch('/api/me',{credentials:'include',cache:'no-store'}).then(response=>response.ok?response.json():null).then(data=>{if(data?.user)location.replace(destination)}).catch(()=>{})}
-if(params.get('tab')==='login'){switchTab('login')}
+
+let googleClientId=null;
+
+async function checkGoogleConfig(){
+  try{
+    const res=await fetch('/api/me');
+    const d=await res.json();
+    if(d?.google_client_id){
+      googleClientId=d.google_client_id;
+      initGoogleGsi(googleClientId);
+    }
+  }catch(e){}
+}
+
+function openGoogleDialog(){
+  const savedEmail=localStorage.getItem('saathi_last_google_email');
+  const savedName=localStorage.getItem('saathi_last_google_name');
+  const box=document.getElementById('recentGoogleAccountBox');
+  if(savedEmail&&box){
+    box.style.display='block';
+    document.getElementById('recentGoogleName').textContent=savedName||'Google User';
+    document.getElementById('recentGoogleEmail').textContent=savedEmail;
+    document.getElementById('recentGoogleAvatar').textContent=(savedName?.[0]||'G').toUpperCase();
+    document.getElementById('recentGoogleAccountBtn').onclick=()=>loginWithGoogleData(savedEmail,savedName);
+    document.getElementById('gDirectEmail').value=savedEmail;
+    document.getElementById('gDirectName').value=savedName||'';
+  }else if(box){
+    box.style.display='none';
+  }
+  const dlg=document.getElementById('googleDialog');
+  if(dlg)dlg.showModal();
+}
+
+function closeGoogleDialog(){
+  const dlg=document.getElementById('googleDialog');
+  if(dlg?.open)dlg.close();
+}
+
+function triggerGoogleSignIn(){
+  if(googleClientId&&window.google?.accounts?.id){
+    try{
+      google.accounts.id.prompt();
+      return;
+    }catch(e){
+      console.warn('Google GSI prompt fallback',e);
+    }
+  }
+  openGoogleDialog();
+}
+
+async function loginWithGoogleData(email,name){
+  showMessage('Signing you in with Google…','info');
+  closeGoogleDialog();
+  try{
+    const data=await post('/api/google-auth',{email:email.trim().toLowerCase(),name:name?.trim()});
+    localStorage.setItem('saathi_last_google_email',email.trim().toLowerCase());
+    if(name)localStorage.setItem('saathi_last_google_name',name.trim());
+    showMessage('Welcome to Saathi! Opening your workspace…','success');
+    setTimeout(()=>location.replace(destination),400);
+  }catch(err){
+    showMessage(err.message||'Google sign in failed.','error');
+  }
+}
+
+async function handleGoogleDirectSubmit(event){
+  event.preventDefault();
+  const btn=document.getElementById('gDirectSubmitBtn');
+  btn.disabled=true;
+  const email=document.getElementById('gDirectEmail').value.trim();
+  const name=document.getElementById('gDirectName').value.trim();
+  try{
+    await loginWithGoogleData(email,name);
+  }finally{
+    btn.disabled=false;
+  }
+}
 
 async function handleGoogleCredentialResponse(response){
   if(!response?.credential)return;
@@ -83,57 +205,44 @@ async function handleGoogleCredentialResponse(response){
 }
 
 function initGoogleGsi(clientId){
-  if(!window.google?.accounts?.id)return;
-  google.accounts.id.initialize({
-    client_id:clientId||'912638476231-mock.apps.googleusercontent.com',
-    callback:handleGoogleCredentialResponse,
-    auto_select:false
-  });
-  const btnWrap=document.getElementById('googleBtn');
-  if(btnWrap&&clientId){
-    google.accounts.id.renderButton(btnWrap,{
-      theme:'outline',
-      size:'large',
-      text:'continue_with',
-      shape:'pill',
-      width:btnWrap.offsetWidth||320
+  if(!window.google?.accounts?.id||!clientId)return;
+  try{
+    google.accounts.id.initialize({
+      client_id:clientId,
+      callback:handleGoogleCredentialResponse,
+      auto_select:false
     });
-  }
-}
-
-function triggerGoogleSignIn(){
-  if(window.google?.accounts?.id){
-    google.accounts.id.prompt();
-  }else{
-    const script=document.createElement('script');
-    script.src='https://accounts.google.com/gsi/client';
-    script.async=true;
-    script.defer=true;
-    script.onload=()=>{
-      fetch('/api/me').then(r=>r.json()).then(d=>{
-        initGoogleGsi(d.google_client_id);
-        google.accounts.id.prompt();
-      }).catch(()=>{
-        initGoogleGsi();
-        google.accounts.id.prompt();
+    const btnWrap=document.getElementById('googleBtn');
+    if(btnWrap){
+      google.accounts.id.renderButton(btnWrap,{
+        theme:'outline',
+        size:'large',
+        text:'continue_with',
+        shape:'pill',
+        width:btnWrap.offsetWidth||320
       });
-    };
-    document.head.appendChild(script);
+    }
+  }catch(e){
+    console.warn('GSI init skipped',e);
   }
 }
 
 (function(){
+  checkGoogleConfig();
   const s=document.createElement('script');
   s.src='https://accounts.google.com/gsi/client';
   s.async=true;
   s.defer=true;
   s.onload=()=>{
-    fetch('/api/me').then(r=>r.json()).then(d=>{
-      if(d?.google_client_id)initGoogleGsi(d.google_client_id);
-    }).catch(()=>{});
+    if(googleClientId)initGoogleGsi(googleClientId);
   };
   document.head.appendChild(s);
 })();
+
+if(params.get('tab')==='login'){switchTab('login')}
+if(params.get('google')==='1'){
+  setTimeout(()=>triggerGoogleSignIn(),200);
+}
 window.addEventListener('pageshow',()=>checkExistingSession());
 </script>
 </body>
