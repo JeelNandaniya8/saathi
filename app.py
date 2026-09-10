@@ -725,6 +725,26 @@ def init_db():
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_mock_test_attempts_user ON mock_test_attempts(user_id, created_at DESC)
     """)
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS referral_code TEXT,
+        ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES users(id)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS mindmaps (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            topic TEXT NOT NULL,
+            data_json JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_mindmaps_user_created ON mindmaps(user_id, created_at DESC)
+    """)
     conn.commit()
     cur.close()
     conn.close()
@@ -790,6 +810,7 @@ def user_to_dict(row):
         "plan": row["plan"],
         "plan_status": row["plan_status"],
         "language": row.get("language", "en"),
+        "referral_code": row.get("referral_code"),
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
 
@@ -1604,19 +1625,51 @@ def google_auth():
         dummy_pass = secrets.token_urlsafe(32)
         password_hash = generate_password_hash(dummy_pass)
 
+        # Generate unique personal referral code
+        base_ref = re.sub(r"[^A-Z0-9]", "", name.upper())[:6] or "SAATHI"
+        referral_code = f"{base_ref}-{secrets.token_hex(2).upper()}"
+
+        # Check if invited via referral
+        ref_input = (data.get("ref") or "").strip().upper()
+        referred_by_id = None
+        if ref_input:
+            cur.execute("SELECT id FROM users WHERE UPPER(referral_code) = %s", (ref_input,))
+            inviter = cur.fetchone()
+            if inviter:
+                referred_by_id = inviter["id"]
+                # Reward the inviter with +7 days of Saathi Plus!
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET plan = 'plus',
+                        plan_status = 'active',
+                        subscription_end_at = COALESCE(subscription_end_at, NOW()) + INTERVAL '7 days'
+                    WHERE id = %s
+                    """,
+                    (referred_by_id,),
+                )
+
         cur.execute(
             """
             INSERT INTO users (
                 name, username, email, password_hash, plan, plan_status,
-                session_version, created_at
+                session_version, referral_code, referred_by_id, created_at
             )
-            VALUES (%s, %s, %s, %s, 'free', 'active', 1, %s)
+            VALUES (%s, %s, %s, %s, 'free', 'active', 1, %s, %s, %s)
             RETURNING *
             """,
-            (name[:50], username, email, password_hash, now),
+            (name[:50], username, email, password_hash, referral_code, referred_by_id, now),
         )
         user = cur.fetchone()
         conn.commit()
+    else:
+        # If user exists but lacks a referral_code, generate one now
+        if not user.get("referral_code"):
+            base_ref = re.sub(r"[^A-Z0-9]", "", (user["name"] or "SAATHI").upper())[:6] or "SAATHI"
+            ref_code = f"{base_ref}-{secrets.token_hex(2).upper()}"
+            cur.execute("UPDATE users SET referral_code = %s WHERE id = %s RETURNING *", (ref_code, user["id"]))
+            user = cur.fetchone()
+            conn.commit()
 
     start_user_session(user, remember=True)
     cur.close()
@@ -1945,8 +1998,348 @@ def mock_tests_history():
 
 
 # --------------------------------------------------------------------
-# FORGOT PASSWORD
+# VIRAL REFERRAL ENGINE
 # --------------------------------------------------------------------
+@app.route("/api/referrals", methods=["GET"])
+def get_referrals():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, referral_code, plan, plan_status, subscription_end_at FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User not found."}), 404
+
+    ref_code = user.get("referral_code")
+    if not ref_code:
+        base = re.sub(r"[^A-Z0-9]", "", (user["name"] or "SAATHI").upper())[:6] or "SAATHI"
+        ref_code = f"{base}-{secrets.token_hex(2).upper()}"
+        cur.execute("UPDATE users SET referral_code = %s WHERE id = %s", (ref_code, user_id))
+        conn.commit()
+
+    cur.execute(
+        """
+        SELECT id, name, username, created_at
+        FROM users
+        WHERE referred_by_id = %s
+        ORDER BY created_at DESC
+        """,
+        (user_id,),
+    )
+    referred_rows = cur.fetchall()
+    count = len(referred_rows)
+    bonus_days = count * 7
+
+    cur.close()
+    conn.close()
+
+    base_url = request.host_url.rstrip("/")
+    referral_url = f"{base_url}/account?ref={ref_code}&google=1"
+
+    masked_referrals = []
+    for r in referred_rows[:15]:
+        n = r["name"] or "Student"
+        masked = (n[0] + "***" + n[-1]) if len(n) > 2 else (n[0] + "*")
+        masked_referrals.append({
+            "name": masked,
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        })
+
+    return jsonify({
+        "ok": True,
+        "referral_code": ref_code,
+        "referral_url": referral_url,
+        "total_referrals": count,
+        "bonus_days_earned": bonus_days,
+        "referrals": masked_referrals,
+    })
+
+
+# --------------------------------------------------------------------
+# VISUAL MINDMAP STUDIO
+# --------------------------------------------------------------------
+@app.route("/api/mindmaps/generate", methods=["POST"])
+def generate_mindmap():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    limit_response = limited("mindmap_generate", str(user_id), 12, 5)
+    if limit_response:
+        return limit_response
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT plan, plan_status FROM users WHERE id = %s", (user_id,))
+    user_row = cur.fetchone()
+    is_plus = user_row and user_row["plan"] == "plus" and user_row["plan_status"] == "active"
+
+    # Free tier limit: 2 mindmaps per day
+    if not is_plus:
+        cur.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM mindmaps
+            WHERE user_id = %s AND created_at >= NOW() - INTERVAL '1 day'
+            """,
+            (user_id,)
+        )
+        daily_count = cur.fetchone()["count"]
+        if daily_count >= 2:
+            cur.close()
+            conn.close()
+            return jsonify({
+                "error": "You reached your free limit of 2 Mindmaps per day. Upgrade to Saathi Plus for unlimited Visual Mindmaps!",
+                "limit_reached": True,
+                "plan": "free"
+            }), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    if not topic:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Please enter a concept, topic, or chapter name."}), 400
+
+    topic = topic[:120]
+
+    mindmap_data = None
+    if GEMINI_API_KEY:
+        system_prompt = (
+            "You are an expert visual concept mapper and cognitive learning architect. "
+            "You transform complex academic and professional topics into clear, hierarchical mindmaps. "
+            "Respond ONLY with a valid JSON object matching the requested schema. Do NOT include markdown code fences or backticks."
+        )
+
+        user_prompt = (
+            f"Generate a hierarchical mindmap for the topic: '{topic}'.\n"
+            "Provide 3 to 5 primary branches (core pillars), and for each branch provide 2 to 3 sub-branches.\n"
+            "Assign each branch an attractive distinct color (e.g. #3b82f6, #10b981, #f59e0b, #8b5cf6, #ef4444, #06b6d4).\n"
+            "JSON structure must match:\n"
+            "{\n"
+            "  \"topic\": \"" + topic + "\",\n"
+            "  \"summary\": \"1-sentence core overview of this concept\",\n"
+            "  \"root\": {\n"
+            "    \"id\": \"root\",\n"
+            "    \"label\": \"" + topic + "\",\n"
+            "    \"desc\": \"Central concept\",\n"
+            "    \"color\": \"#4f46e5\",\n"
+            "    \"children\": [\n"
+            "      {\n"
+            "        \"id\": \"b1\",\n"
+            "        \"label\": \"Branch Name\",\n"
+            "        \"desc\": \"Short definition or role\",\n"
+            "        \"color\": \"#0ea5e9\",\n"
+            "        \"children\": [\n"
+            "          {\"id\": \"b1_1\", \"label\": \"Sub-concept\", \"desc\": \"Explanation\", \"color\": \"#38bdf8\", \"children\": []}\n"
+            "        ]\n"
+            "      }\n"
+            "    ]\n"
+            "  }\n"
+            "}"
+        )
+
+        try:
+            resp = requests.post(
+                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "systemInstruction": {"parts": [{"text": system_prompt}]},
+                    "generationConfig": {"temperature": 0.35, "responseMimeType": "application/json"},
+                },
+                headers={"Content-Type": "application/json"},
+                timeout=40,
+            )
+            if resp.ok:
+                res_json = resp.json()
+                raw_text = (
+                    res_json.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                if raw_text:
+                    clean_text = re.sub(r"^```json\s*", "", raw_text.strip(), flags=re.IGNORECASE)
+                    clean_text = re.sub(r"^```\s*", "", clean_text)
+                    clean_text = re.sub(r"```$", "", clean_text).strip()
+                    parsed = json.loads(clean_text)
+                    if isinstance(parsed, dict) and "root" in parsed:
+                        mindmap_data = parsed
+        except Exception as exc:
+            app.logger.warning("Gemini mindmap generation fallback: %s", exc)
+
+    if not mindmap_data:
+        # Fallback generator for reliability
+        mindmap_data = {
+            "topic": topic,
+            "summary": f"Comprehensive hierarchical breakdown and key principles of {topic}.",
+            "root": {
+                "id": "root",
+                "label": topic.title(),
+                "desc": f"Foundational study of {topic}",
+                "color": "#4f46e5",
+                "children": [
+                    {
+                        "id": "b1",
+                        "label": "Core Principles",
+                        "desc": f"Fundamental concepts underlying {topic}",
+                        "color": "#0ea5e9",
+                        "children": [
+                            {"id": "b1_1", "label": "Definition & Scope", "desc": "Essential terms, boundaries, and scope", "color": "#38bdf8", "children": []},
+                            {"id": "b1_2", "label": "Key Governing Laws", "desc": "Formulas, theorems, or governing rules", "color": "#38bdf8", "children": []},
+                        ],
+                    },
+                    {
+                        "id": "b2",
+                        "label": "Mechanisms & Process",
+                        "desc": "How it functions step-by-step",
+                        "color": "#10b981",
+                        "children": [
+                            {"id": "b2_1", "label": "Primary Stage", "desc": "Initial conditions and reactant inputs", "color": "#34d399", "children": []},
+                            {"id": "b2_2", "label": "Secondary Transformation", "desc": "Energy transfer and conversion phase", "color": "#34d399", "children": []},
+                        ],
+                    },
+                    {
+                        "id": "b3",
+                        "label": "Applications & Examples",
+                        "desc": "Real-world implementations and exam questions",
+                        "color": "#f59e0b",
+                        "children": [
+                            {"id": "b3_1", "label": "Practical Uses", "desc": "Industrial and natural world occurrences", "color": "#fbbf24", "children": []},
+                            {"id": "b3_2", "label": "Important Case Studies", "desc": "Frequently tested examination problems", "color": "#fbbf24", "children": []},
+                        ],
+                    },
+                    {
+                        "id": "b4",
+                        "label": "Revision & Key Facts",
+                        "desc": "High-yield memory points and mnemonics",
+                        "color": "#8b5cf6",
+                        "children": [
+                            {"id": "b4_1", "label": "Common Mistakes", "desc": "Pitfalls students must avoid in exams", "color": "#a78bfa", "children": []},
+                            {"id": "b4_2", "label": "Quick Summary Formula", "desc": "Core takeaway in one line", "color": "#a78bfa", "children": []},
+                        ],
+                    },
+                ],
+            },
+        }
+
+    now = datetime.now(timezone.utc)
+    cur.execute(
+        """
+        INSERT INTO mindmaps (user_id, topic, data_json, created_at)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, topic, data_json, created_at
+        """,
+        (user_id, topic, json.dumps(mindmap_data), now),
+    )
+    saved = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "mindmap": {
+            "id": saved["id"],
+            "topic": saved["topic"],
+            "data": mindmap_data,
+            "created_at": saved["created_at"].isoformat(),
+        }
+    })
+
+
+@app.route("/api/mindmaps/history", methods=["GET"])
+def get_mindmaps_history():
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, topic, created_at
+        FROM mindmaps
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 25
+        """,
+        (user_id,)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "mindmaps": [
+            {
+                "id": r["id"],
+                "topic": r["topic"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+            for r in rows
+        ]
+    })
+
+
+@app.route("/api/mindmaps/<int:mindmap_id>", methods=["GET"])
+def get_mindmap(mindmap_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, topic, data_json, created_at FROM mindmaps WHERE id = %s AND user_id = %s",
+        (mindmap_id, user_id),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Mindmap not found."}), 404
+
+    data = row["data_json"]
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except Exception:
+            pass
+
+    return jsonify({
+        "ok": True,
+        "mindmap": {
+            "id": row["id"],
+            "topic": row["topic"],
+            "data": data,
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        }
+    })
+
+
+@app.route("/api/mindmaps/<int:mindmap_id>", methods=["DELETE"])
+def delete_mindmap(mindmap_id):
+    user_id = require_user_id()
+    if not user_id:
+        return jsonify({"error": "Please log in first."}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM mindmaps WHERE id = %s AND user_id = %s", (mindmap_id, user_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"ok": True})
 @app.route("/api/forgot-password", methods=["POST"])
 def forgot_password():
     data = request.get_json(force=True, silent=True) or {}
