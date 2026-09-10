@@ -201,6 +201,13 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 .sound-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .sound-btn{padding:8px 14px;border-radius:12px;font-size:12px;font-weight:650;border:1px solid var(--line);background:var(--paper);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
 .sound-btn.playing{background:var(--sage);color:#fff;border-color:var(--sage)}
+.proactive-care-island{border-radius:22px;padding:18px 22px;background:linear-gradient(135deg,rgba(86,115,100,.16) 0%,rgba(69,167,184,.12) 50%,rgba(211,179,95,.12) 100%);border:1.5px solid rgba(86,115,100,.32);box-shadow:0 10px 30px rgba(86,115,100,.08);animation:fadeIn .3s ease-out}
+.care-island-body{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.care-island-avatar{width:42px;height:42px;border-radius:14px;background:var(--sage-soft);color:var(--sage);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.care-island-text{flex:1;min-width:240px}
+.care-island-text b{display:block;font-size:14px;color:var(--ink);margin-bottom:3px}
+.care-island-text p{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.care-island-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -225,7 +232,23 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <div class="content" id="workspaceContent" tabindex="-1">
 <div class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"><span id="workspaceStatusText">Loading your workspace…</span><button class="secondary" id="retryWorkspace" type="button" disabled>Retry</button></div>
 <button class="back-to-today" id="backToToday" type="button" hidden>← <span data-i18n="today">Today</span></button>
-<section class="view active" id="overview"><article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, heal physical/mental distress, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">💚 Healer & Care</button><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire">🔥</span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold">🔥 <span id="streakBadgeText">0 Day Streak</span></span><span class="badge-pill sage">🌱 Early Bird</span><span class="badge-pill accent">⚡ Consistency Builder</span></div>
+<section class="view active" id="overview">
+<!-- Proactive Dynamic Caring Island -->
+<article class="proactive-care-island" id="overviewCareIsland" style="display:none;margin-bottom:18px">
+  <div class="care-island-body">
+    <div class="care-island-avatar" id="islandAvatar">💚</div>
+    <div class="care-island-text">
+      <b id="islandTitle">Saathi Care Nudge</b>
+      <p id="islandMessage">Take care and remember your health comes first.</p>
+    </div>
+    <div class="care-island-actions">
+      <button type="button" class="primary" id="islandActionBtn" style="background:var(--sage);border-color:var(--sage);font-size:12px;padding:8px 16px;display:none"></button>
+      <button type="button" class="quiet" onclick="dismissDashboardCareIsland()" style="border-radius:50%;width:30px;height:30px;padding:0;font-size:16px;cursor:pointer" title="Dismiss">×</button>
+    </div>
+  </div>
+</article>
+
+<article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, heal physical/mental distress, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">💚 Healer & Care</button><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire">🔥</span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold">🔥 <span id="streakBadgeText">0 Day Streak</span></span><span class="badge-pill sage">🌱 Early Bird</span><span class="badge-pill accent">⚡ Consistency Builder</span></div>
 
 <!-- Viral Referral Banner -->
 <article class="referral-banner">
@@ -2083,6 +2106,60 @@ function toggleAmbientSound(type){
   }
 }
 
+async function loadDashboardCareNudge(){
+  try{
+    const res=await api('/api/care/nudge');
+    if(res.ok&&res.nudge){
+      const n=res.nudge;
+      const island=$('overviewCareIsland');
+      if(!island)return;
+      $('islandTitle').textContent=n.title;
+      $('islandMessage').textContent=n.message;
+      const btn=$('islandActionBtn');
+      if(n.action&&n.action.label){
+        btn.style.display='inline-block';
+        btn.textContent=n.action.label;
+        btn.onclick=async()=>{
+          if(n.action.type==='complete_reminder'){
+            try{
+              await api('/api/reminders/'+n.action.reminder_id+'/ack',{method:'POST'});
+              toast('Medicine recorded as taken! Proud of you 💚','success');
+              playChime();
+              blastConfetti();
+              dismissDashboardCareIsland();
+              await loadWorkspaceSections([
+                {key:'reminders',label:'Reminders',url:'/api/reminders',apply:data=>{state.reminders=data.reminders||[];renderReminders()}},
+                {key:'overview',label:'Overview',url:'/api/overview',apply:data=>{state.overview=data;renderOverview()}}
+              ]);
+            }catch(e){toast(e.message,'error')}
+          }else if(n.action.type==='ambient_sound'){
+            openView('healer');
+            toggleAmbient(n.action.sound||'om');
+            dismissDashboardCareIsland();
+          }else if(n.action.type==='breathing'){
+            openView('healer');
+            $('zenBreathingSection')?.scrollIntoView({behavior:'smooth'});
+            dismissDashboardCareIsland();
+          }else{
+            location.href='/chat';
+          }
+        };
+      }else{
+        btn.style.display='none';
+      }
+      island.style.display='block';
+    }
+  }catch(_){}
+}
+function dismissDashboardCareIsland(){
+  const island=$('overviewCareIsland');
+  if(island){
+    island.style.opacity='0';
+    island.style.transition='opacity .2s ease-out';
+    setTimeout(()=>{island.style.display='none'},200);
+  }
+}
+
 async function init(){
   $('retryWorkspace').disabled=true;
   try{
@@ -2090,6 +2167,7 @@ async function init(){
     const me=await api('/api/me');if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
     state.csrf=me.csrf_token||'';setUser(me.user);updateGreeting();
     await loadWorkspaceSections();
+    loadDashboardCareNudge();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
     if(!state.reminderTimer)state.reminderTimer=setInterval(checkDueReminders,30000);checkDueReminders();
   }catch(error){$('sideName').textContent='Connection unavailable';$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent='Your workspace could not connect. Retry when your connection is ready.';toast(error.message,'error')}

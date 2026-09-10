@@ -233,7 +233,51 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 @media(max-width:520px){dialog{width:100%;max-width:none;max-height:92dvh;margin:auto 0 0;border-radius:24px 24px 0 0;border-bottom:0;overflow:auto}.dialog-body{padding:25px 20px calc(24px + env(safe-area-inset-bottom))}.dialog-actions{flex-wrap:wrap}.dialog-actions button{flex:1;min-width:112px}.toast{bottom:calc(108px + env(safe-area-inset-bottom))}}
 .attach,.voice,.send{min-width:44px;min-height:44px}.composer{grid-template-columns:44px 44px minmax(0,1fr) 44px}.composer textarea{font-size:16px}.messages{overscroll-behavior:contain}.message-content{overflow-wrap:anywhere}.message.failed .message-content{white-space:pre-wrap}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-[hidden]{display:none!important}.empty h2{line-height:1.17}.message-content h1,.message-content h2,.message-content h3{line-height:1.3}
+/* ── In-Chat Ambient Sound HUD & Proactive Care ────────── */
+.ambient-sound-hud{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:99px;background:color-mix(in srgb,var(--paper) 78%,transparent);backdrop-filter:blur(18px);border:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.04);margin-right:8px}
+.hud-btn{height:30px;padding:0 10px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid transparent;background:transparent;color:var(--muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all .15s}
+.hud-btn:hover{background:var(--canvas);color:var(--ink);border-color:var(--line)}
+.hud-btn.active{background:var(--sage);color:#fff;border-color:var(--sage);box-shadow:0 2px 10px rgba(86,115,100,.35)}
+.sound-eq{display:none;align-items:flex-end;gap:2px;width:12px;height:12px}
+.sound-eq.active{display:flex}
+.eq-bar{width:2px;background:#fff;border-radius:1px;animation:eqBounce .6s ease-in-out infinite alternate}
+.eq-bar:nth-child(1){height:4px;animation-delay:0s}
+.eq-bar:nth-child(2){height:11px;animation-delay:.2s}
+.eq-bar:nth-child(3){height:7px;animation-delay:.4s}
+@keyframes eqBounce{0%{height:3px}100%{height:12px}}
+
+/* Proactive Care Banner */
+.chat-care-banner{position:relative;z-index:20;margin:10px 18px 0;padding:12px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(86,115,100,.14) 0%,rgba(211,179,95,.12) 100%);border:1.5px solid rgba(86,115,100,.28);box-shadow:0 8px 24px rgba(0,0,0,.03);display:flex;align-items:center;justify-content:space-between;gap:12px;animation:fadeIn .25s ease-out}
+.care-banner-content{display:flex;align-items:center;gap:12px;min-width:0}
+.care-banner-icon{font-size:20px;line-height:1}
+.care-banner-text{min-width:0}
+.care-banner-text b{display:block;font-size:12.5px;color:var(--ink);margin-bottom:2px}
+.care-banner-text span{display:block;font-size:11.5px;color:var(--muted);line-height:1.4}
+.care-banner-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.care-banner-btn{height:32px;padding:0 12px;border-radius:99px;font-size:11.5px;font-weight:750;border:1px solid var(--sage);background:var(--sage);color:#fff;cursor:pointer;transition:all .15s}
+.care-banner-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(86,115,100,.25)}
+.care-banner-close{width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--muted);font-size:16px;cursor:pointer;display:grid;place-items:center}
+.care-banner-close:hover{background:var(--canvas);color:var(--ink)}
+
+/* Action Chips inside Chat Bubble */
+.action-chip-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;margin:6px 4px 6px 0;border-radius:99px;font-size:12px;font-weight:750;background:var(--paper);border:1.5px solid var(--sage);color:var(--sage);cursor:pointer;box-shadow:0 3px 10px rgba(86,115,100,.1);transition:all .18s cubic-bezier(.16,1,.3,1)}
+.action-chip-btn:hover{background:var(--sage);color:#fff;transform:translateY(-1.5px);box-shadow:0 6px 16px rgba(86,115,100,.25)}
+.action-chip-btn.playing{background:var(--sage);color:#fff;border-color:var(--sage)}
+
+/* Verified Sources Card */
+.verified-sources-card{margin-top:16px;padding:16px 18px;border-radius:16px;background:color-mix(in srgb,var(--paper) 92%,var(--sage-soft));border:1.5px solid color-mix(in srgb,var(--sage) 35%,var(--line));box-shadow:0 6px 20px rgba(0,0,0,.03)}
+.verified-sources-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--sage);margin-bottom:10px}
+.verified-sources-list{margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.6}
+.verified-sources-list li{margin-bottom:4px}
+
+/* Chat 4-7-8 Breathing Modal */
+.chat-zen-dialog{border:0;border-radius:24px;padding:0;background:var(--paper);color:var(--ink);box-shadow:0 24px 64px rgba(0,0,0,.22);max-width:380px;width:90vw}
+.chat-zen-dialog::backdrop{background:rgba(15,20,18,.5);backdrop-filter:blur(6px)}
+.chat-zen-body{padding:28px 24px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.chat-zen-orb{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(86,115,100,.35) 0%,transparent 70%);border:2.5px solid var(--sage);box-shadow:0 0 35px rgba(86,115,100,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:18px 0;transition:transform 4s ease-in-out}
+.chat-zen-orb.expand{transform:scale(1.3)}
+.chat-zen-orb.hold{transform:scale(1.3);border-color:#d3b35f;box-shadow:0 0 45px rgba(211,179,95,.35)}
+.chat-zen-orb.contract{transform:scale(0.85);transition-duration:8s}
 </style>
 </head>
 <body>
@@ -260,8 +304,34 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
     <header class="topbar">
       <button class="icon-btn mobile-menu" id="openSidebar" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
       <div class="chat-heading"><h1 id="chatTitle">New conversation</h1><p>Private to your signed-in account</p></div>
-      <div class="top-actions"><a class="top-pill" href="/dashboard">Dashboard</a></div>
+      <div class="top-actions">
+        <div class="ambient-sound-hud" id="ambientHud" aria-label="Ambient Sound Therapy">
+          <div class="sound-eq" id="hudEq">
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+          </div>
+          <button type="button" class="hud-btn" id="hudRainBtn" onclick="toggleChatAmbient('rain')" title="Gentle Rain">🌧️ Rain</button>
+          <button type="button" class="hud-btn" id="hudOmBtn" onclick="toggleChatAmbient('om')" title="432Hz Om Frequency">🕉️ 432Hz</button>
+          <button type="button" class="hud-btn" id="hudOceanBtn" onclick="toggleChatAmbient('ocean')" title="Deep Ocean Waves">🌊 Ocean</button>
+        </div>
+        <a class="top-pill" href="/dashboard">Dashboard</a>
+      </div>
     </header>
+
+    <div class="chat-care-banner" id="chatCareBanner" style="display:none">
+      <div class="care-banner-content">
+        <div class="care-banner-icon" id="careBannerIcon">💚</div>
+        <div class="care-banner-text">
+          <b id="careBannerTitle">Care Reminder</b>
+          <span id="careBannerMsg">Stay calm and take care.</span>
+        </div>
+      </div>
+      <div class="care-banner-actions">
+        <button type="button" class="care-banner-btn" id="careBannerActionBtn" style="display:none"></button>
+        <button type="button" class="care-banner-close" onclick="dismissChatCareBanner()" aria-label="Dismiss">×</button>
+      </div>
+    </div>
 
     <section class="messages" id="messages" aria-label="Conversation messages">
       <div class="message-list" id="messageList"></div>
@@ -317,6 +387,22 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 <dialog id="deleteDialog"><div class="dialog-body"><h2>Delete this conversation?</h2><p>This removes its messages from your account permanently. This action cannot be undone.</p><div class="dialog-actions"><button type="button" data-close="deleteDialog">Cancel</button><button class="danger" id="confirmDelete" type="button">Delete conversation</button></div></div></dialog>
 <dialog id="taskDialog"><form class="dialog-body" id="taskForm"><h2>Save as a task</h2><p>Review the title and optional due time before adding it to your Planner.</p><div class="dialog-grid"><div class="dialog-field wide"><label for="taskTitle">Task</label><input id="taskTitle" maxlength="120" required></div><div class="dialog-field"><label for="taskDue">Due time</label><input id="taskDue" type="datetime-local"></div><div class="dialog-field"><label for="taskPriority">Priority</label><select id="taskPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></div></div><div class="dialog-actions"><button type="button" data-close="taskDialog">Cancel</button><button class="primary" type="submit">Add task</button></div></form></dialog>
 <dialog id="reminderDialog"><form class="dialog-body" id="reminderForm"><h2>Set a reminder</h2><p>Saathi creates this reminder only after you confirm its title and time.</p><div class="dialog-grid"><div class="dialog-field wide"><label for="reminderTitle">Reminder</label><input id="reminderTitle" maxlength="120" required></div><div class="dialog-field"><label for="reminderTime">Time</label><input id="reminderTime" type="datetime-local" required></div><div class="dialog-field"><label for="reminderRepeat">Repeat</label><select id="reminderRepeat"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div></div><div class="dialog-actions"><button type="button" data-close="reminderDialog">Cancel</button><button class="primary" type="submit">Create reminder</button></div></form></dialog>
+
+<dialog class="chat-zen-dialog" id="chatZenDialog">
+  <div class="chat-zen-body">
+    <span style="font-size:11px;font-weight:800;color:var(--sage);letter-spacing:.08em;text-transform:uppercase">🫁 4-7-8 Zen Breathing</span>
+    <h3 style="margin:6px 0 2px;font-size:18px">Calm Your Mind</h3>
+    <div class="chat-zen-orb" id="chatZenOrb">
+      <span id="chatZenPhase" style="font-size:14px;font-weight:750">Ready</span>
+      <span id="chatZenCounter" style="font-size:26px;font-weight:800;color:var(--sage)">4</span>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Inhale through nose (4s) · Hold gently (7s) · Exhale through mouth (8s)</p>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="care-banner-btn" id="chatZenStartBtn" onclick="toggleChatBreathing()">▶ Start Cycle</button>
+      <button type="button" class="icon-btn" onclick="closeChatBreathing()" style="border:1px solid var(--line);border-radius:99px;width:auto;padding:0 14px;font-size:12px">Close</button>
+    </div>
+  </div>
+</dialog>
 
 <script>
 const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],recognition:null,voiceAvailable:false,voiceBase:'',speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
@@ -498,10 +584,14 @@ function formatMathFormula(math){
 }
 
 function appendInline(target,text){
-  const source=String(text||''),pattern=/(`[^`\n]+`|\$\$[^$\n]+\$\$|\$[^$\n]+\$|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))/g;let last=0;
+  const source=String(text||''),pattern=/(`[^`\n]+`|\$\$[^$\n]+\$\$|\$[^$\n]+\$|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\[▶\s*Play[^\]\n]+\]|\[🫁\s*[^\]\n]+\])/gi;let last=0;
   source.replace(pattern,(match,token,offset)=>{if(offset>last)target.append(document.createTextNode(source.slice(last,offset)));let node;
     const link=token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
     if(link){node=document.createElement('a');node.textContent=link[1];node.href=link[2];node.target='_blank';node.rel='noopener noreferrer'}
+    else if(/^\[▶\s*Play\s*432Hz/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🕉️</span> Play 432Hz Om';node.onclick=()=>toggleChatAmbient('om')}
+    else if(/^\[▶\s*Play\s*(Gentle\s*)?Rain/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🌧️</span> Play Rain';node.onclick=()=>toggleChatAmbient('rain')}
+    else if(/^\[▶\s*Play\s*Ocean/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🌊</span> Play Ocean';node.onclick=()=>toggleChatAmbient('ocean')}
+    else if(/^\[🫁/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🫁</span> 4-7-8 Breathing';node.onclick=()=>openChatBreathing()}
     else if(token.startsWith('$$')&&token.endsWith('$$')&&token.length>4){node=document.createElement('span');node.className='math-inline math-display';node.innerHTML=formatMathFormula(token.slice(2,-2))}
     else if(token.startsWith('$')&&token.endsWith('$')&&token.length>2){node=document.createElement('span');node.className='math-inline';node.innerHTML=formatMathFormula(token.slice(1,-1))}
     else if(token.startsWith('`')){node=document.createElement('code');node.textContent=token.slice(1,-1)}
@@ -519,7 +609,22 @@ function renderMarkdown(target,text){
   target.replaceChildren();const lines=String(text||'').replace(/\r\n?/g,'\n').split('\n');let index=0;
   while(index<lines.length){const line=lines[index];if(!line.trim()){index++;continue}
     const fence=line.match(/^\s*```\s*([^\s`]*)/);if(fence){const code=[];index++;while(index<lines.length&&!/^\s*```/.test(lines[index]))code.push(lines[index++]);if(index<lines.length)index++;const shell=document.createElement('div');shell.className='code-block';const head=document.createElement('div');head.className='code-head';const language=document.createElement('span');language.textContent=fence[1]||'Code';const copy=document.createElement('button');copy.type='button';copy.className='code-copy';copy.textContent='Copy';copy.addEventListener('click',()=>copyMessage(code.join('\n')));head.append(language,copy);const pre=document.createElement('pre'),codeNode=document.createElement('code');codeNode.textContent=code.join('\n');pre.append(codeNode);shell.append(head,pre);target.append(shell);continue}
-    const heading=line.match(/^(#{1,3})\s+(.+)/);if(heading){const node=document.createElement('h'+heading[1].length);appendInline(node,heading[2]);target.append(node);index++;continue}
+    const heading=line.match(/^(#{1,3})\s+(.+)/);if(heading){
+      if(heading[2].toLowerCase().includes('verified source')||heading[2].toLowerCase().includes('reference')){
+        const card=document.createElement('div');card.className='verified-sources-card';
+        const head=document.createElement('div');head.className='verified-sources-head';
+        head.innerHTML='<span>✓</span> Verified Academic & Clinical Evidence';
+        card.append(head);index++;
+        const ul=document.createElement('ul');ul.className='verified-sources-list';
+        while(index<lines.length){
+          const it=lines[index].match(/^\s*[-*+]\s+(.+)/);
+          if(!it)break;
+          const li=document.createElement('li');appendInline(li,it[1]);ul.append(li);index++;
+        }
+        card.append(ul);target.append(card);continue;
+      }
+      const node=document.createElement('h'+heading[1].length);appendInline(node,heading[2]);target.append(node);index++;continue
+    }
     const listMatch=line.match(/^\s*([-*+]|\d+[.)])\s+(.+)/);if(listMatch){const ordered=/\d/.test(listMatch[1]),list=document.createElement(ordered?'ol':'ul');while(index<lines.length){const item=lines[index].match(ordered?/^\s*\d+[.)]\s+(.+)/:/^\s*[-*+]\s+(.+)/);if(!item)break;const li=document.createElement('li');appendInline(li,item[1]);list.append(li);index++}target.append(list);continue}
     if(/^\s*>\s?/.test(line)){const quote=document.createElement('blockquote'),parts=[];while(index<lines.length&&/^\s*>\s?/.test(lines[index]))parts.push(lines[index++].replace(/^\s*>\s?/,''));appendInline(quote,parts.join('\n'));target.append(quote);continue}
     if(line.includes('|')&&index+1<lines.length&&/^\s*\|?\s*:?-{3,}/.test(lines[index+1])){const headers=tableCells(line);index+=2;const wrap=document.createElement('div');wrap.className='table-wrap';const table=document.createElement('table'),thead=document.createElement('thead'),headRow=document.createElement('tr');headers.forEach(value=>{const th=document.createElement('th');appendInline(th,value);headRow.append(th)});thead.append(headRow);table.append(thead);const tbody=document.createElement('tbody');while(index<lines.length&&lines[index].includes('|')&&lines[index].trim()){const tr=document.createElement('tr');tableCells(lines[index++]).forEach(value=>{const td=document.createElement('td');appendInline(td,value);tr.append(td)});tbody.append(tr)}table.append(tbody);wrap.append(table);target.append(wrap);continue}
@@ -724,9 +829,239 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeSide()
 window.addEventListener('pagehide',()=>{clearInterval(state.revealTimer);state.recognition?.stop();if('speechSynthesis'in window)speechSynthesis.cancel();state.selectedFiles.forEach(releaseSelection);state.messages.forEach(releaseLocalPreviews)});
 el.messages.addEventListener('scroll',()=>{const distance=el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight;el.scrollBottom.classList.toggle('show',distance>260)});el.scrollBottom.addEventListener('click',()=>scrollToLatest());
 
+/* ── In-Chat Ambient Sound Engine (Web Audio API) ────────── */
+let chatAudioCtx = null;
+let activeChatSound = null;
+let activeChatAudioNodes = [];
+
+function getChatAudioContext(){
+  if(!chatAudioCtx){
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    chatAudioCtx = new AudioContext();
+  }
+  if(chatAudioCtx.state === 'suspended') chatAudioCtx.resume();
+  return chatAudioCtx;
+}
+
+function stopChatAmbient(){
+  activeChatAudioNodes.forEach(node => {
+    try{ if(node.stop) node.stop(); if(node.disconnect) node.disconnect(); }catch(e){}
+  });
+  activeChatAudioNodes = [];
+  activeChatSound = null;
+  document.querySelectorAll('.hud-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.action-chip-btn').forEach(b => b.classList.remove('playing'));
+  const eq = document.getElementById('hudEq');
+  if(eq) eq.classList.remove('active');
+}
+
+function toggleChatAmbient(type){
+  if(activeChatSound === type){
+    stopChatAmbient();
+    showToast('Ambient sound paused ⏸');
+    return;
+  }
+  stopChatAmbient();
+  const ctx = getChatAudioContext();
+  activeChatSound = type;
+
+  const eq = document.getElementById('hudEq');
+  if(eq) eq.classList.add('active');
+
+  if(type === 'om'){
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(432, ctx.currentTime);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(216, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start();
+    osc2.start();
+    activeChatAudioNodes = [osc1, osc2, gain];
+    const btn = document.getElementById('hudOmBtn');
+    if(btn) btn.classList.add('active');
+    showToast('Playing 432Hz Om Drone 🕉️');
+  } else if(type === 'rain' || type === 'ocean'){
+    const bufferSize = 2 * ctx.sampleRate;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+
+    for(let i=0; i<bufferSize; i++){
+      const white = Math.random()*2 - 1;
+      b0 = 0.99886*b0 + white*0.0555179;
+      b1 = 0.99332*b1 + white*0.0750759;
+      b2 = 0.96900*b2 + white*0.1538520;
+      b3 = 0.86650*b3 + white*0.3104856;
+      b4 = 0.55000*b4 + white*0.5329522;
+      b5 = -0.7616*b5 - white*0.0168980;
+      output[i] = (b0+b1+b2+b3+b4+b5+b6 + white*0.5362) * 0.08;
+      b6 = white * 0.115926;
+    }
+
+    const whiteNoise = ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = type === 'rain' ? 'lowpass' : 'bandpass';
+    filter.frequency.setValueAtTime(type === 'rain' ? 850 : 400, ctx.currentTime);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.09, ctx.currentTime);
+
+    whiteNoise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    whiteNoise.start();
+    activeChatAudioNodes = [whiteNoise, filter, gain];
+
+    if(type === 'rain'){
+      const btn = document.getElementById('hudRainBtn');
+      if(btn) btn.classList.add('active');
+      showToast('Playing Gentle Rain 🌧️');
+    } else {
+      const btn = document.getElementById('hudOceanBtn');
+      if(btn) btn.classList.add('active');
+      showToast('Playing Ocean Waves 🌊');
+    }
+  }
+}
+
+/* ── Proactive Care Banner in Chat ────────────────────────── */
+async function loadChatCareNudge(){
+  try{
+    const res = await api('/api/care/nudge');
+    if(res.ok && res.nudge){
+      const n = res.nudge;
+      const banner = document.getElementById('chatCareBanner');
+      if(!banner) return;
+      document.getElementById('careBannerTitle').textContent = n.title;
+      document.getElementById('careBannerMsg').textContent = n.message;
+      const actBtn = document.getElementById('careBannerActionBtn');
+      if(n.action && n.action.label){
+        actBtn.style.display = 'inline-block';
+        actBtn.textContent = n.action.label;
+        actBtn.onclick = async () => {
+          if(n.action.type === 'complete_reminder'){
+            try{
+              await api('/api/reminders/' + n.action.reminder_id + '/ack', {method:'POST'});
+              showToast('Medicine / reminder marked complete! 💚');
+              dismissChatCareBanner();
+            }catch(e){ showToast(e.message); }
+          } else if(n.action.type === 'ambient_sound'){
+            toggleChatAmbient(n.action.sound || 'om');
+            dismissChatCareBanner();
+          } else if(n.action.type === 'breathing'){
+            openChatBreathing();
+            dismissChatCareBanner();
+          } else {
+            dismissChatCareBanner();
+          }
+        };
+      } else {
+        actBtn.style.display = 'none';
+      }
+      banner.style.display = 'flex';
+    }
+  }catch(_){}
+}
+
+function dismissChatCareBanner(){
+  const banner = document.getElementById('chatCareBanner');
+  if(banner){
+    banner.style.opacity = '0';
+    banner.style.transition = 'opacity .2s ease-out';
+    setTimeout(() => { banner.style.display = 'none'; }, 200);
+  }
+}
+
+/* ── Chat 4-7-8 Zen Breathing Engine ────────────────────────── */
+let chatBreathTimer = null;
+let chatBreathState = 'idle';
+let chatBreathPhase = 'inhale';
+let chatBreathCount = 4;
+
+function openChatBreathing(){
+  const dlg = document.getElementById('chatZenDialog');
+  if(dlg) dlg.showModal();
+}
+
+function closeChatBreathing(){
+  const dlg = document.getElementById('chatZenDialog');
+  if(dlg) dlg.close();
+  if(chatBreathState === 'running') toggleChatBreathing();
+}
+
+function toggleChatBreathing(){
+  const orb = document.getElementById('chatZenOrb');
+  const phaseLabel = document.getElementById('chatZenPhase');
+  const counter = document.getElementById('chatZenCounter');
+  const btn = document.getElementById('chatZenStartBtn');
+
+  if(chatBreathState === 'running'){
+    clearInterval(chatBreathTimer);
+    chatBreathState = 'idle';
+    orb.className = 'chat-zen-orb';
+    phaseLabel.textContent = 'Paused';
+    counter.textContent = '—';
+    btn.textContent = '▶ Resume';
+    return;
+  }
+
+  chatBreathState = 'running';
+  btn.textContent = '⏸ Pause';
+  runChatBreathCycle('inhale', 4);
+}
+
+function runChatBreathCycle(phase, seconds){
+  if(chatBreathState !== 'running') return;
+  chatBreathPhase = phase;
+  chatBreathCount = seconds;
+
+  const orb = document.getElementById('chatZenOrb');
+  const phaseLabel = document.getElementById('chatZenPhase');
+  const counter = document.getElementById('chatZenCounter');
+
+  if(phase === 'inhale'){
+    orb.className = 'chat-zen-orb expand';
+    phaseLabel.textContent = 'Inhale 🌸';
+  } else if(phase === 'hold'){
+    orb.className = 'chat-zen-orb hold';
+    phaseLabel.textContent = 'Hold 🧘';
+  } else if(phase === 'exhale'){
+    orb.className = 'chat-zen-orb contract';
+    phaseLabel.textContent = 'Exhale 🍃';
+  }
+
+  counter.textContent = chatBreathCount;
+
+  clearInterval(chatBreathTimer);
+  chatBreathTimer = setInterval(() => {
+    chatBreathCount--;
+    if(chatBreathCount > 0){
+      counter.textContent = chatBreathCount;
+    } else {
+      clearInterval(chatBreathTimer);
+      if(chatBreathPhase === 'inhale') runChatBreathCycle('hold', 7);
+      else if(chatBreathPhase === 'hold') runChatBreathCycle('exhale', 8);
+      else runChatBreathCycle('inhale', 4);
+    }
+  }, 1000);
+}
+
 async function init(){
   applyTheme(localStorage.getItem('saathi-theme')||'light');
-  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').innerHTML=data.user.plan==='plus'?'Saathi Plus <span style="display:inline-block;padding:2px 6px;border-radius:99px;background:linear-gradient(135deg,#d3b35f,#b8890a);color:#fff;font-size:9px;font-weight:800;margin-left:4px">PRO</span>':'<a href="/dashboard#account" style="color:var(--gold);text-decoration:none">Free · Upgrade →</a>';document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();updateComposer();setBusy(false);if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').innerHTML=data.user.plan==='plus'?'Saathi Plus <span style="display:inline-block;padding:2px 6px;border-radius:99px;background:linear-gradient(135deg,#d3b35f,#b8890a);color:#fff;font-size:9px;font-weight:800;margin-left:4px">PRO</span>':'<a href="/dashboard#account" style="color:var(--gold);text-decoration:none">Free · Upgrade →</a>';document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();updateComposer();setBusy(false);loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();
