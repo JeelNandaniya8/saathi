@@ -14,3 +14,7 @@ Before a production migration:
 If a migration fails, its transaction is rolled back and the application does
 not continue starting. Restore the previous application version first. Do not
 manually mark a failed migration as applied.
+
+## 015: verified identity and billing
+
+Adds signed Google identity links, verified-email timestamps, owned payment orders, expiring access grants, webhook deduplication and capped referral rewards. Inviter deletion uses `ON DELETE SET NULL`. The numbered runner invalidates pre-release sessions once; saved workspace data remains. Re-run the migration runner, not individual SQL files, to preserve its once-only guarantee.
