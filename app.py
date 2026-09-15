@@ -1389,6 +1389,7 @@ def logout_all():
         conn.close()
         session.clear()
         return jsonify({"error": "This account is no longer available."}), 404
+    cur.execute("DELETE FROM push_subscriptions WHERE user_id = %s", (user_id,))
     conn.commit()
     cur.close()
     conn.close()

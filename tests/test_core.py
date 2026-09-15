@@ -174,9 +174,11 @@ def test_expired_signup_code_cannot_create_account(backend, monkeypatch):
 
 
 def test_logout_all_devices_invalidates_sessions_and_clears_current_cookie(backend, monkeypatch):
+    queries = []
     class Cursor:
         def execute(self, query, params=None):
-            assert "session_version = session_version + 1" in query
+            queries.append(query)
+            assert "session_version = session_version + 1" in query or query == "DELETE FROM push_subscriptions WHERE user_id = %s"
             assert params == (7,)
 
         def fetchone(self):
@@ -190,6 +192,9 @@ def test_logout_all_devices_invalidates_sessions_and_clears_current_cookie(backe
             return Cursor()
 
         def commit(self):
+            assert len(queries) == 2
+            assert "session_version = session_version + 1" in queries[0]
+            assert queries[1] == "DELETE FROM push_subscriptions WHERE user_id = %s"
             return None
 
         def close(self):

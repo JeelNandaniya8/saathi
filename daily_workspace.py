@@ -6,6 +6,7 @@ from functools import wraps
 from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 
 import psycopg2
+from psycopg2.extras import execute_values
 from flask import jsonify,request
 
 DEFAULTS={'goal':'explore','onboarding_done':False,'timezone':'UTC','quiet_enabled':False,
@@ -57,26 +58,40 @@ def flashcards(text):
     return [(front.strip()[:4000],back.strip()[:6000]) for front,back in re.findall(pattern,block[1],re.I) if front.strip() and back.strip()][:12]
 
 
+def mock_revision_rows(uid,test_id,topic,review):
+    return [(uid,test_id,item['id'],topic,item['question'],
+             item['correct_answer']+': '+item['options'][item['correct_answer']]+'\n\n'+item['explanation'])
+            for item in review if not item['is_correct']]
+
+
+def insert_mock_revision(cur,rows):
+    if rows:
+        execute_values(cur,'''INSERT INTO revision_items(user_id,test_id,item_index,topic,front,back)
+            VALUES %s ON CONFLICT(test_id,item_index) DO NOTHING''',rows,page_size=500)
+
+
 def add_mock_revision(cur,uid,test_id,topic,review):
-    for item in review:
-        if item['is_correct']:continue
-        letter=item['correct_answer'];back=letter+': '+item['options'][letter]+'\n\n'+item['explanation']
-        cur.execute('''INSERT INTO revision_items(user_id,test_id,item_index,topic,front,back)
-            VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT(test_id,item_index) DO NOTHING''',
-            (uid,test_id,item['id'],topic,item['question'],back))
+    insert_mock_revision(cur,mock_revision_rows(uid,test_id,topic,review))
+
+
+def flash_revision_rows(uid,message_id,progress,content):
+    cards=flashcards(content);rows=[]
+    for index in progress.get('review_indices',[]):
+        if type(index) is int and 0<=index<len(cards):
+            rows.append((uid,message_id,index,'Saved flashcards',*cards[index]))
+    return rows
+
+
+def insert_flash_revision(cur,rows):
+    if rows:
+        execute_values(cur,'''INSERT INTO revision_items(user_id,message_id,item_index,topic,front,back)
+            VALUES %s ON CONFLICT(message_id,item_index) DO NOTHING''',rows,page_size=500)
 
 
 def add_flash_revision(cur,uid,message_id,progress):
-    indices=progress.get('review_indices',[])
-    if not indices:return
+    if not progress.get('review_indices'):return
     cur.execute("SELECT content FROM messages WHERE id=%s AND user_id=%s AND role='assistant'",(message_id,uid));message=cur.fetchone()
-    if not message:return
-    cards=flashcards(message['content'])
-    for index in indices:
-        if type(index) is not int or not 0<=index<len(cards):continue
-        front,back=cards[index]
-        cur.execute('''INSERT INTO revision_items(user_id,message_id,item_index,topic,front,back)
-            VALUES(%s,%s,%s,'Saved flashcards',%s,%s) ON CONFLICT(message_id,item_index) DO NOTHING''',(uid,message_id,index,front,back))
+    if message:insert_flash_revision(cur,flash_revision_rows(uid,message_id,progress,message['content']))
 
 
 def review_schedule(rating,repetitions,now):
@@ -245,12 +260,18 @@ def register(app,b):
         with db() as (conn,cur):
             cur.execute('''SELECT t.id,t.topic,t.questions_json,a.answers_json FROM mock_test_attempts a JOIN mock_tests t ON t.id=a.test_id
                 WHERE a.user_id=%s AND t.user_id=%s ORDER BY a.created_at DESC LIMIT 100''',(uid,uid));tests=cur.fetchall()
+            mock_rows=[]
             for test in tests:
                 try:review=study_tools.grade(study_tools.validate_questions(test['questions_json']),test['answers_json'],0)['review']
                 except ValueError:continue
-                add_mock_revision(cur,uid,test['id'],test['topic'],review)
-            cur.execute("SELECT message_id,progress FROM study_progress WHERE user_id=%s AND kind='flashcards' ORDER BY updated_at DESC LIMIT 100",(uid,));saved=cur.fetchall()
-            for row in saved:add_flash_revision(cur,uid,row['message_id'],row['progress'])
+                mock_rows.extend(mock_revision_rows(uid,test['id'],test['topic'],review))
+            insert_mock_revision(cur,mock_rows)
+            cur.execute('''SELECT p.message_id,p.progress,m.content FROM study_progress p JOIN messages m ON m.id=p.message_id
+                WHERE p.user_id=%s AND m.user_id=%s AND p.kind='flashcards' AND m.role='assistant'
+                ORDER BY p.updated_at DESC LIMIT 100''',(uid,uid));saved=cur.fetchall()
+            flash_rows=[]
+            for row in saved:flash_rows.extend(flash_revision_rows(uid,row['message_id'],row['progress'],row['content']))
+            insert_flash_revision(cur,flash_rows)
             conn.commit()
         return jsonify(ok=True)
 
