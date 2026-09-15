@@ -105,11 +105,17 @@ Copy names from `.env.example`. Never commit real values.
 | `BREVO_SENDER_EMAIL` | for email | verified Brevo sender address |
 | `APP_BASE_URL` | production | canonical HTTPS site URL without a trailing slash |
 | `COOKIE_SECURE` | production | `true` on HTTPS; `false` only for local HTTP |
-| `CRON_SECRET` | reminder email | long random value protecting the scheduler route |
+| `CRON_SECRET` | scheduled reminders | long random value protecting the scheduler route |
 | `FLASK_DEBUG` | optional | keep `false` outside local development |
 | `PORT` | optional | hosting platform port |
 
-The VAPID names in `.env.example` are reserved for a future web-push implementation and are not currently used.
+Optional Web Push requires `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (a `mailto:` contact controlled by the site operator). Generate the pair locally with `python scripts/generate_push_keys.py`, and place the output only in your server environment. Keep the private key out of Git, chat messages and logs. Preserve the same key pair across deployments; changing it requires browsers to subscribe again.
+
+Schedule an authenticated `POST /api/cron/reminders` with `X-Cron-Secret` every minute using your server-side scheduler. Email and Web Push use this same endpoint. Web Push works without Brevo, but still requires the scheduler. Use an awake production server for timely delivery; a sleeping free instance can delay reminders. Browser and operating-system delivery is best effort. Do not use it for emergencies.
+
+Users enable alerts in Dashboard → Account → Background reminder alerts. Permission is requested only from their click. Supported browsers receive a generic alert even with the Saathi tab closed; the private reminder title and note stay in the app. On iPhone/iPad, open an installed Home Screen web app on a supported OS. Disabling alerts or signing out stops that device's subscription; all-device logout and password reset invalidate existing subscriptions through the account session version. Delivery records prevent repeat sends, retry temporary failures up to five times, and remove expired subscriptions.
+
+Quick notes are private account records, available from the chat and dashboard sidebars. They support up to 100 notes of 10,000 characters, explicit Save, search, edit, deletion, retry-safe creation and conflict detection. They are included in account export and deleted with the account. Notes are not automatically sent to the AI or shared through Family Bridge. Google profile photos are accepted only from a verified Google credential; missing or unavailable photos fall back to initials. Appearance follows the device preference until a user chooses light/dark mode, and the choice carries across public, account and workspace pages.
 
 ## Local setup on Windows PowerShell
 
@@ -260,7 +266,7 @@ Forward fixes are safer than hand-written destructive rollback SQL for additive 
 
 - checkout and subscriptions are not active
 - photo and PDF analysis is available in a limited free beta; richer document workflows and larger Plus limits are planned
-- closed-browser web push is not implemented
+- background Web Push requires VAPID configuration, an authenticated scheduler and device permission; browser/OS delivery is best effort
 - email reminders require a separately configured scheduler and can still fail
 - Family Bridge currently records invitations and consent boundaries; it does not expose or deliver another user's private data
 - translations cover the most important workspace navigation and AI reply preference, not every sentence on every page

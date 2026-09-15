@@ -6,7 +6,10 @@ for page in account.html chat.html dashboard.html saathi.html support.html; do
 done
 
 node --check service-worker.js
+node --check theme.js
+node --check workspace.js
 
 node tests/stream_reader.cjs
 
 node tests/workspace_behavior.cjs
+node tests/workspace_extras.cjs

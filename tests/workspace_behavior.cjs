@@ -34,6 +34,7 @@ location.hash='#memory';ctx.syncWorkspaceHistory(false);assert.equal(state.curre
 location.hash='#unknown';ctx.syncWorkspaceHistory();assert.equal(state.currentView,'overview');assert.equal(location.hash,'#overview');
 media.matches=true;ctx.setNavigation(false);assert.equal($('sidebar').inert,true);ctx.setNavigation(true);assert.equal(main.inert,true);assert.equal($('sidebar').inert,false);ctx.openView('tasks');assert.equal(main.inert,false);assert.equal($('sidebar').inert,true);
 media.matches=false;media.onchange();assert.equal($('sidebar').inert,false);
+vm.runInContext(fs.readFileSync('workspace.js','utf8'),ctx);ctx.SaathiWorkspace=ctx.window.SaathiWorkspace;
 vm.runInContext(source.slice(source.indexOf('function checkDueReminders()'),source.indexOf('async function installApp()')),ctx);
 assert.doesNotThrow(()=>ctx.checkDueReminders(),'Missing Notification API must not crash dashboard');
 ctx.window.Notification=function(){};ctx.Notification={permission:'granted'};state.reminders=[{active:true,id:1,next_run_at:'2020-01-01'}];
@@ -48,7 +49,7 @@ vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSection
  await ctx.loadWorkspaceSections(sections);assert.deepEqual(applied,[1]);assert.equal(state.loadFailures.length,1);assert.equal($('workspaceStatus').hidden,false);assert.equal($('memory').attrs['aria-busy'],'false');assert.ok($('memory').querySelector('.section-error'));
  ctx.api=async()=>({});await ctx.loadWorkspaceSections(state.loadFailures);assert.equal(state.loadFailures.length,0);assert.equal($('workspaceStatus').hidden,true);assert.equal($('memory').querySelector('.section-error'),null);assert.equal($('journalContent').value,'Unsaved private draft');
  // Initial connection failures must leave a usable Retry button.
- const initCtx={state:{user:null},$,applyTheme(){},localStorage:{getItem:()=>null},localDate:()=>'',syncWorkspaceHistory(){},api:async()=>{throw Error('Offline')},toast(){}};
+ const initCtx={state:{user:null},$,SaathiTheme:{refresh(){}},localStorage:{getItem:()=>null},localDate:()=>'',syncWorkspaceHistory(){},api:async()=>{throw Error('Offline')},toast(){}};
  vm.createContext(initCtx);vm.runInContext(source.slice(source.indexOf('async function init(){'),source.indexOf("$('skipWorkspace').addEventListener")),initCtx);
  $('retryWorkspace').disabled=true;await initCtx.init();assert.equal($('retryWorkspace').disabled,false);assert.equal($('workspaceStatus').hidden,false);
  // Only a real 401 may redirect to login; network/server errors stay in place.

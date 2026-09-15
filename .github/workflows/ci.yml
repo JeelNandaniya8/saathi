@@ -2,7 +2,7 @@ name: Saathi checks
 
 on:
   push:
-    branches: [main, codex/saathi-reliability]
+    branches: [main, codex/saathi-reliability, codex/saathi-sep15]
   pull_request:
 
 permissions:
@@ -47,7 +47,7 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Compile backend and smoke checker
-        run: python -m py_compile app.py auth_google.py billing.py care.py study_tools.py ai_transport.py scripts/smoke_test.py
+        run: python -m py_compile app.py auth_google.py billing.py care.py study_tools.py ai_transport.py workspace_extras.py push_notifications.py scripts/smoke_test.py scripts/generate_push_keys.py
 
       - name: Run backend and security tests
         run: pytest -q

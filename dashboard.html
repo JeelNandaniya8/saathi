@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
 <title>Your workspace · Saathi</title>
+<script src="/theme.js?v=20260915"></script>
 <style>
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 :root{color-scheme:light;--canvas:#f7f6f1;--paper:#fffefa;--side:#efeee8;--ink:#1e211d;--muted:#6f756d;--soft:#8b9089;--line:rgba(35,40,33,.1);--strong:rgba(35,40,33,.17);--gold:#9d7624;--gold-soft:#eee3c8;--sage:#567364;--sage-soft:#e4ece7;--danger:#a3473f;--danger-soft:#f7e9e6;--shadow:0 22px 60px rgba(31,35,28,.09);--sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
@@ -210,6 +211,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 .care-island-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
+<link rel="stylesheet" href="/workspace.css?v=20260915">
 </head>
 <body>
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
@@ -227,9 +229,10 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <button data-view="mindmaps"><span class="nav-icon" aria-hidden="true">⬡</span><span data-i18n="mindmaps">Mindmaps</span></button>
 <button data-view="healer"><span class="nav-icon" aria-hidden="true">◍</span><span data-i18n="healer">Wellbeing</span></button>
 <button data-view="account"><span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="account">Account</span></button>
+<button type="button" data-quick-notes aria-haspopup="dialog"><span class="nav-icon" aria-hidden="true">▤</span><span>Quick notes</span></button>
 <a class="chat-link" href="/chat"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="openChat">Open conversation</span></a>
 </nav><div class="account-chip"><span class="avatar" id="sideAvatar">S</span><div><b id="sideName">Loading</b><span id="sidePlan">Free plan</span></div></div></aside><button class="scrim" id="scrim" aria-label="Close navigation"></button>
-<main class="main"><header class="topbar"><div><button class="icon-button menu-button" id="menuButton" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><span class="top-status"><i></i><span id="currentViewLabel">Today</span></span></div><div class="top-actions"><button class="top-button" id="installButton" hidden>Install app</button><a class="top-button" href="/chat"><span>Talk to </span>Saathi →</a><button class="icon-button" id="themeButton" aria-label="Change appearance">◐</button></div></header>
+<main class="main"><header class="topbar"><div><button class="icon-button menu-button" id="menuButton" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><span class="top-status"><i></i><span id="currentViewLabel">Today</span></span></div><div class="top-actions"><button class="top-button" id="installButton" hidden>Install app</button><a class="top-button" href="/chat"><span>Talk to </span>Saathi →</a><button class="icon-button" id="themeButton" data-theme-toggle aria-label="Change appearance">◐</button></div></header>
 <div class="content" id="workspaceContent" tabindex="-1">
 <div class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"><span id="workspaceStatusText">Loading your workspace…</span><button class="secondary" id="retryWorkspace" type="button" disabled>Retry</button></div>
 <button class="back-to-today" id="backToToday" type="button" hidden>← <span data-i18n="today">Today</span></button>
@@ -306,7 +309,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 </div>
 <div class="grid2" style="margin-top:12px">
 <article class="panel"><div class="panel-head"><div><span class="eyebrow">Security</span><h2>Change password</h2></div></div><form id="passwordForm"><div class="form-grid"><label class="field">Current password<input id="currentPassword" type="password" autocomplete="current-password" required></label><label class="field">New password<input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label></div><div class="form-actions"><button class="primary" type="submit">Change password</button></div></form></article>
-<article class="panel"><div class="panel-head"><div><span class="eyebrow">Your controls</span><h2>Data and appearance</h2></div></div><div class="setting-row"><div><b>Language</b><p>Saathi's main workspace and AI replies follow your saved choice.</p></div><select class="language-select" id="languageSelect" aria-label="Language"><option value="en">English</option><option value="gu">ગુજરાતી</option><option value="hi">हिन्दी</option></select></div><div class="setting-row"><div><b>Download your data</b><p>Export account data, chats, reminders, tasks, habits, journal, check-ins and memory as JSON.</p></div><a class="secondary" href="/api/export-data">Export</a></div><div class="setting-row"><div><b>Privacy and policies</b><p>Review how Saathi stores data and what the AI can and cannot do.</p></div><a class="secondary" href="/privacy">Review</a></div><div class="setting-row"><div><b>Appearance</b><p>Use light or dark mode on this device.</p></div><button class="secondary" id="accountThemeButton" type="button">Change</button></div><div class="setting-row"><div><b>Completion sounds</b><p>Play a short chime after completing a habit or practice test on this device.</p></div><label><input id="completionSounds" type="checkbox" onchange="localStorage.setItem('saathi-sounds',this.checked?'on':'off')"> Enable</label></div><div class="setting-row"><div><b>Install Saathi</b><p>Add the web app to supported devices.</p></div><button class="secondary" id="accountInstallButton" type="button" disabled>Not available</button></div><div class="setting-row"><div><b>Sign out</b><p>End this browser session.</p></div><button class="secondary" id="logoutButton" type="button">Log out</button></div></article>
+<article class="panel"><div class="panel-head"><div><span class="eyebrow">Your controls</span><h2>Data and appearance</h2></div></div><div class="setting-row"><div><b>Language</b><p>Saathi's main workspace and AI replies follow your saved choice.</p></div><select class="language-select" id="languageSelect" aria-label="Language"><option value="en">English</option><option value="gu">ગુજરાતી</option><option value="hi">हिन्दी</option></select></div><div class="setting-row"><div><b>Download your data</b><p>Export account data, chats, reminders, tasks, habits, journal, check-ins and memory as JSON.</p></div><a class="secondary" href="/api/export-data">Export</a></div><div class="setting-row"><div><b>Privacy and policies</b><p>Review how Saathi stores data and what the AI can and cannot do.</p></div><a class="secondary" href="/privacy">Review</a></div><div class="setting-row"><div><b>Background reminder alerts</b><p data-push-status>Checking notification support…</p></div><button type="button" class="secondary" data-push-toggle disabled>Checking…</button></div><div class="setting-row"><div><b>Appearance</b><p>Use light or dark mode on this device.</p></div><button class="secondary" id="accountThemeButton" data-theme-toggle data-theme-label type="button">Change</button></div><div class="setting-row"><div><b>Completion sounds</b><p>Play a short chime after completing a habit or practice test on this device.</p></div><label><input id="completionSounds" type="checkbox" onchange="localStorage.setItem('saathi-sounds',this.checked?'on':'off')"> Enable</label></div><div class="setting-row"><div><b>Install Saathi</b><p>Add the web app to supported devices.</p></div><button class="secondary" id="accountInstallButton" type="button" disabled>Not available</button></div><div class="setting-row"><div><b>Sign out</b><p>End this browser session.</p></div><button class="secondary" id="logoutButton" type="button">Log out</button></div></article>
 </div>
 <article class="panel" style="margin-top:12px"><div class="setting-row"><div><b>Log out all devices</b><p>Immediately invalidate every Saathi login for this account, including this browser. Use this after signing in on a shared or lost device.</p></div><button class="secondary" id="logoutAllButton" type="button">Log out everywhere</button></div></article>
 <article class="panel danger-zone" style="margin-top:12px"><div class="setting-row"><div><b>Delete account permanently</b><p>This removes conversations, reminders, tasks, habits, journal, check-ins, trusted contacts and saved memory. It cannot be undone.</p></div><button class="danger-button" id="deleteAccountButton" type="button">Delete account</button></div></article>
@@ -329,7 +332,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 </div>
 <div class="form-actions" style="margin-top:20px">
 <button class="primary" id="testSubmitBtn" type="submit" style="min-height:48px;font-size:14px">Generate &amp; Start Mock Test</button>
-<span class="helper">Free users: 1 mock test/day. Saathi Plus: Unlimited tests anytime.</span>
+<span class="helper">Free users: 1 mock test/day. Saathi Plus: 20 tests/day.</span>
 </div>
 </form>
 </article>
@@ -376,7 +379,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <div style="display:flex;justify-content:center;gap:12px;margin-top:22px;flex-wrap:wrap">
 <button class="secondary" type="button" onclick="retakeOrNewTest()" style="color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)">← Take Another Test</button>
 <button class="primary" type="button" onclick="downloadScorecardPng()" style="background:var(--gold);border-color:var(--gold);color:#fff">📥 Download Scorecard (PNG)</button>
-<button class="primary" type="button" onclick="shareOnWhatsApp()" style="background:#25D366;border-color:#25D366;color:#fff">📲 Challenge on WhatsApp</button>
+<button class="primary" type="button" onclick="shareOnWhatsApp()" style="background:#25D366;border-color:#25D366;color:#fff">Share on WhatsApp</button>
 </div>
 </div>
 
@@ -427,7 +430,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
       </label>
     </div>
     <div class="form-actions" style="margin-top:16px">
-      <button class="primary" id="mindmapSubmitBtn" type="submit" style="min-height:48px;font-size:14px">🧠 Generate Visual Mindmap</button>
+      <button class="primary" id="mindmapSubmitBtn" type="submit" style="min-height:48px;font-size:14px">Generate visual mindmap</button>
       <span class="helper">Free users: 2 mindmaps/day · Saathi Plus: 20 mindmaps/day</span>
     </div>
   </form>
@@ -623,6 +626,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 
 <canvas id="confettiCanvas"></canvas>
 
+<script src="/workspace.js?v=20260915"></script>
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
@@ -676,13 +680,14 @@ function syncWorkspaceHistory(focus=true){
 window.addEventListener('popstate',()=>syncWorkspaceHistory());
 window.addEventListener('hashchange',()=>syncWorkspaceHistory());
 navigationMedia.addEventListener('change',()=>setNavigation(false));
-function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('saathi-theme',theme)}function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+function applyTheme(theme){SaathiTheme.apply(theme)}
+function toggleTheme(){SaathiTheme.toggle()}
 function localInputToIso(value){return value?new Date(value).toISOString():null}function isoToLocalInput(value){if(!value)return'';const date=new Date(value),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,16)}function localDate(){const date=new Date(),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,10)}function formatDate(value){if(!value)return'No due date';const date=new Date(value);return date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}function average(values){if(!values.length)return'—';return(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1)}
 function emptyNode(text){const node=document.createElement('div');node.className='empty';node.textContent=text;return node}
 function quickRow(title,detail){const row=document.createElement('div');row.className='quick-row';const dot=document.createElement('i'),copy=document.createElement('div'),b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;copy.append(b,small);row.append(dot,copy);return row}
 function setUser(user){
   state.user=user;const initial=(user.name?.[0]||'S').toUpperCase();
-  $('sideAvatar').textContent=initial;$('profileAvatar').textContent=initial;$('sideName').textContent=user.name;
+  SaathiWorkspace.renderAvatar($('sideAvatar'),user);SaathiWorkspace.renderAvatar($('profileAvatar'),user);$('sideName').textContent=user.name;
   const paid=['plus','family'].includes(user.plan);
   $('sidePlan').textContent=paid?'Saathi Plus':'Free plan';$('planBadge').textContent=paid?'Saathi Plus':'Free plan';
   $('profileDisplayName').textContent=user.name;$('profileEmail').textContent=user.email;$('profileName').value=user.name;$('profileUsername').value=user.username;
@@ -718,14 +723,15 @@ function openMemory(memory){state.memoryEditingId=memory.id;$('memoryEditLabel')
 async function toggleMemory(memory){try{const data=await api('/api/memories/'+memory.id,{method:'PATCH',body:JSON.stringify({active:!memory.active})});state.memories=state.memories.map(item=>item.id===memory.id?data.memory:item);renderMemories();toast(data.memory.active?'Memory activated.':'Memory paused.',data.memory.active?'success':'info')}catch(error){toast(error.message,'error')}}async function deleteMemory(id){const memory=state.memories.find(item=>item.id===id),reopen=$('memoryDialog').open&&state.memoryEditingId===id;if(reopen)$('memoryDialog').close();const confirmed=await confirmAction({title:'Delete this saved memory?',message:`${memory?.label||'This memory'} will be permanently removed and cannot be used in future chats.`,confirmLabel:'Delete memory'});if(!confirmed){if(reopen&&memory)openMemory(memory);return}try{await api('/api/memories/'+id,{method:'DELETE'});state.memories=state.memories.filter(item=>item.id!==id);renderMemories();toast('Memory deleted.','success')}catch(error){toast(error.message,'error');if(reopen&&memory)openMemory(memory)}}
 async function refreshOverview(){try{state.overview=await api('/api/overview');renderOverview()}catch(error){toast(error.message)}}
 function checkDueReminders(){
-  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  if(SaathiWorkspace.pushActive()||!('Notification' in window)||Notification.permission!=='granted')return;
   const now=Date.now();
   state.reminders.filter(item=>item.active&&new Date(item.next_run_at).getTime()<=now).forEach(item=>{
     const key=item.id+':'+item.next_run_at;if(state.notified.has(key))return;
-    try{new Notification(item.title,{body:item.note||'A reminder you created in Saathi is due.',icon:'/saathi-icon.svg',tag:'saathi-'+item.id});state.notified.add(key)}catch(error){/* The schedule remains visible if this browser cannot display alerts. */}
+    try{new Notification('Saathi reminder',{body:'A reminder you scheduled is due. Open Saathi to review it.',icon:'/saathi-icon.svg',tag:'saathi-'+item.id});state.notified.add(key)}catch(error){/* The schedule remains visible if this browser cannot display alerts. */}
   });
 }
 async function requestNotifications(){
+  if(SaathiWorkspace.pushConfigured())return SaathiWorkspace.togglePush();
   if(!('Notification' in window))return toast('This browser does not support notifications.');
   try{const result=await Notification.requestPermission();toast(result==='granted'?'Browser notifications enabled while Saathi is open.':'Notification permission was not enabled.');checkDueReminders()}catch(error){toast('Notifications are unavailable in this browser.','warning')}
 }
@@ -742,7 +748,7 @@ $('moodOptions').addEventListener('click',event=>{const button=event.target.clos
 $('memoryForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/memories',{method:'POST',body:JSON.stringify({label:$('memoryLabel').value,content:$('memoryContent').value})});state.memories.unshift(data.memory);event.target.reset();renderMemories();toast('Memory saved and active.')}catch(error){toast(error.message)}finally{button.disabled=false}});
 $('memoryEditForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter,id=state.memoryEditingId;if(!id)return;button.disabled=true;try{const data=await api('/api/memories/'+id,{method:'PATCH',body:JSON.stringify({label:$('memoryEditLabel').value,content:$('memoryEditContent').value,active:$('memoryEditActive').value==='active'})});state.memories=state.memories.map(item=>item.id===id?data.memory:item);closeMemory();renderMemories();toast('Memory updated.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('memoryEditCancel').onclick=closeMemory;$('memoryEditDelete').onclick=()=>{if(state.memoryEditingId)deleteMemory(state.memoryEditingId)};$('memoryDialog').addEventListener('close',()=>{if(!$('memoryDialog').open)state.memoryEditingId=null});
 $('profileForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/profile',{method:'PATCH',body:JSON.stringify({name:$('profileName').value,username:$('profileUsername').value})});setUser(data.user);toast('Profile updated.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('passwordForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{await api('/api/change-password',{method:'POST',body:JSON.stringify({current_password:$('currentPassword').value,new_password:$('newPassword').value})});event.target.reset();toast('Password changed.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('languageSelect').addEventListener('change',async event=>{const previous=state.user?.language||'en';event.target.disabled=true;try{const data=await api('/api/preferences',{method:'PATCH',body:JSON.stringify({language:event.target.value})});setUser(data.user);updateGreeting();toast('Language preference saved.')}catch(error){event.target.value=previous;toast(error.message)}finally{event.target.disabled=false}});document.querySelectorAll('[data-plan]').forEach(button=>button.addEventListener('click',async()=>{try{const data=await api('/api/upgrade',{method:'POST',body:JSON.stringify({plan:button.dataset.plan})});setUser(data.user);toast(data.message)}catch(error){toast(error.message)}}));
-$('logoutButton').onclick=async()=>{try{await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){toast(error.message,'error')}};$('logoutAllButton').onclick=async()=>{const confirmed=await confirmAction({title:'Log out every device?',message:'Every Saathi session for this account, including this browser, will end immediately.',confirmLabel:'Log out everywhere',tone:'warning'});if(!confirmed)return;const button=$('logoutAllButton');button.disabled=true;try{await api('/api/logout-all',{method:'POST',body:'{}'});location.href='/account?next=/dashboard'}catch(error){button.disabled=false;toast(error.message,'error')}};$('deleteAccountButton').onclick=()=>{$('deletePassword').value='';$('deleteDialog').showModal()};$('cancelDelete').onclick=()=>$('deleteDialog').close();$('confirmDelete').onclick=async()=>{const button=$('confirmDelete');button.disabled=true;try{await api('/api/account',{method:'DELETE',body:JSON.stringify({password:$('deletePassword').value})});location.href='/'}catch(error){toast(error.message,'error')}finally{button.disabled=false}};$('installButton').onclick=installApp;$('accountInstallButton').onclick=installApp;window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.deferredInstall=event;$('installButton').hidden=false;$('accountInstallButton').disabled=false;$('accountInstallButton').textContent='Install'});
+$('logoutButton').onclick=async()=>{try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){toast(error.message,'error')}};$('logoutAllButton').onclick=async()=>{const confirmed=await confirmAction({title:'Log out every device?',message:'Every Saathi session for this account, including this browser, will end immediately.',confirmLabel:'Log out everywhere',tone:'warning'});if(!confirmed)return;const button=$('logoutAllButton');button.disabled=true;try{if(!await SaathiWorkspace.prepareLogout()){button.disabled=false;return}await api('/api/logout-all',{method:'POST',body:'{}'});location.href='/account?next=/dashboard'}catch(error){button.disabled=false;toast(error.message,'error')}};$('deleteAccountButton').onclick=()=>{$('deletePassword').value='';$('deleteDialog').showModal()};$('cancelDelete').onclick=()=>$('deleteDialog').close();$('confirmDelete').onclick=async()=>{const button=$('confirmDelete');button.disabled=true;try{await api('/api/account',{method:'DELETE',body:JSON.stringify({password:$('deletePassword').value})});location.href='/'}catch(error){toast(error.message,'error')}finally{button.disabled=false}};$('installButton').onclick=installApp;$('accountInstallButton').onclick=installApp;window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.deferredInstall=event;$('installButton').hidden=false;$('accountInstallButton').disabled=false;$('accountInstallButton').textContent='Install'});
 const workspaceSections=[
   {key:'overview',label:'Overview',url:'/api/overview',apply:data=>{state.overview=data;renderOverview()}},
   {key:'tasks',label:'Planner',url:'/api/tasks',apply:data=>{state.tasks=data.tasks||[];renderTasks()}},
@@ -927,7 +933,7 @@ function renderMockTestHistory(){
     const icon=document.createElement('div');
     icon.className='avatar';
     icon.style.cssText='width:36px;height:36px;border-radius:10px;font-size:16px;background:var(--accent-soft);color:var(--accent)';
-    icon.textContent='🎯';
+    icon.textContent='◈';
     const copy=document.createElement('div');
     copy.className='item-copy';
     const title=document.createElement('b');
@@ -1002,7 +1008,7 @@ async function generateMockTest(event){
     
     startTestTimer();
     renderQuestion(0);
-    toast('Mock test ready! Best of luck! 🎯','success');
+    toast('Mock test ready. You can begin.','success');
   }catch(error){
     if(error.message&&error.message.includes('Saathi Plus')){
       openUpgradeModal();
@@ -1446,7 +1452,7 @@ function shareOnWhatsApp(){
   const score=attempt?.score||0;
   const total=attempt?.total_questions||10;
   const pct=attempt?.accuracy_percentage||0;
-  const text=encodeURIComponent(`🎯 I just scored ${score}/${total} (${pct}%) on "${topic}" using Saathi AI Exam Simulator!\n\nCan you beat my score? Challenge me here:\n${location.origin}/dashboard#mocktests`);
+  const text=encodeURIComponent(`I just scored ${score}/${total} (${pct}%) on "${topic}" using Saathi AI Exam Simulator!\n\nCan you beat my score? Challenge me here:\n${location.origin}/dashboard#mocktests`);
   window.open(`https://api.whatsapp.com/send?text=${text}`,'_blank');
 }
 
@@ -1496,7 +1502,7 @@ async function handleMindmapSubmit(event){
   const depth=$('mindmapDepth')?.value||'standard';
   const btn=$('mindmapSubmitBtn');
   btn.disabled=true;
-  btn.textContent='🧠 Generating Mindmap…';
+  btn.textContent='Generating mindmap…';
   try{
     const res=await api('/api/mindmaps/generate',{
       method:'POST',
@@ -1515,7 +1521,7 @@ async function handleMindmapSubmit(event){
     toast(err.message||'Could not generate mindmap','error');
   }finally{
     btn.disabled=false;
-    btn.textContent='🧠 Generate Visual Mindmap';
+    btn.textContent='Generate visual mindmap';
   }
 }
 
@@ -1680,7 +1686,7 @@ function renderMindmapsHistory(){
     const dt=m.created_at?new Date(m.created_at).toLocaleDateString():'Recent';
     d.innerHTML=`
       <div>
-        <strong style="font-size:14px;color:var(--ink);display:block">🧠 ${escapeText(m.topic)}</strong>
+        <strong style="font-size:14px;color:var(--ink);display:block">${escapeText(m.topic)}</strong>
         <small style="color:var(--muted);font-size:12px">Created ${dt}</small>
       </div>
       <button type="button" class="secondary" style="min-height:36px;font-size:12.5px" onclick="loadSavedMindmap(${Number(m.id)})">Open Map →</button>
@@ -1706,7 +1712,7 @@ function shareMindmapWhatsApp(){
   const topic=state.activeMindmap?.topic||'Concept';
   const refCode=state.referrals?.referral_code||'';
   const link=refCode?`${location.origin}/account?ref=${refCode}&google=1`:`${location.origin}/account?google=1`;
-  const text=encodeURIComponent(`🧠 Check out this visual AI concept mindmap on "${topic}" I created with Saathi!\n\nStudy concept trees and master any topic faster here:\n${link}`);
+  const text=encodeURIComponent(`Check out this visual AI concept mindmap on "${topic}" I created with Saathi!\n\nStudy concept trees and master any topic faster here:\n${link}`);
   window.open(`https://api.whatsapp.com/send?text=${text}`,'_blank');
 }
 
@@ -2087,9 +2093,9 @@ async function init(){
   $('completionSounds').checked=localStorage.getItem('saathi-sounds')==='on';
   $('retryWorkspace').disabled=true;
   try{
-    applyTheme(localStorage.getItem('saathi-theme')||'light');$('journalDate').value=localDate();syncWorkspaceHistory(false);
+    SaathiTheme.refresh();$('journalDate').value=localDate();syncWorkspaceHistory(false);
     const me=await api('/api/me');if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
-    state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);updateGreeting();
+    state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiWorkspace.connect({user:me.user,api,notify:toast});updateGreeting();
     await loadWorkspaceSections();
     loadDashboardCareNudge();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{});

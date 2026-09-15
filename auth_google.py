@@ -13,6 +13,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from flask import jsonify, request, session
+from workspace_extras import avatar_url
 from werkzeug.security import generate_password_hash
 
 _keys = {}
@@ -151,6 +152,9 @@ def register(app, backend):
                     cur.execute('''INSERT INTO users (name,username,email,password_hash,plan,plan_status,session_version,google_subject,email_verified_at,referral_code,referred_by_id,created_at)
                         VALUES (%s,%s,%s,%s,'free','active',1,%s,%s,%s,%s,%s) RETURNING *''',
                         (name, username, email, generate_password_hash(secrets.token_urlsafe(32)), subject, now, secrets.token_hex(6).upper(), inviter['id'] if inviter else None, now))
+                user = cur.fetchone()
+            if 'picture' in claims:
+                cur.execute('UPDATE users SET avatar_url=%s WHERE id=%s RETURNING *', (avatar_url(claims['picture']), user['id']))
                 user = cur.fetchone()
             conn.commit()
             backend['start_user_session'](user, remember)

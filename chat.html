@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
 <title>Chat · Saathi</title>
+<script src="/theme.js?v=20260915"></script>
 <style>
 :root{
   color-scheme:light;
@@ -280,6 +281,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .chat-zen-orb.contract{transform:scale(0.85);transition-duration:8s}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
+<link rel="stylesheet" href="/workspace.css?v=20260915">
 </head>
 <body>
 <div class="app">
@@ -293,10 +295,11 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
     </label>
     <button class="archive-toggle" id="archiveToggle" type="button"><span>◇</span><span id="archiveLabel">Archived conversations</span></button>
     <nav class="history" id="history" aria-label="Saved conversations"><div class="history-state">Loading your conversations…</div></nav>
+    <button class="quick-notes-trigger" type="button" data-quick-notes aria-haspopup="dialog">▤ <span>Quick notes</span></button>
     <div class="account-card">
       <div class="avatar" id="userAvatar">S</div>
       <div class="account-copy"><b id="userName">Saathi user</b><span id="userPlan">Free plan</span></div>
-      <div class="account-menu-wrap"><button class="icon-btn" id="accountMenuButton" aria-label="Open account menu">•••</button><div class="popover" id="accountMenu"><a href="/dashboard">Dashboard</a><a href="/account">Account</a><button id="themeToggle">Dark appearance</button><button class="danger" id="logoutButton">Log out</button></div></div>
+      <div class="account-menu-wrap"><button class="icon-btn" id="accountMenuButton" aria-label="Open account menu">•••</button><div class="popover" id="accountMenu"><a href="/dashboard">Dashboard</a><a href="/account">Account</a><button id="themeToggle" data-theme-toggle data-theme-label>Dark appearance</button><button class="danger" id="logoutButton">Log out</button></div></div>
     </div>
   </aside>
   <div class="sidebar-scrim" id="sidebarScrim"></div>
@@ -405,6 +408,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
   </div>
 </dialog>
 
+<script src="/workspace.js?v=20260915"></script>
 <script>
 const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],recognition:null,voiceAvailable:false,voiceBase:'',speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
 const el={
@@ -646,7 +650,7 @@ function quizCard(data,message){
   share.title='Share quiz question with friends on WhatsApp';
   share.addEventListener('click',e=>{
     e.stopPropagation();
-    const shareText=`🧠 *Saathi Quiz Question!*\n\n*${data.question}*\n\n`+data.options.map(o=>`${o.letter}) ${o.text}`).join('\n')+`\n\n👉 *Study & take interactive quizzes on Saathi:* https://saathi-md5w.onrender.com`;
+    const shareText=`*Saathi Quiz Question!*\n\n*${data.question}*\n\n`+data.options.map(o=>`${o.letter}) ${o.text}`).join('\n')+`\n\n*Study & take interactive quizzes on Saathi:* ${location.origin}`;
     window.open('https://wa.me/?text='+encodeURIComponent(shareText),'_blank','noopener,noreferrer');
   });
   footer.append(share);
@@ -683,7 +687,7 @@ function readMessage(text,button){
 function visibleMessage(message){const quiz=parseQuiz(message.content),flash=parseFlashcards(message.content);return{quiz,flash,text:quiz?quiz.clean:flash?flash.clean:message.content}}
 function messageElement(message,index){
   const article=document.createElement('article'),assistant=message.role==='assistant';article.className='message '+(assistant?'assistant':'user')+(message.failed?' failed':'')+(message.streaming?' streaming':'');article.dataset.messageId=message.id;if(message.streaming)article.setAttribute('aria-live','polite');
-  const avatar=document.createElement('div');avatar.className='message-avatar';avatar.textContent=assistant?'S':(state.user?.name?.charAt(0)||'Y').toUpperCase();
+  const avatar=document.createElement('div');avatar.className='message-avatar';if(assistant)avatar.textContent='S';else SaathiWorkspace.renderAvatar(avatar,state.user);
   const body=document.createElement('div');body.className='message-body';const name=document.createElement('p');name.className='message-name';name.textContent=assistant?'Saathi':'You';body.append(name);
   if(assistant&&message.ai_mode&&message.ai_mode!=='normal'){const mode=state.chatModes.find(item=>item.id===message.ai_mode);const badge=document.createElement('span');badge.className='mode-badge';badge.textContent=mode?.label||message.ai_mode.replaceAll('_',' ');body.append(badge)}
   if(message.attachments?.length){const files=document.createElement('div');files.className='message-attachments';message.attachments.forEach(attachment=>{const link=document.createElement('a');link.className='message-attachment';link.href=attachment.url||'#';if(!attachment.local){link.target='_blank';link.rel='noopener'}else link.addEventListener('click',event=>event.preventDefault());if(attachment.mime_type?.startsWith('image/')){const preview=document.createElement('img');preview.src=attachment.url;preview.alt=attachment.name;preview.loading='lazy';link.append(preview)}else{const icon=document.createElement('span');icon.className='attachment-icon';icon.textContent='PDF';link.append(icon)}const copy=document.createElement('span');copy.className='attachment-copy';const title=document.createElement('b');title.textContent=attachment.name;const detail=document.createElement('small');const extracted=Number(attachment.extracted_page_count)||0;detail.textContent=readableSize(attachment.size_bytes)+(extracted?' · '+extracted+' searchable page'+(extracted===1?'':'s'):'');copy.append(title,detail);link.append(copy);files.append(link)});body.append(files)}
@@ -797,9 +801,9 @@ async function deleteConversation(){
   catch(error){showToast(error.message)}finally{document.getElementById('confirmDelete').disabled=false}
 }
 
-async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){showToast(error.message)}}
-function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('saathi-theme',theme);document.getElementById('themeToggle').textContent=theme==='dark'?'Light appearance':'Dark appearance'}
-function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+async function logout(){try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){showToast(error.message)}}
+function applyTheme(theme){SaathiTheme.apply(theme)}
+function toggleTheme(){SaathiTheme.toggle()}
 function setupVoiceInput(){
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Recognition){state.voiceAvailable=false;el.voice.disabled=true;el.voice.hidden=true;el.voice.title='Voice input is not supported in this browser';return}state.voiceAvailable=true;el.voice.hidden=false;el.voice.disabled=false;const recognition=new Recognition();recognition.continuous=false;recognition.interimResults=true;recognition.maxAlternatives=1;state.recognition=recognition;
   recognition.onstart=()=>{state.voiceBase=el.input.value.trim();el.voice.classList.add('listening');el.voice.setAttribute('aria-label','Stop listening');el.voice.title='Listening… click to stop'};
@@ -1065,8 +1069,8 @@ function runChatBreathCycle(phase, seconds){
 }
 
 async function init(){
-  applyTheme(localStorage.getItem('saathi-theme')||'light');
-  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').innerHTML=data.user.plan==='plus'?'Saathi Plus <span style="display:inline-block;padding:2px 6px;border-radius:99px;background:linear-gradient(135deg,#d3b35f,#b8890a);color:#fff;font-size:9px;font-weight:800;margin-left:4px">PRO</span>':'<a href="/dashboard#account" style="color:var(--gold);text-decoration:none">Free · Upgrade →</a>';document.getElementById('userAvatar').textContent=(data.user.name?.charAt(0)||'S').toUpperCase();const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();updateComposer();setBusy(false);loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  SaathiTheme.refresh();
+  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').innerHTML=data.user.plan==='plus'?'Saathi Plus <span style="display:inline-block;padding:2px 6px;border-radius:99px;background:linear-gradient(135deg,#d3b35f,#b8890a);color:#fff;font-size:9px;font-weight:800;margin-left:4px">PRO</span>':'<a href="/dashboard#account" style="color:var(--gold);text-decoration:none">Free · Upgrade →</a>';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();updateComposer();setBusy(false);loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();

@@ -34,6 +34,8 @@ import auth_google
 import billing
 import care
 import study_tools
+import workspace_extras
+import push_notifications
 from ai_transport import post as provider_post
 from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context
 from pypdf import PdfReader
@@ -61,7 +63,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-12-saathi-reliability"
+RELEASE_ID = "2026-09-15-workspace"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -829,6 +831,7 @@ def user_to_dict(row):
         "plan_status": "active",
         "subscription_end_at": row["subscription_end_at"].isoformat() if row.get("subscription_end_at") else None,
         "language": row.get("language", "en"),
+        "avatar_url": workspace_extras.avatar_url(row.get("avatar_url")),
         "referral_code": row.get("referral_code"),
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
@@ -958,6 +961,14 @@ def saathi_icon():
 @app.route("/public.css")
 def public_styles():
     return send_from_directory(".", "public.css", mimetype="text/css")
+
+
+@app.get("/theme.js")
+@app.get("/workspace.js")
+@app.get("/workspace.css")
+@app.get("/site-theme.css")
+def shared_workspace_asset():
+    return send_from_directory(".", request.path[1:])
 
 
 @app.get("/experience.css")
@@ -1351,6 +1362,8 @@ def login():
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
+    if session.get('user_id') and session.get('push_subscription_id'):
+        push_notifications.remove_device(globals(),session['user_id'],session['push_subscription_id'])
     session.clear()
     return jsonify({"ok": True})
 
@@ -3454,8 +3467,11 @@ def deliver_due_reminders():
     provided = request.headers.get("X-Cron-Secret") or ""
     if not CRON_SECRET or not secrets.compare_digest(CRON_SECRET, provided):
         return jsonify({"error": "Not authorised."}), 401
+    push_result = push_notifications.deliver_due(globals())
     if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
-        return jsonify({"error": "Email delivery is not configured."}), 503
+        if push_result["configured"]:
+            return jsonify({"ok": True, "sent": 0, "failed": 0, "skipped": 0, "push": push_result})
+        return jsonify({"error": "Reminder delivery is not configured."}), 503
     now = datetime.now(timezone.utc)
     conn = get_db()
     cur = conn.cursor()
@@ -3537,7 +3553,7 @@ def deliver_due_reminders():
         result_conn.commit()
         result_cur.close()
         result_conn.close()
-    return jsonify({"ok": True, "sent": sent, "failed": failed, "skipped": skipped})
+    return jsonify({"ok": True, "sent": sent, "failed": failed, "skipped": skipped, "push": push_result})
 
 
 # --------------------------------------------------------------------
@@ -4555,6 +4571,7 @@ def export_data():
     trusted_contact_rows = cur.fetchall()
     study_exports = {}
     for name, query in (
+        ("quick_notes", "SELECT id,client_id::text,title,content,version,created_at,updated_at FROM quick_notes WHERE user_id=%s ORDER BY updated_at"),
         ("mock_tests", "SELECT * FROM mock_tests WHERE user_id=%s ORDER BY id"),
         ("mock_test_attempts", "SELECT * FROM mock_test_attempts WHERE user_id=%s ORDER BY id"),
         ("mindmaps", "SELECT * FROM mindmaps WHERE user_id=%s ORDER BY id"),
@@ -5120,6 +5137,8 @@ auth_google.register(app, globals())
 billing.register(app, globals())
 study_tools.register(app, globals())
 care.register(app, globals())
+workspace_extras.register(app, globals())
+push_notifications.register(app, globals())
 
 
 if __name__ == "__main__":
