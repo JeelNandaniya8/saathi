@@ -36,7 +36,31 @@ Saathi is not a doctor, therapist, emergency service or monitoring system. AI re
 - privacy, terms, AI limitations, support, SEO, PWA and custom error pages
 - numbered, transactional and idempotent PostgreSQL migrations
 
-Plus and Family pricing is visible only as **Coming Soon**. Checkout is disabled. No request can charge a user or change a plan. Real billing must wait for an adult-owned verified business, payment gateway, tax, legal and KYC setup.
+Checkout is **disabled by default**. Optional Razorpay test mode validates orders without activating real paid access. Live mode requires the verified merchant configuration below; this code release does not enable it. Family remains Coming Soon. Plus passes expire and do not automatically renew.
+
+## September reliability release
+
+- Official Google identity verification replaces the insecure email-only fallback. `GOOGLE_CLIENT_ID` must be configured; otherwise email signup remains available.
+- Pending or expired signup requests no longer reserve usernames. The final OTP verification still enforces unique confirmed usernames.
+- Validated, owned mock tests hide answers before submission, preserve one scored attempt and enforce a server deadline. Mindmaps fail clearly when AI content is unavailable or malformed.
+- Wellbeing tools provide general preparation prompts, optional sounds and comfortable 4-second inhale / 6-second exhale pacing. They do not diagnose, prescribe or promise healing. Reminders use the user’s actual saved schedule.
+- Verified payment orders check ownership, amount, capture, signatures and expiry. Webhooks and repeated confirmations are idempotent; full refunds revoke the remaining purchased time.
+- Referral rewards require a verified invitee, one day and a completed task or test, capped at 28 days. No automatic reward is issued merely for a Google login.
+- Shared readable workspace styling, compact chat sound controls, signup first on mobile, optional completion sounds and name-free scorecards by default.
+
+Migration `015` retires existing sessions **once** because the old Google fallback accepted an email without identity proof. Existing users must sign in again. It does not delete their saved content. Existing finite paid grants are retained; undated legacy upgrades do not count as paid access.
+
+## Optional identity and billing configuration
+
+Set `GOOGLE_CLIENT_ID` to a Google web OAuth client. Add the actual HTTPS site to its authorised JavaScript origins. The app loads the official Google Identity Services button and checks the signed token, audience, issuer, expiry and browser nonce. Third-party Google email addresses use email verification unless already linked.
+
+Keep `SAATHI_BILLING_MODE=disabled` until checkout setup has been reviewed. Test mode requires matching `rzp_test_` credentials plus `RAZORPAY_WEBHOOK_SECRET`. Live mode additionally requires `MERCHANT_VERIFIED=true` and matching live credentials for the verified business; no test transaction grants real access. Subscribe the webhook URL `/api/payment/webhook` to `payment.captured` and `payment.refunded`, and use its separately generated signing secret. Do not paste real keys into source files.
+
+The current products are fixed passes: ₹199 for 30 days or ₹1,499 for 365 days, without automatic renewal. Free accounts receive 1 mock test and 2 mindmaps daily; paid accounts receive 20 of each. Existing attachment size and daily limits still apply. Publish the merchant’s refund, tax and support terms before enabling live checkout.
+
+`GEMINI_FAST_MODEL` defaults to `gemini-3.5-flash-lite` for everyday chat; `GEMINI_MODEL` defaults to `gemini-3.6-flash` for deeper study. Both can be set to a Gemini model available to your project. Connections are reused within each worker thread, and streamed UTF-8 text is decoded incrementally. Cold starts, database location, provider availability and free-tier quotas still affect response time.
+
+CI runs isolated PostgreSQL integration tests in addition to unit and browser behaviour checks. Locally, set `TEST_DATABASE_URL` to a disposable localhost database whose name ends in `_test` to include these tests; use `PGPASSWORD` separately if needed. Never point tests at production.
 
 ## Architecture
 
@@ -44,7 +68,7 @@ Plus and Family pricing is visible only as **Coming Soon**. Checkout is disabled
 Browser
   -> same-origin Flask pages and JSON APIs
       -> PostgreSQL for account and workspace records
-      -> Google Gemini for chat replies only
+      -> Google Gemini for chat and study documents
       -> Brevo for verification, reset and opted-in reminder email
 ```
 

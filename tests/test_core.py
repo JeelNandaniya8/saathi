@@ -281,12 +281,12 @@ def test_gemini_context_limits_and_language(backend, monkeypatch):
         def json(self):
             return {"candidates": [{"content": {"parts": [{"text": "Ready."}]}}]}
 
-    def fake_post(url, json, timeout):
+    def fake_post(url, json, timeout, headers):
         captured.update(url=url, payload=json, timeout=timeout)
         return Response()
 
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(backend.requests, "post", fake_post)
+    monkeypatch.setattr(backend, "provider_post", fake_post)
     messages = [
         {"role": "user" if index % 2 == 0 else "assistant", "content": f"message {index}"}
         for index in range(60)
@@ -371,12 +371,12 @@ def test_gemini_multimodal_payload_contains_inline_file(backend, monkeypatch):
                 },
             }
 
-    def fake_post(url, json, timeout):
+    def fake_post(url, json, timeout, headers):
         captured.update(payload=json)
         return Response()
 
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(backend.requests, "post", fake_post)
+    monkeypatch.setattr(backend, "provider_post", fake_post)
     content = b"\x89PNG\r\n\x1a\nexample"
     reply, usage = backend.generate_gemini_reply([{
         "role": "user",
@@ -455,17 +455,17 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
             assert decode_unicode is True
             assert self.encoding == "utf-8"
             yield 'data: {"candidates":[{"content":{"parts":[{"text":"ગુજરાતીમાં "}]}}]}'
-            yield 'data: {"candidates":[{"content":{"parts":[{"text":"વાત કરીએ"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"totalTokenCount":5}}'
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"વાત કરીએ"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"totalTokenCount":5}}'
 
         def close(self):
             captured["closed"] = True
 
-    def fake_post(url, json, stream, timeout):
+    def fake_post(url, json, stream, timeout, headers):
         captured.update(url=url, payload=json, stream=stream, timeout=timeout)
         return Response()
 
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(backend.requests, "post", fake_post)
+    monkeypatch.setattr(backend, "provider_post", fake_post)
     generator = backend.stream_gemini_reply([{"role": "user", "content": "Hi"}])
     chunks = []
     while True:

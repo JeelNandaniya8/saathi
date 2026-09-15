@@ -38,7 +38,10 @@ vm.runInContext(source.slice(source.indexOf('function checkDueReminders()'),sour
 assert.doesNotThrow(()=>ctx.checkDueReminders(),'Missing Notification API must not crash dashboard');
 ctx.window.Notification=function(){};ctx.Notification={permission:'granted'};state.reminders=[{active:true,id:1,next_run_at:'2020-01-01'}];
 assert.doesNotThrow(()=>ctx.checkDueReminders(),'Unsupported constructor must not crash dashboard');
-vm.runInContext(source.slice(source.indexOf('const workspaceSections='),source.indexOf('function updateGreeting()')),ctx);
+// These tests supply their own sections. Load only the production loader;
+// the preceding dashboard setup also wires unrelated feature forms whose
+// handlers and DOM are intentionally outside this navigation test context.
+vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSections('),source.indexOf('function updateGreeting()')),ctx);
 (async()=>{
  let applied=[];ctx.api=async url=>{if(url==='/bad')throw Error('Offline');return {items:[1]}};
  const sections=[{key:'tasks',label:'Planner',url:'/ok',apply:data=>applied.push(data.items[0])},{key:'memory',label:'Memory',url:'/bad',apply:()=>{}}];

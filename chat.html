@@ -270,7 +270,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .verified-sources-list{margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.6}
 .verified-sources-list li{margin-bottom:4px}
 
-/* Chat 4-7-8 Breathing Modal */
+/* Chat Gentle breathing Modal */
 .chat-zen-dialog{border:0;border-radius:24px;padding:0;background:var(--paper);color:var(--ink);box-shadow:0 24px 64px rgba(0,0,0,.22);max-width:380px;width:90vw}
 .chat-zen-dialog::backdrop{background:rgba(15,20,18,.5);backdrop-filter:blur(6px)}
 .chat-zen-body{padding:28px 24px;text-align:center;display:flex;flex-direction:column;align-items:center}
@@ -279,6 +279,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .chat-zen-orb.hold{transform:scale(1.3);border-color:#d3b35f;box-shadow:0 0 45px rgba(211,179,95,.35)}
 .chat-zen-orb.contract{transform:scale(0.85);transition-duration:8s}
 </style>
+<link rel="stylesheet" href="/experience.css?v=20260912">
 </head>
 <body>
 <div class="app">
@@ -305,16 +306,16 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
       <button class="icon-btn mobile-menu" id="openSidebar" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
       <div class="chat-heading"><h1 id="chatTitle">New conversation</h1><p>Private to your signed-in account</p></div>
       <div class="top-actions">
-        <div class="ambient-sound-hud" id="ambientHud" aria-label="Ambient Sound Therapy">
+        <details class="sound-disclosure"><summary aria-label="Background sound options">Sounds</summary><div class="ambient-sound-hud" id="ambientHud" aria-label="Background sounds">
           <div class="sound-eq" id="hudEq">
             <span class="eq-bar"></span>
             <span class="eq-bar"></span>
             <span class="eq-bar"></span>
           </div>
           <button type="button" class="hud-btn" id="hudRainBtn" onclick="toggleChatAmbient('rain')" title="Gentle Rain">🌧️ Rain</button>
-          <button type="button" class="hud-btn" id="hudOmBtn" onclick="toggleChatAmbient('om')" title="432Hz Om Frequency">🕉️ 432Hz</button>
+          <button type="button" class="hud-btn" id="hudOmBtn" onclick="toggleChatAmbient('om')" title="Soft background tone">♪ Tone</button>
           <button type="button" class="hud-btn" id="hudOceanBtn" onclick="toggleChatAmbient('ocean')" title="Deep Ocean Waves">🌊 Ocean</button>
-        </div>
+        </div></details>
         <a class="top-pill" href="/dashboard">Dashboard</a>
       </div>
     </header>
@@ -390,7 +391,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 
 <dialog class="chat-zen-dialog" id="chatZenDialog">
   <div class="chat-zen-body">
-    <span style="font-size:11px;font-weight:800;color:var(--sage);letter-spacing:.08em;text-transform:uppercase">🫁 4-7-8 Zen Breathing</span>
+    <span style="font-size:11px;font-weight:800;color:var(--sage);letter-spacing:.08em;text-transform:uppercase">🫁 Gentle breathing</span>
     <h3 style="margin:6px 0 2px;font-size:18px">Calm Your Mind</h3>
     <div class="chat-zen-orb" id="chatZenOrb">
       <span id="chatZenPhase" style="font-size:14px;font-weight:750">Ready</span>
@@ -588,10 +589,10 @@ function appendInline(target,text){
   source.replace(pattern,(match,token,offset)=>{if(offset>last)target.append(document.createTextNode(source.slice(last,offset)));let node;
     const link=token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
     if(link){node=document.createElement('a');node.textContent=link[1];node.href=link[2];node.target='_blank';node.rel='noopener noreferrer'}
-    else if(/^\[▶\s*Play\s*432Hz/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🕉️</span> Play 432Hz Om';node.onclick=()=>toggleChatAmbient('om')}
+    else if(/^\[▶\s*Play\s*432Hz/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🕉️</span> Play soft tone';node.onclick=()=>toggleChatAmbient('om')}
     else if(/^\[▶\s*Play\s*(Gentle\s*)?Rain/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🌧️</span> Play Rain';node.onclick=()=>toggleChatAmbient('rain')}
     else if(/^\[▶\s*Play\s*Ocean/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🌊</span> Play Ocean';node.onclick=()=>toggleChatAmbient('ocean')}
-    else if(/^\[🫁/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🫁</span> 4-7-8 Breathing';node.onclick=()=>openChatBreathing()}
+    else if(/^\[🫁/i.test(token)){node=document.createElement('button');node.type='button';node.className='action-chip-btn';node.innerHTML='<span>🫁</span> Gentle breathing';node.onclick=()=>openChatBreathing()}
     else if(token.startsWith('$$')&&token.endsWith('$$')&&token.length>4){node=document.createElement('span');node.className='math-inline math-display';node.innerHTML=formatMathFormula(token.slice(2,-2))}
     else if(token.startsWith('$')&&token.endsWith('$')&&token.length>2){node=document.createElement('span');node.className='math-inline';node.innerHTML=formatMathFormula(token.slice(1,-1))}
     else if(token.startsWith('`')){node=document.createElement('code');node.textContent=token.slice(1,-1)}
@@ -888,7 +889,7 @@ function toggleChatAmbient(type){
     activeChatAudioNodes = [osc1, osc2, gain];
     const btn = document.getElementById('hudOmBtn');
     if(btn) btn.classList.add('active');
-    showToast('Playing 432Hz Om Drone 🕉️');
+    showToast('Soft tone playing.');
   } else if(type === 'rain' || type === 'ocean'){
     const bufferSize = 2 * ctx.sampleRate;
     const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -943,6 +944,9 @@ async function loadChatCareNudge(){
     const res = await api('/api/care/nudge');
     if(res.ok && res.nudge){
       const n = res.nudge;
+      if(n.phase!=='scheduled')return;
+      state.careNudgeKey='saathi:care:'+state.user.id+':'+n.action.reminder_id+':'+n.action.scheduled_at;
+      if(sessionStorage.getItem(state.careNudgeKey))return;
       const banner = document.getElementById('chatCareBanner');
       if(!banner) return;
       document.getElementById('careBannerTitle').textContent = n.title;
@@ -954,8 +958,8 @@ async function loadChatCareNudge(){
         actBtn.onclick = async () => {
           if(n.action.type === 'complete_reminder'){
             try{
-              await api('/api/reminders/' + n.action.reminder_id + '/ack', {method:'POST'});
-              showToast('Medicine / reminder marked complete! 💚');
+              await api('/api/reminders/' + n.action.reminder_id + '/ack', {method:'POST',body:JSON.stringify({scheduled_at:n.action.scheduled_at})});
+              showToast('Reminder marked complete.');
               dismissChatCareBanner();
             }catch(e){ showToast(e.message); }
           } else if(n.action.type === 'ambient_sound'){
@@ -977,6 +981,7 @@ async function loadChatCareNudge(){
 }
 
 function dismissChatCareBanner(){
+  if(state.careNudgeKey)sessionStorage.setItem(state.careNudgeKey,'1');
   const banner = document.getElementById('chatCareBanner');
   if(banner){
     banner.style.opacity = '0';
@@ -985,7 +990,7 @@ function dismissChatCareBanner(){
   }
 }
 
-/* ── Chat 4-7-8 Zen Breathing Engine ────────────────────────── */
+/* ── Chat Gentle breathing Engine ────────────────────────── */
 let chatBreathTimer = null;
 let chatBreathState = 'idle';
 let chatBreathPhase = 'inhale';
@@ -993,7 +998,7 @@ let chatBreathCount = 4;
 
 function openChatBreathing(){
   const dlg = document.getElementById('chatZenDialog');
-  if(dlg) dlg.showModal();
+  if(dlg&&!dlg.open) dlg.showModal();
 }
 
 function closeChatBreathing(){
@@ -1052,8 +1057,8 @@ function runChatBreathCycle(phase, seconds){
       counter.textContent = chatBreathCount;
     } else {
       clearInterval(chatBreathTimer);
-      if(chatBreathPhase === 'inhale') runChatBreathCycle('hold', 7);
-      else if(chatBreathPhase === 'hold') runChatBreathCycle('exhale', 8);
+      if(chatBreathPhase === 'inhale') runChatBreathCycle('exhale', 6);
+      else if(chatBreathPhase === 'hold') runChatBreathCycle('exhale', 6);
       else runChatBreathCycle('inhale', 4);
     }
   }, 1000);

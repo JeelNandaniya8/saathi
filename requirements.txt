@@ -3,3 +3,4 @@ gunicorn==23.0.0
 requests==2.34.2
 psycopg2-binary==2.9.12
 pypdf==6.0.0
+cryptography==46.0.0
