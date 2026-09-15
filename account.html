@@ -46,7 +46,7 @@ body{background:radial-gradient(circle at 14% 8%,rgba(91,124,250,.16),transparen
 
 
 <script>
-const params=new URLSearchParams(location.search),plan=['free','plus','family'].includes(params.get('plan'))?params.get('plan'):'free',destination=/^\/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps|healer))?$|^\/chat$/.test(params.get('next')||'')?params.get('next'):'/dashboard';let pendingEmail='',usernameAvailable=false,usernameTimer;
+const params=new URLSearchParams(location.search),plan=['free','plus','family'].includes(params.get('plan'))?params.get('plan'):'free',destination=/^\/dashboard(?:#(?:overview|study|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps|healer))?$|^\/chat$/.test(params.get('next')||'')?params.get('next'):'/dashboard';let pendingEmail='',usernameAvailable=false,usernameTimer;
 const refCode=params.get('ref')||sessionStorage.getItem('saathi_ref')||'';
 if(params.get('ref'))sessionStorage.setItem('saathi_ref',params.get('ref'));
 document.getElementById('planChip').textContent=plan.charAt(0).toUpperCase()+plan.slice(1)+' plan';

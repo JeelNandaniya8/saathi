@@ -94,6 +94,7 @@ def deliver_due(b):
     with database(b) as (_,cur):
         cur.execute('''SELECT s.id AS subscription_id,s.subscription_json,r.id AS reminder_id,r.next_run_at
             FROM push_subscriptions s JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
+            JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
             JOIN reminders r ON r.user_id=s.user_id
             LEFT JOIN push_deliveries d ON d.subscription_id=s.id AND d.reminder_id=r.id AND d.scheduled_for=r.next_run_at
             WHERE r.active=TRUE AND r.next_run_at<=%s AND r.next_run_at>=%s
@@ -107,6 +108,7 @@ def deliver_due(b):
             cur.execute('''INSERT INTO push_deliveries(subscription_id,reminder_id,scheduled_for)
                 SELECT s.id,r.id,r.next_run_at FROM push_subscriptions s
                 JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
+                JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
                 JOIN reminders r ON r.user_id=s.user_id
                 WHERE s.id=%s AND r.id=%s AND r.active=TRUE AND r.next_run_at=%s
                 ON CONFLICT(subscription_id,reminder_id,scheduled_for) DO UPDATE SET status='processing',attempt_count=push_deliveries.attempt_count+1,updated_at=NOW()
@@ -128,6 +130,50 @@ def deliver_due(b):
             else:
                 cur.execute("UPDATE push_deliveries SET status=%s,updated_at=NOW(),sent_at=CASE WHEN %s THEN NOW() ELSE sent_at END WHERE id=%s",('sent' if sent else 'failed',sent,claim['id']))
                 result['sent' if sent else 'failed']+=1
+            conn.commit()
+    digest=deliver_digest(b,config,now,max(0,10-len(due)))
+    for key in ('sent','failed','skipped'):result[key]+=digest[key]
+    return result
+
+
+def deliver_digest(b,config,now,limit):
+    result={'sent':0,'failed':0,'skipped':0}
+    if not limit:return result
+    with database(b) as (_,cur):
+        cur.execute('''SELECT s.id,s.subscription_json,w.local_date FROM push_subscriptions s
+            JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
+            JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
+            LEFT JOIN push_digest_deliveries d ON d.subscription_id=s.id AND d.local_date=w.local_date
+            WHERE EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND r.next_run_at<=%s)
+            AND (d.id IS NULL OR (d.attempt_count<5 AND
+                ((d.status='failed' AND d.updated_at<%s) OR (d.status='processing' AND d.updated_at<%s))))
+            ORDER BY s.id LIMIT %s''',(now,now-timedelta(minutes=2),now-timedelta(minutes=5),limit));due=cur.fetchall()
+    for item in due:
+        with database(b) as (conn,cur):
+            cur.execute('''INSERT INTO push_digest_deliveries(subscription_id,local_date)
+                SELECT s.id,w.local_date FROM push_subscriptions s
+                JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
+                JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
+                WHERE s.id=%s AND w.local_date=%s
+                AND EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND r.next_run_at<=%s)
+                ON CONFLICT(subscription_id,local_date) DO UPDATE SET status='processing',attempt_count=push_digest_deliveries.attempt_count+1,updated_at=NOW()
+                WHERE push_digest_deliveries.attempt_count<5 AND
+                    ((push_digest_deliveries.status='failed' AND push_digest_deliveries.updated_at<%s)
+                    OR (push_digest_deliveries.status='processing' AND push_digest_deliveries.updated_at<%s)) RETURNING id''',
+                (item['id'],item['local_date'],now,now-timedelta(minutes=2),now-timedelta(minutes=5)))
+            claim=cur.fetchone();conn.commit()
+        if not claim:result['skipped']+=1;continue
+        payload={'kind':'digest','title':'Your Saathi summary','body':'Your scheduled reminders are ready to review. Open Saathi when it suits you.',
+            'url':'/dashboard#reminders','tag':'saathi-digest-'+item['local_date'].isoformat()}
+        try:status=send_push(validate_subscription(item['subscription_json']),payload,config)
+        except (ValueError,ImportError):status=503
+        sent=200<=status<300
+        with database(b) as (conn,cur):
+            if status in (404,410):
+                cur.execute('DELETE FROM push_subscriptions WHERE id=%s',(item['id'],));result['skipped']+=1
+            else:
+                cur.execute("UPDATE push_digest_deliveries SET status=%s,updated_at=NOW(),sent_at=CASE WHEN %s THEN NOW() ELSE sent_at END WHERE id=%s",
+                    ('sent' if sent else 'failed',sent,claim['id']));result['sent' if sent else 'failed']+=1
             conn.commit()
     return result
 

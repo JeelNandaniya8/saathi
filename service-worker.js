@@ -1,4 +1,4 @@
-const CACHE_NAME = "saathi-shell-v14";
+const CACHE_NAME = "saathi-shell-v15";
 const APP_SHELL = [
   "/", "/privacy", "/terms",
   "/limitations", "/support", "/offline.html", "/manifest.webmanifest",
@@ -14,9 +14,10 @@ self.addEventListener("install", event => {
 self.addEventListener('push', event => {
   let payload={};
   try{payload=event.data?.json()||{}}catch(_){}
-  const tag=/^saathi-reminder-\d+-\d+$/.test(payload.tag||'')?payload.tag:'saathi-reminder';
-  event.waitUntil(self.registration.showNotification('Saathi reminder',{
-    body:'A reminder you scheduled is due. Open Saathi to review it.',
+  const digest=payload.kind==='digest';
+  const tag=/^(?:saathi-reminder-\d+-\d+|saathi-digest-\d{4}-\d{2}-\d{2})$/.test(payload.tag||'')?payload.tag:'saathi-reminder';
+  event.waitUntil(self.registration.showNotification(digest?'Your Saathi summary':'Saathi reminder',{
+    body:digest?'Your scheduled reminders are ready to review. Open Saathi when it suits you.':'A reminder you scheduled is due. Open Saathi to review it.',
     icon:'/saathi-icon.svg',tag,renotify:false,data:{url:'/dashboard#reminders'}
   }));
 });

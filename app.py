@@ -36,6 +36,7 @@ import care
 import study_tools
 import workspace_extras
 import push_notifications
+import daily_workspace
 from ai_transport import post as provider_post
 from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context
 from pypdf import PdfReader
@@ -63,7 +64,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-15-workspace"
+RELEASE_ID = "2026-09-15-daily-workspace"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -915,7 +916,7 @@ def home():
 def account_page():
     if session.get("user_id") and require_user_id():
         destination = request.args.get("next", "/dashboard")
-        if not re.fullmatch(r"/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account))?|/chat", destination):
+        if not re.fullmatch(r"/dashboard(?:#(?:overview|study|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps|healer))?|/chat", destination):
             destination = "/dashboard"
         return redirect(destination)
     return send_from_directory(".", "account.html")
@@ -965,6 +966,8 @@ def public_styles():
 
 @app.get("/theme.js")
 @app.get("/workspace.js")
+@app.get("/daily-workspace.js")
+@app.get("/daily-workspace.css")
 @app.get("/workspace.css")
 @app.get("/site-theme.css")
 def shared_workspace_asset():
@@ -3157,9 +3160,11 @@ def message_feedback(message_id):
         return limit_response
 
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Choose a feedback option."}), 400
     rating = data.get("rating")
-    if rating not in ("helpful", "not_helpful", None):
-        return jsonify({"error": "Choose helpful or not helpful."}), 400
+    if rating not in ("helpful", "not_helpful", "wrong", "unclear", None):
+        return jsonify({"error": "Choose Useful, Wrong or Unclear."}), 400
 
     conn = get_db()
     cur = conn.cursor()
@@ -3251,6 +3256,8 @@ def update_study_progress(message_id):
         (psycopg2.extras.Json(clean_progress), now, message_id, user_id),
     )
     updated = cur.fetchone()
+    if updated["kind"] == "flashcards":
+        daily_workspace.add_flash_revision(cur, user_id, message_id, clean_progress)
     conn.commit()
     cur.close()
     conn.close()
@@ -4571,6 +4578,10 @@ def export_data():
     trusted_contact_rows = cur.fetchall()
     study_exports = {}
     for name, query in (
+        ("workspace_preferences", "SELECT goal,onboarding_done,timezone,quiet_enabled,quiet_start::text,quiet_end::text,notification_mode,digest_time::text,celebrations FROM workspace_preferences WHERE user_id=%s"),
+        ("subject_spaces", "SELECT * FROM subject_spaces WHERE user_id=%s ORDER BY id"),
+        ("subject_items", "SELECT * FROM subject_items WHERE user_id=%s ORDER BY id"),
+        ("revision_items", "SELECT * FROM revision_items WHERE user_id=%s ORDER BY id"),
         ("quick_notes", "SELECT id,client_id::text,title,content,version,created_at,updated_at FROM quick_notes WHERE user_id=%s ORDER BY updated_at"),
         ("mock_tests", "SELECT * FROM mock_tests WHERE user_id=%s ORDER BY id"),
         ("mock_test_attempts", "SELECT * FROM mock_test_attempts WHERE user_id=%s ORDER BY id"),
@@ -5139,6 +5150,7 @@ study_tools.register(app, globals())
 care.register(app, globals())
 workspace_extras.register(app, globals())
 push_notifications.register(app, globals())
+daily_workspace.register(app, globals())
 
 
 if __name__ == "__main__":

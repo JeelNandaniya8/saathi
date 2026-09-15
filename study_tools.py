@@ -183,7 +183,10 @@ def register(app,b):
             attempt=result['attempt']
             cur.execute('''INSERT INTO mock_test_attempts (test_id,user_id,score,total_questions,accuracy_percentage,time_taken_seconds,answers_json,created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id''',(test_id,uid,attempt['score'],len(questions),attempt['accuracy_percentage'],seconds,json.dumps(answers),now))
-            attempt['id']=cur.fetchone()['id'];conn.commit()
+            attempt['id']=cur.fetchone()['id']
+            from daily_workspace import add_mock_revision
+            add_mock_revision(cur,uid,test_id,row['topic'],result['review'])
+            conn.commit()
         return jsonify(result)
 
     @app.post('/api/mindmaps/generate')

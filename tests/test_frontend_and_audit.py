@@ -250,7 +250,7 @@ def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
     assert 'url.pathname.startsWith("/api/")' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v14' in text
+    assert 'saathi-shell-v15' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():

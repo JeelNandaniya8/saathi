@@ -52,6 +52,7 @@
     }catch(error){status(error.message||'Notes could not load. Select Refresh to retry.',true)}finally{ui.reload.disabled=false}
   }
   async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.content.focus()}
+  async function openNote(id){await openNotes();if(state.loaded&&canSwitch()){const note=state.notes.find(item=>item.id===id);if(note)selectNote(note);else status("This note is no longer available. Refresh your notes.",true)}}
   async function saveNote(event){
     event.preventDefault();if(state.busy)return;if(!ui.content.value.trim()){status('Write something before saving.',true);return}
     state.busy=true;ui.save.disabled=true;ui.delete.disabled=true;status('Saving…');
@@ -128,5 +129,5 @@
     document.querySelectorAll('[data-push-toggle]').forEach(button=>{button.onclick=togglePush});
     loadPush();
   }
-  window.SaathiWorkspace={connect,renderAvatar,openNotes,togglePush,prepareLogout,pushActive:()=>Boolean(state.pushId),pushConfigured:()=>Boolean(state.pushConfig?.enabled)};
+  window.SaathiWorkspace={connect,renderAvatar,openNotes,openNote,togglePush,prepareLogout,pushActive:()=>Boolean(state.pushId),pushConfigured:()=>Boolean(state.pushConfig?.enabled)};
 })();

@@ -1,0 +1,44 @@
+/* Calm daily workspace. Surfaces follow the shared light and dark theme. */
+.nav details{margin:6px 0;border-top:1px solid var(--line);padding-top:8px}
+.nav summary{cursor:pointer;padding:12px;color:var(--muted);font-size:14px;font-weight:650;border-radius:12px}
+.nav details[open] summary{color:var(--ink)}.nav details button{padding-left:18px}
+.nav button,.nav a{min-height:46px;font-size:14px}.nav .nav-icon{font-size:17px}.nav .chat-link{margin:8px 0 18px}
+.dw-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dw-head h1{font-size:clamp(32px,4vw,48px);line-height:1.16;letter-spacing:normal;margin:10px 0}.dw-head p{margin:8px 0;max-width:60ch}
+.dw-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:24px}
+.dw-panel{min-width:0;border:1px solid var(--line);border-radius:24px;background:var(--paper);padding:24px}
+.dw-panel h2{font-size:21px;letter-spacing:normal;margin:0 0 8px}.dw-muted{font-size:14px;line-height:1.65;color:var(--muted);white-space:normal}
+.dw-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.dw-row h3{font-size:21px;overflow-wrap:anywhere}
+.dw-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.dw-button{appearance:none;font:inherit;font-size:14px;font-weight:650;min-height:44px;border:1px solid var(--strong);border-radius:12px;background:var(--paper);color:var(--ink);padding:10px 16px;cursor:pointer;transition:background .15s,border-color .15s}
+.dw-button:hover{border-color:var(--sage);background:var(--sage-soft)}.dw-button:disabled{opacity:.55;cursor:wait}
+.dw-primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}.dw-primary:hover{background:var(--sage);color:var(--paper)}
+.dw-spaces{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.dw-space{position:relative;display:flex;flex-direction:column;gap:14px;text-align:left;min-height:128px;padding:20px 16px;border:1px solid var(--line);border-radius:18px;background:var(--canvas);color:var(--ink);font:inherit;cursor:pointer}
+.dw-space::before{content:'';width:28px;height:5px;border-radius:8px;background:#6685cc}
+.dw-space[data-color="sage"]::before{background:#789b80}.dw-space[data-color="violet"]::before{background:#a28bc5}.dw-space[data-color="gold"]::before{background:#bf9d57}
+.dw-space-title{font-size:17px;font-weight:700;overflow-wrap:anywhere}.dw-space:hover{border-color:var(--strong)}.dw-space .dw-muted{font-size:13px}
+.dw-detail{margin-top:18px}.dw-resource{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);min-width:0}
+.dw-resource-open{border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;text-align:left;min-height:44px;padding:8px;flex:1;cursor:pointer;overflow-wrap:anywhere}
+.dw-resource-open:hover{text-decoration:underline}.dw-resource .dw-button{font-size:12px;padding:8px}
+.dw-tag{font-size:12px;font-weight:700;color:var(--sage);background:var(--sage-soft);border-radius:8px;padding:6px 9px;display:inline-block;overflow-wrap:anywhere}
+.dw-resource-list{display:grid;gap:6px;margin-top:18px}.dw-resource-list>.dw-resource-open{border:1px solid var(--line);border-radius:12px;padding:12px}
+.dw-review-card{margin-top:18px}.dw-question{font-size:18px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.dw-answer{font-size:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--sage-soft);border-radius:16px;padding:18px;margin:16px 0}
+.dw-review-controls{border:0;padding:0;margin:16px 0;display:flex;flex-wrap:wrap;gap:8px}.dw-review-controls legend{margin-bottom:12px;font-size:14px;font-weight:700}
+.dw-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.dw-care{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px}
+.dw-care>a,.dw-care>button{font:inherit;text-align:left;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:22px;padding:23px 20px;min-height:132px;background:var(--paper);color:var(--ink);cursor:pointer}
+.dw-care b{font-size:18px;line-height:1.4}.dw-care span{color:var(--muted);font-size:14px;line-height:1.6}
+.dw-care>a:hover,.dw-care>button:hover{border-color:var(--sage);background:var(--sage-soft)}
+.dw-dialog{width:min(620px,calc(100vw - 28px));max-height:calc(100dvh - 40px);box-sizing:border-box;margin:auto;border:1px solid var(--strong);border-radius:24px;background:var(--paper);color:var(--ink);padding:26px;box-shadow:var(--shadow);overflow:auto;overscroll-behavior:contain}
+.dw-dialog::backdrop{background:rgba(15,21,19,.5);backdrop-filter:blur(5px)}.dw-dialog-head{display:flex;gap:18px;justify-content:space-between;align-items:flex-start}
+.dw-dialog-head h2{font-size:25px;line-height:1.25;letter-spacing:normal;margin:8px 0}.dw-form{display:grid;gap:16px;margin-top:22px}
+.dw-field{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:650}.dw-field input,.dw-field select{min-width:0;min-height:46px;font:inherit;font-size:16px;border:1px solid var(--strong);border-radius:12px;padding:10px 12px;background:var(--canvas);color:var(--ink);width:100%}
+.dw-check{font-size:15px;line-height:1.5;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:start;gap:10px;padding:8px 0}.dw-check input{accent-color:var(--sage);width:18px;height:18px;margin:3px 0}
+.dw-check small{grid-column:2;color:var(--muted);font-size:13px}.dw-error{color:var(--danger);font-size:14px;line-height:1.5;margin:0}
+.dw-plan-list{max-height:42dvh;overflow:auto}.dw-plan-list .dw-check{border-bottom:1px solid var(--line);padding:14px 0}
+.dw-dialog [hidden],.dw-panel [hidden],.dw-detail[hidden],.dw-review-controls[hidden]{display:none!important}
+@media(max-width:1000px){.dw-grid{grid-template-columns:1fr}.dw-care{grid-template-columns:1fr}.dw-care>a,.dw-care>button{min-height:110px}}
+@media(max-width:500px){.dw-panel{padding:19px}.dw-spaces{grid-template-columns:1fr}.dw-resource{align-items:flex-start;flex-wrap:wrap}.dw-resource-open{min-width:50%}.dw-dialog{padding:20px}.dw-row{flex-wrap:wrap}.dw-dialog-head h2{font-size:22px}}
+@media(prefers-reduced-motion:reduce){.dw-button{transition:none}}
