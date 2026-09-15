@@ -51,81 +51,7 @@ body{background:radial-gradient(circle at 14% 8%,rgba(91,124,250,.16),transparen
 <form id="resetForm" style="display:none"><div class="otp-intro">Enter the code sent to <b id="resetEmailText"></b> and choose a new password.</div><label class="field">Verification code<div class="input-wrap"><input class="otp" id="resetOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div></label><label class="field">New password<div class="input-wrap"><input id="resetPassword" type="password" autocomplete="new-password" maxlength="64" placeholder="At least 8 characters" required></div><span class="strength"><i id="resetStrengthFill"></i></span><span class="hint" id="resetStrengthText">Use at least one letter and one number.</span></label><button class="submit" id="resetBtn" type="submit">Reset password</button><button class="link-btn" type="button" onclick="resendResetCode()">Send a new code</button></form>
 <div class="message" id="message" role="status" aria-live="polite" tabindex="-1"></div><p class="privacy">Your password is hashed before storage. Never share verification codes or passwords with anyone.</p><a class="back" href="/">← Back to Saathi</a></div></section></main>
 
-<dialog id="googleDialog" style="width:min(440px,calc(100% - 24px));padding:0;border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 35px 90px rgba(15,23,42,.22);overflow:hidden;backdrop-filter:blur(24px)">
-  <div style="padding:26px 22px 22px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-        <span style="font-size:15px;font-weight:750;color:var(--ink)">Sign in with Google</span>
-      </div>
-      <button type="button" onclick="closeGoogleDialog()" style="background:transparent;border:0;font-size:18px;color:var(--muted);cursor:pointer;padding:4px;border-radius:8px">✕</button>
-    </div>
-    <p style="margin:0 0 16px;font-size:13px;color:var(--muted);line-height:1.45">
-      Choose your account to sign in or create your Saathi workspace in 1 click.
-    </p>
 
-    <!-- Account Selection List (1-Click Zero Typing) -->
-    <div id="googleAccountsList" style="display:flex;flex-direction:column;gap:9px;margin-bottom:14px">
-      <!-- Primary: Jeel Nandaniya -->
-      <button type="button" class="g-account-card" onclick="loginWithGoogleData('jeelnandaniya8@gmail.com','Jeel Nandaniya')" style="width:100%;padding:12px 14px;border:1.5px solid #d0d7e6;border-radius:16px;background:#fbfcfe;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;transition:all .18s ease">
-        <div style="position:relative;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#1a73e8);color:#fff;display:grid;place-items:center;font-weight:750;font-size:16px;flex-shrink:0">
-          J
-          <span style="position:absolute;bottom:-2px;right:-2px;width:15px;height:15px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.2)">
-            <svg width="10" height="10" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-          </span>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px">
-            <strong style="font-size:13.5px;color:var(--ink)">Jeel Nandaniya</strong>
-            <span style="font-size:10px;font-weight:750;padding:2px 7px;border-radius:99px;background:#e9f7ef;color:#27ae60">Signed in</span>
-          </div>
-          <span style="display:block;font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jeelnandaniya8@gmail.com</span>
-        </div>
-        <span style="font-size:13px;color:var(--accent);font-weight:750">Continue →</span>
-      </button>
-
-      <!-- Scholar Demo Account -->
-      <button type="button" class="g-account-card" onclick="loginWithGoogleData('student@saathi-ai.com','Scholar Student')" style="width:100%;padding:12px 14px;border:1.5px solid #e8ecf2;border-radius:16px;background:#fff;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;transition:all .18s ease">
-        <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;display:grid;place-items:center;font-weight:750;font-size:16px;flex-shrink:0">
-          S
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px">
-            <strong style="font-size:13.5px;color:var(--ink)">Scholar Student</strong>
-            <span style="font-size:10px;font-weight:750;padding:2px 7px;border-radius:99px;background:#eef2ff;color:#4f46e5">Student</span>
-          </div>
-          <span style="display:block;font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">student@saathi-ai.com</span>
-        </div>
-        <span style="font-size:13px;color:var(--muted);font-weight:750">Select →</span>
-      </button>
-
-      <!-- Use another account accordion button -->
-      <button type="button" onclick="toggleGoogleCustomInput()" style="width:100%;padding:10px 14px;border:1px dashed var(--line);border-radius:14px;background:transparent;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer">
-        <span>+</span>
-        <span id="gCustomToggleText">Use another Google account</span>
-      </button>
-    </div>
-
-    <!-- Hidden custom input form (only if user explicitly clicks +) -->
-    <form id="googleCustomForm" onsubmit="handleGoogleDirectSubmit(event)" style="display:none;margin-top:10px;padding-top:12px;border-top:1px solid var(--line)">
-      <label class="field" style="margin-bottom:10px">Google Email
-        <div class="input-wrap"><input id="gDirectEmail" type="email" placeholder="you@gmail.com" required></div>
-      </label>
-      <label class="field" style="margin-bottom:14px">Your Name
-        <div class="input-wrap"><input id="gDirectName" type="text" placeholder="Full Name" required></div>
-      </label>
-      <button class="submit" id="gDirectSubmitBtn" type="submit" style="width:100%;min-height:44px;margin:0">
-        Sign in with this account →
-      </button>
-    </form>
-
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--muted)">
-      <span>🔒 Safe Google Identity</span>
-      <span>·</span>
-      <span>No OTP or Password needed</span>
-    </div>
-  </div>
-</dialog>
 
 <script>
 const params=new URLSearchParams(location.search),plan=['free','plus','family'].includes(params.get('plan'))?params.get('plan'):'free',destination=/^\/dashboard(?:#(?:overview|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps))?$|^\/chat$/.test(params.get('next')||'')?params.get('next'):'/dashboard';let pendingEmail='',usernameAvailable=false,usernameTimer;
@@ -151,128 +77,94 @@ async function resendCode(){const button=document.getElementById('resendBtn');bu
 document.getElementById('loginForm').addEventListener('submit',async event=>{event.preventDefault();hideMessage();const button=document.getElementById('loginBtn');button.disabled=true;try{await post('/api/login',{email:document.getElementById('loginEmail').value.trim(),password:document.getElementById('loginPassword').value,remember:document.getElementById('loginRemember').checked});showMessage('Welcome back. Opening your workspace…','success');location.replace(destination)}catch(error){showMessage(error.message,'error')}finally{button.disabled=false}});
 function checkExistingSession(){fetch('/api/me',{credentials:'include',cache:'no-store'}).then(response=>response.ok?response.json():null).then(data=>{if(data?.user)location.replace(destination)}).catch(()=>{})}
 
-let googleClientId=null;
+let googleClientId = null;
 
-async function checkGoogleConfig(){
-  try{
-    const res=await fetch('/api/me');
-    const d=await res.json();
-    if(d?.google_client_id){
-      googleClientId=d.google_client_id;
-      initGoogleGsi(googleClientId);
+/* ── Real Google OAuth 2.0 / OpenID Connect ─────────────────────
+   Flow: GSI script loads → google.accounts.id.initialize() →
+   user clicks button → google.accounts.id.prompt() opens real
+   Google account chooser → Google calls handleGoogleCredentialResponse
+   with a signed JWT → we POST {credential} to /api/google-auth →
+   backend verifies with Google tokeninfo endpoint → session created.
+   ──────────────────────────────────────────────────────────────── */
+
+async function checkGoogleConfig() {
+  try {
+    const res = await fetch('/api/me', {credentials:'include',cache:'no-store'});
+    const d = await res.json();
+    if (d?.google_client_id) {
+      googleClientId = d.google_client_id;
+      // If GSI script already loaded, init immediately
+      if (window.google?.accounts?.id) initGoogleGsi(googleClientId);
+    } else {
+      // No client ID configured — hide the Google button
+      const wrap = document.getElementById('googleAuthWrap');
+      if (wrap) wrap.hidden = true;
     }
-  }catch(e){}
+  } catch(e) {}
 }
 
-function toggleGoogleCustomInput(){
-  const f=document.getElementById('googleCustomForm');
-  const t=document.getElementById('gCustomToggleText');
-  if(f.style.display==='none'||!f.style.display){
-    f.style.display='block';
-    t.textContent='Hide custom email input';
-    document.getElementById('gDirectEmail').focus();
-  }else{
-    f.style.display='none';
-    t.textContent='Use another Google account';
+async function handleGoogleCredentialResponse(response) {
+  if (!response?.credential) return;
+  showMessage('Signing you in with Google…', 'info');
+  const btn = document.getElementById('googleBtn');
+  if (btn) btn.disabled = true;
+  try {
+    await post('/api/google-auth', {credential: response.credential, ref: refCode});
+    showMessage('Welcome to Saathi! Opening your workspace…', 'success');
+    setTimeout(() => location.replace(destination), 400);
+  } catch(err) {
+    showMessage(err.message || 'Google sign in failed. Please try again.', 'error');
+    if (btn) btn.disabled = false;
   }
 }
 
-function openGoogleDialog(){
-  const dlg=document.getElementById('googleDialog');
-  if(dlg)dlg.showModal();
-}
-
-function closeGoogleDialog(){
-  const dlg=document.getElementById('googleDialog');
-  if(dlg?.open)dlg.close();
-}
-
-function triggerGoogleSignIn(){
-  if(googleClientId&&window.google?.accounts?.id){
-    try{
-      google.accounts.id.prompt();
-      return;
-    }catch(e){
-      console.warn('Google GSI prompt fallback',e);
-    }
-  }
-  openGoogleDialog();
-}
-
-async function loginWithGoogleData(email,name){
-  showMessage('Signing you in with Google…','info');
-  closeGoogleDialog();
-  try{
-    const data=await post('/api/google-auth',{
-      email:email.trim().toLowerCase(),
-      name:name?.trim(),
-      ref:refCode
-    });
-    localStorage.setItem('saathi_last_google_email',email.trim().toLowerCase());
-    if(name)localStorage.setItem('saathi_last_google_name',name.trim());
-    showMessage('Welcome to Saathi! Opening your workspace…','success');
-    setTimeout(()=>location.replace(destination),400);
-  }catch(err){
-    showMessage(err.message||'Google sign in failed.','error');
-  }
-}
-
-async function handleGoogleDirectSubmit(event){
-  event.preventDefault();
-  const btn=document.getElementById('gDirectSubmitBtn');
-  btn.disabled=true;
-  const email=document.getElementById('gDirectEmail').value.trim();
-  const name=document.getElementById('gDirectName').value.trim();
-  try{
-    await loginWithGoogleData(email,name);
-  }finally{
-    btn.disabled=false;
-  }
-}
-
-async function handleGoogleCredentialResponse(response){
-  if(!response?.credential)return;
-  showMessage('Signing you in with Google…','info');
-  try{
-    const data=await post('/api/google-auth',{credential:response.credential,ref:refCode});
-    showMessage('Welcome to Saathi! Opening your workspace…','success');
-    setTimeout(()=>location.replace(destination),400);
-  }catch(err){
-    showMessage(err.message||'Google sign in failed.','error');
-  }
-}
-
-function initGoogleGsi(clientId){
-  if(!window.google?.accounts?.id||!clientId)return;
-  try{
+function initGoogleGsi(clientId) {
+  if (!window.google?.accounts?.id || !clientId) return;
+  try {
     google.accounts.id.initialize({
-      client_id:clientId,
-      callback:handleGoogleCredentialResponse,
-      auto_select:false
+      client_id: clientId,
+      callback: handleGoogleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
     });
-    const btnWrap=document.getElementById('googleBtn');
-    if(btnWrap){
-      google.accounts.id.renderButton(btnWrap,{
-        theme:'outline',
-        size:'large',
-        text:'continue_with',
-        shape:'pill',
-        width:btnWrap.offsetWidth||320
+    // Render official Google button inside our custom button element
+    const btnWrap = document.getElementById('googleBtn');
+    if (btnWrap) {
+      google.accounts.id.renderButton(btnWrap, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        width: btnWrap.offsetWidth || 380,
+        logo_alignment: 'center',
       });
     }
-  }catch(e){
-    console.warn('GSI init skipped',e);
+  } catch(e) {
+    console.warn('GSI init error', e);
   }
+}
+
+function triggerGoogleSignIn() {
+  if (googleClientId && window.google?.accounts?.id) {
+    try {
+      google.accounts.id.prompt();
+      return;
+    } catch(e) {
+      console.warn('GSI prompt error', e);
+    }
+  }
+  // GSI not ready yet — show a helpful message
+  showMessage('Google Sign-In is loading, please try again in a moment.', 'info');
 }
 
 (function(){
   checkGoogleConfig();
-  const s=document.createElement('script');
-  s.src='https://accounts.google.com/gsi/client';
-  s.async=true;
-  s.defer=true;
-  s.onload=()=>{
-    if(googleClientId)initGoogleGsi(googleClientId);
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.defer = true;
+  s.onload = () => {
+    if (googleClientId) initGoogleGsi(googleClientId);
   };
   document.head.appendChild(s);
 })();

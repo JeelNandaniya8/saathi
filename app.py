@@ -1592,49 +1592,38 @@ def payment_status():
 def google_auth():
     data = request.get_json(force=True, silent=True) or {}
     credential = (data.get("credential") or "").strip()
-    direct_email = (data.get("email") or "").strip().lower()
 
-    if not credential and not direct_email:
-        return jsonify({"error": "Please provide a Google credential or email address."}), 400
+    # Only a real Google ID token (JWT) is accepted — bare email login is not allowed.
+    if not credential:
+        return jsonify({"error": "A Google sign-in credential is required."}), 400
 
     limit_response = limited("google_auth", request.remote_addr or "unknown", 30, 5)
     if limit_response:
         return limit_response
 
-    if credential:
-        # Verify ID token using Google's public tokeninfo endpoint
-        try:
-            resp = requests.get(
-                f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}",
-                timeout=8,
-            )
-            if not resp.ok:
-                return jsonify({"error": "Invalid or expired Google credential."}), 401
-            token_info = resp.json()
-        except Exception as exc:
-            app.logger.error("Google token verification failed: %s", exc)
-            return jsonify({"error": "Could not verify Google account. Please try again."}), 502
+    # Verify ID token using Google's public tokeninfo endpoint
+    try:
+        resp = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}",
+            timeout=8,
+        )
+        if not resp.ok:
+            return jsonify({"error": "Invalid or expired Google credential."}), 401
+        token_info = resp.json()
+    except Exception as exc:
+        app.logger.error("Google token verification failed: %s", exc)
+        return jsonify({"error": "Could not verify Google account. Please try again."}), 502
 
-        email = (token_info.get("email") or "").strip().lower()
-        email_verified = token_info.get("email_verified")
-        name = (token_info.get("name") or "").strip() or "Google User"
+    email = (token_info.get("email") or "").strip().lower()
+    email_verified = token_info.get("email_verified")
+    name = (token_info.get("name") or "").strip() or "Google User"
 
-        if not email or str(email_verified).lower() not in ("true", "1"):
-            return jsonify({"error": "Your Google email address is not verified."}), 400
+    if not email or str(email_verified).lower() not in ("true", "1"):
+        return jsonify({"error": "Your Google email address is not verified."}), 400
 
-        # If GOOGLE_CLIENT_ID is configured, verify audience
-        if GOOGLE_CLIENT_ID and token_info.get("aud") != GOOGLE_CLIENT_ID:
-            return jsonify({"error": "Google token audience mismatch."}), 401
-    else:
-        # Direct Google Account Sign-In
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", direct_email):
-            return jsonify({"error": "Please enter a valid Google email address."}), 400
-        email = direct_email
-        raw_name = (data.get("name") or "").strip()
-        if not raw_name:
-            prefix = email.split("@")[0].replace(".", " ").replace("_", " ")
-            raw_name = " ".join(part.capitalize() for part in prefix.split() if part) or "Google User"
-        name = raw_name
+    # If GOOGLE_CLIENT_ID is configured, verify audience to prevent token reuse attacks
+    if GOOGLE_CLIENT_ID and token_info.get("aud") != GOOGLE_CLIENT_ID:
+        return jsonify({"error": "Google token audience mismatch."}), 401
 
     conn = get_db()
     cur = conn.cursor()
