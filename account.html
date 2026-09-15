@@ -68,28 +68,29 @@ document.getElementById('loginForm').addEventListener('submit',async event=>{eve
 function checkExistingSession(){fetch('/api/me',{credentials:'include',cache:'no-store'}).then(response=>response.ok?response.json():null).then(data=>{if(data?.user)location.replace(destination)}).catch(()=>{})}
 
 let googleClientId = null;
+let googleNonce = null;
 
 /* ── Real Google OAuth 2.0 / OpenID Connect ─────────────────────
-   Flow: GSI script loads → google.accounts.id.initialize() →
-   user clicks button → google.accounts.id.prompt() opens real
-   Google account chooser → Google calls handleGoogleCredentialResponse
-   with a signed JWT → we POST {credential} to /api/google-auth →
-   backend verifies with Google tokeninfo endpoint → session created.
+   Flow: /api/auth/config → GSI initialize (with nonce) →
+   google.accounts.id.prompt() → real Google chooser →
+   handleGoogleCredentialResponse → POST {credential} →
+   backend verifies signature, audience, nonce, expiry → session.
    ──────────────────────────────────────────────────────────────── */
 
 async function checkGoogleConfig() {
   try {
-    const res = await fetch('/api/me', {credentials:'include',cache:'no-store'});
+    const res = await fetch('/api/auth/config', {credentials: 'include', cache: 'no-store'});
+    if (!res.ok) return;
     const d = await res.json();
-    if (d?.google_client_id) {
+    if (d?.google_client_id && d?.nonce) {
       googleClientId = d.google_client_id;
-      // If GSI script already loaded, init immediately
-      if (window.google?.accounts?.id) initGoogleGsi(googleClientId);
-    } else {
-      // No client ID configured — hide the Google button
+      googleNonce = d.nonce;
       const wrap = document.getElementById('googleAuthWrap');
-      if (wrap) wrap.hidden = true;
+      if (wrap) wrap.hidden = false;
+      // If GSI script already loaded, init immediately
+      if (window.google?.accounts?.id) initGoogleGsi(googleClientId, googleNonce);
     }
+    // If no client ID — button stays hidden (already hidden by default)
   } catch(e) {}
 }
 
@@ -105,19 +106,21 @@ async function handleGoogleCredentialResponse(response) {
   } catch(err) {
     showMessage(err.message || 'Google sign in failed. Please try again.', 'error');
     if (btn) btn.disabled = false;
+    // Refresh nonce for next attempt
+    checkGoogleConfig();
   }
 }
 
-function initGoogleGsi(clientId) {
-  if (!window.google?.accounts?.id || !clientId) return;
+function initGoogleGsi(clientId, nonce) {
+  if (!window.google?.accounts?.id || !clientId || !nonce) return;
   try {
     google.accounts.id.initialize({
       client_id: clientId,
       callback: handleGoogleCredentialResponse,
+      nonce: nonce,
       auto_select: false,
       cancel_on_tap_outside: true,
     });
-    // Render official Google button inside our custom button element
     const btnWrap = document.getElementById('googleBtn');
     if (btnWrap) {
       google.accounts.id.renderButton(btnWrap, {
@@ -135,7 +138,7 @@ function initGoogleGsi(clientId) {
 }
 
 function triggerGoogleSignIn() {
-  if (googleClientId && window.google?.accounts?.id) {
+  if (googleClientId && googleNonce && window.google?.accounts?.id) {
     try {
       google.accounts.id.prompt();
       return;
@@ -143,7 +146,6 @@ function triggerGoogleSignIn() {
       console.warn('GSI prompt error', e);
     }
   }
-  // GSI not ready yet — show a helpful message
   showMessage('Google Sign-In is loading, please try again in a moment.', 'info');
 }
 
@@ -154,14 +156,14 @@ function triggerGoogleSignIn() {
   s.async = true;
   s.defer = true;
   s.onload = () => {
-    if (googleClientId) initGoogleGsi(googleClientId);
+    if (googleClientId && googleNonce) initGoogleGsi(googleClientId, googleNonce);
   };
   document.head.appendChild(s);
 })();
 
 if(params.get('tab')==='login'){switchTab('login')}
 if(params.get('google')==='1'){
-  setTimeout(()=>triggerGoogleSignIn(),200);
+  setTimeout(()=>triggerGoogleSignIn(),400);
 }
 switchTab(params.get('mode')==='login'?'login':'signup');
 checkExistingSession();
