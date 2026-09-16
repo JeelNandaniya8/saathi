@@ -41,6 +41,10 @@ function workspaceEnvironment(api){
   env.controller.connect({user:{id:1,name:'Student'},api:env.api});
   assert.equal(requests.length,0,'Notes load on demand and unsupported push makes no request');
   await env.trigger.onclick();const dialog=env.body.children[0],ui=dialog.parts;
+  let exported='';env.ctx.window.open=()=>({document:{write:html=>exported=html,close(){}}});
+  ui.title.value='</title><script>bad()</script><h1>';ui.content.value='ગુજરાતી &lt; <img onerror=bad()>';
+  ui.exportpdf.onclick();assert.ok(exported.includes('&lt;/title&gt;&lt;script&gt;'));assert.ok(!exported.includes('<script>bad()'));assert.ok(!exported.includes('<img onerror'));assert.ok(exported.includes('ગુજરાતી &amp;lt;'));
+  assert.equal((exported.match(/<script>/g)||[]).length,1,'Only the fixed print handler may be executable');ui.title.value='';ui.content.value='';
   const edit=(node,value)=>{node.value=value;node.events.input()};
   const submit=()=>ui.form.events.submit({preventDefault(){}});
   edit(ui.content,'ગુજરાતી <img onerror=bad()>');await submit();

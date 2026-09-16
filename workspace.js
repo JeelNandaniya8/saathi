@@ -74,8 +74,9 @@
   }
   function exportCurrentNotePdf(){
     if(!ui.content.value.trim()){status('Note is empty.',true);return;}
-    const title = ui.title.value.trim() || 'Saathi Note';
-    const content = ui.content.value.trim();
+    const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const title = escapeHtml(ui.title.value.trim() || 'Saathi Note');
+    const content = escapeHtml(ui.content.value.trim());
     // Using a new window to print text nicely as PDF
     const win = window.open('','_blank');
     if(!win) { status('Popup blocked. Cannot export PDF.',true); return; }
@@ -94,7 +95,7 @@
       <body>
         <h1>${title}</h1>
         <div class="meta">Exported from Saathi on ${new Date().toLocaleDateString()}</div>
-        <div>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div>${content}</div>
         <script>window.onload=()=>setTimeout(()=>{window.print();window.close();},500);<\/script>
       </body>
       </html>
