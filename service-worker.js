@@ -1,9 +1,12 @@
-const CACHE_NAME = "saathi-shell-v15";
+const CACHE_NAME = "saathi-shell-v16";
 const APP_SHELL = [
   "/", "/privacy", "/terms",
   "/limitations", "/support", "/offline.html", "/manifest.webmanifest",
   "/saathi-icon.svg", "/public.css", "/theme.js?v=20260915", "/site-theme.css?v=20260915"
 ];
+
+// Pages we never want to cache (auth/account pages)
+const NO_CACHE_PATHS = ["/account", "/api/"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
@@ -28,7 +31,6 @@ self.addEventListener('notificationclick', event => {
     const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     const existing=windows.find(client=>client.url===self.location.origin+'/dashboard#reminders');
     if(existing)return existing.focus();
-    // Open a new tab rather than replacing an editor with an unsaved draft.
     return self.clients.openWindow('/dashboard#reminders');
   })());
 });
@@ -41,22 +43,53 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+
+  // Never intercept non-GET, cross-origin, or API requests
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (NO_CACHE_PATHS.some(p => url.pathname.startsWith(p))) return;
+
+  // For navigation requests (page loads): Network-first with cache fallback
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).then(response => {
-      if (response.ok && !["/account", "/dashboard", "/chat"].includes(url.pathname)) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      }
-      return response;
-    }).catch(async () => (await caches.match(request)) || caches.match("/offline.html")));
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          // Cache public pages but not authenticated ones
+          if (response.ok && !["/dashboard", "/chat"].includes(url.pathname)) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(async () => {
+          // Offline fallback: try cache, then offline.html
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          // For dashboard/chat offline: return offline.html with helpful message
+          return caches.match("/offline.html");
+        })
+    );
     return;
   }
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-    if (response.ok) {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-    }
-    return response;
-  })));
+
+  // For static assets (JS/CSS/images/fonts): Cache-first
+  if (/\.(css|js|svg|png|jpg|webp|woff2?|ico)(\?|$)/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Default: network-first
+  event.respondWith(
+    fetch(request).catch(() => caches.match(request))
+  );
 });

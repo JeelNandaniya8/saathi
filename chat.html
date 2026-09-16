@@ -279,6 +279,34 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .chat-zen-orb.expand{transform:scale(1.3)}
 .chat-zen-orb.hold{transform:scale(1.3);border-color:#d3b35f;box-shadow:0 0 45px rgba(211,179,95,.35)}
 .chat-zen-orb.contract{transform:scale(0.85);transition-duration:8s}
+
+/* ── Voice Call Mode ────────────────────────────────── */
+.voice-call-overlay{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at 50% 30%,color-mix(in srgb,var(--accent) 22%,var(--canvas)),var(--canvas));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;animation:rise .25s ease}
+.voice-call-overlay[hidden]{display:none}
+.voice-call-orb{position:relative;width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 38%,transparent);display:grid;place-items:center;cursor:pointer;transition:transform .2s}
+.voice-call-orb.speaking{animation:orbPulse 1.2s ease-in-out infinite}
+.voice-call-orb.listening{animation:orbListen .8s ease-in-out infinite;box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 38%,transparent)}
+@keyframes orbPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent)}50%{box-shadow:0 0 0 22px color-mix(in srgb,var(--accent) 0%,transparent)}}
+@keyframes orbListen{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 42%,transparent)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--danger) 0%,transparent)}}
+.voice-call-orb svg{width:46px;height:46px;color:#fff}
+.voice-call-label{font-size:14px;font-weight:760;color:var(--ink);letter-spacing:.01em}
+.voice-call-sub{font-size:12px;color:var(--muted);min-height:20px;text-align:center;max-width:260px;line-height:1.5}
+.voice-call-bars{display:flex;align-items:flex-end;gap:3px;height:32px}
+.voice-bar{width:4px;border-radius:2px;background:var(--accent);opacity:.35;transition:.15s}
+.voice-bar.active{opacity:1;animation:barBounce .5s ease-in-out infinite alternate}
+.voice-bar:nth-child(1){height:10px;animation-delay:0s}.voice-bar:nth-child(2){height:20px;animation-delay:.08s}.voice-bar:nth-child(3){height:30px;animation-delay:.16s}.voice-bar:nth-child(4){height:22px;animation-delay:.24s}.voice-bar:nth-child(5){height:13px;animation-delay:.32s}
+@keyframes barBounce{from{height:6px}to{height:30px}}
+.voice-call-actions{display:flex;gap:16px;margin-top:8px}
+.voice-call-btn{width:56px;height:56px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;transition:.18s}
+.voice-call-btn:hover{transform:scale(1.08)}
+.voice-call-btn.end{background:var(--danger);color:#fff;box-shadow:0 8px 24px rgba(179,59,60,.32)}
+.voice-call-btn.mute{background:var(--canvas);border:1.5px solid var(--line);color:var(--ink)}
+.voice-call-btn.mute.muted{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.voice-call-history{max-width:320px;width:90%;max-height:190px;overflow-y:auto;padding:12px 16px;border-radius:16px;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(12px);border:1px solid var(--line);font-size:12.5px;line-height:1.65;color:var(--ink)}
+.voice-open-btn{position:fixed;z-index:80;bottom:148px;right:20px;width:46px;height:46px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#fff;box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 32%,transparent);display:grid;place-items:center;cursor:pointer;transition:.18s}
+.voice-open-btn[hidden]{display:none}
+.voice-open-btn:hover{transform:scale(1.1)}
+.voice-open-btn svg{width:22px;height:22px}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260915">
@@ -1074,6 +1102,197 @@ async function init(){
   catch(error){showToast(error.message)}
 }
 init();
+</script>
+
+<!-- Voice Call Mode Overlay -->
+<div class="voice-call-overlay" id="voiceCallOverlay" hidden>
+  <div class="voice-call-bars" id="voiceCallBars">
+    <div class="voice-bar" id="vbar1"></div>
+    <div class="voice-bar" id="vbar2"></div>
+    <div class="voice-bar" id="vbar3"></div>
+    <div class="voice-bar" id="vbar4"></div>
+    <div class="voice-bar" id="vbar5"></div>
+  </div>
+  <div class="voice-call-orb" id="voiceCallOrb" onclick="vcToggleListen()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+    </svg>
+  </div>
+  <div class="voice-call-label" id="voiceCallLabel">Tap to speak</div>
+  <div class="voice-call-sub" id="voiceCallSub">Saathi is ready to listen</div>
+  <div class="voice-call-history" id="voiceCallHistory"></div>
+  <div class="voice-call-actions">
+    <button class="voice-call-btn mute" id="vcMuteBtn" onclick="vcToggleMute()" aria-label="Mute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="22" height="22">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+      </svg>
+    </button>
+    <button class="voice-call-btn end" onclick="closeVoiceCall()" aria-label="End call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="22" height="22">
+        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 8.5"/>
+        <line x1="23" y1="1" x2="1" y2="23"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Floating Voice Button -->
+<button class="voice-open-btn" id="voiceOpenBtn" onclick="openVoiceCall()" aria-label="Voice call with Saathi" title="Voice call" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+  </svg>
+</button>
+
+<script>
+// ── Voice Call Mode ──────────────────────────────────────────
+(function(){
+  const vc = {
+    open: false,
+    muted: false,
+    speaking: false,
+    listening: false,
+    recognition: null,
+    synth: window.speechSynthesis,
+    history: [],
+    currentUtterance: null,
+    available: false,
+    lang: 'en-IN',
+  };
+
+  const overlay  = document.getElementById('voiceCallOverlay');
+  const orb      = document.getElementById('voiceCallOrb');
+  const label    = document.getElementById('voiceCallLabel');
+  const sub      = document.getElementById('voiceCallSub');
+  const histBox  = document.getElementById('voiceCallHistory');
+  const openBtn  = document.getElementById('voiceOpenBtn');
+  const muteBtn  = document.getElementById('vcMuteBtn');
+  const bars     = [1,2,3,4,5].map(i => document.getElementById('vbar'+i));
+
+  function setLabel(l,s){label.textContent=l;sub.textContent=s||'';}
+  function setOrb(mode){
+    orb.classList.remove('speaking','listening');
+    if(mode)orb.classList.add(mode);
+    bars.forEach(b=>b.classList.toggle('active',mode==='speaking'));
+  }
+
+  function appendHistory(role,text){
+    vc.history.push({role,text});
+    if(vc.history.length>6)vc.history.shift();
+    histBox.innerHTML=vc.history.map(h=>`<p style="margin:0 0 6px"><b style="color:${h.role==='user'?'var(--accent)':'var(--sage)'}">${h.role==='user'?'You':'Saathi'}:</b> ${h.role==='user'?h.text:h.text.replace(/\[▶[^\]]*\]|\[[^\]]*\]/g,'').trim()}</p>`).join('');
+    histBox.scrollTop=histBox.scrollHeight;
+  }
+
+  async function speak(text){
+    if(!text||vc.muted)return;
+    if(vc.synth.speaking)vc.synth.cancel();
+    const clean=text.replace(/\[▶[^\]]*\]|\[[^\]]*\]/g,'').replace(/\*+/g,'').trim();
+    return new Promise(resolve=>{
+      const u=new SpeechSynthesisUtterance(clean);
+      u.lang=vc.lang;u.rate=1.05;u.pitch=1;
+      vc.currentUtterance=u;
+      u.onstart=()=>{vc.speaking=true;setOrb('speaking');setLabel('Saathi is speaking','Tap orb to interrupt');};
+      u.onend=u.onerror=()=>{vc.speaking=false;setOrb(null);setLabel('Tap to speak','Your turn');resolve();vcStartListening();};
+      vc.synth.speak(u);
+    });
+  }
+
+  async function sendToSaathi(text){
+    setOrb(null);setLabel('Saathi is thinking…','');
+    appendHistory('user',text);
+    try{
+      const data=await window.api('/api/conversation/send',{
+        method:'POST',
+        body:JSON.stringify({content:text,conversation_id:window.state?.activeId,mode:'care'})
+      });
+      const reply=(data.reply||'I heard you. Could you say that again?');
+      appendHistory('saathi',reply);
+      await speak(reply);
+    }catch(e){
+      setLabel('Tap to speak','Connection issue, try again');
+      setOrb(null);
+      vcStartListening();
+    }
+  }
+
+  function vcStartListening(){
+    if(!vc.recognition||vc.muted||!vc.open)return;
+    try{vc.recognition.start();}catch(e){}
+  }
+
+  window.vcToggleListen=function(){
+    if(vc.speaking){vc.synth.cancel();return;}
+    if(vc.listening){vc.recognition?.stop();return;}
+    vcStartListening();
+  };
+
+  window.vcToggleMute=function(){
+    vc.muted=!vc.muted;
+    muteBtn.classList.toggle('muted',vc.muted);
+    muteBtn.title=vc.muted?'Unmute':'Mute';
+    if(vc.muted&&vc.speaking)vc.synth.cancel();
+    if(vc.muted&&vc.listening)vc.recognition?.stop();
+  };
+
+  window.openVoiceCall=function(){
+    const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!Recognition){showToast('Voice calls need Chrome or Edge browser.');return;}
+    const user=window.state?.user;
+    vc.lang=user?.language==='gu'?'gu-IN':user?.language==='hi'?'hi-IN':'en-IN';
+    const recognition=new Recognition();
+    recognition.continuous=false;recognition.interimResults=false;recognition.lang=vc.lang;
+    recognition.onstart=()=>{vc.listening=true;setOrb('listening');setLabel('Listening…','Speak now');};
+    recognition.onresult=e=>{
+      const t=Array.from(e.results).map(r=>r[0]?.transcript||'').join(' ').trim();
+      if(t){vc.listening=false;setOrb(null);setLabel('Processing…','');sendToSaathi(t);}
+    };
+    recognition.onerror=e=>{
+      vc.listening=false;setOrb(null);
+      if(e.error==='not-allowed'){setLabel('Mic blocked','Allow microphone access');}
+      else if(e.error!=='no-speech'&&e.error!=='aborted'){setLabel('Tap to speak','Try again');}
+      else{vcStartListening();}
+    };
+    recognition.onend=()=>{vc.listening=false;};
+    vc.recognition=recognition;
+    vc.open=true;
+    vc.history=[];
+    histBox.innerHTML='';
+    overlay.hidden=false;
+    setLabel('Tap to speak','Saathi is ready to listen');
+    setOrb(null);
+    speak({gu:'હા, બોલો. હું સાંભળું છું.',hi:'हाँ, बोलिए। मैं सुन रहा हूँ।',en:'Hello! I\'m here. Go ahead and speak.'}[user?.language]||'Hello, go ahead and speak.');
+  };
+
+  window.closeVoiceCall=function(){
+    vc.open=false;
+    vc.recognition?.abort();
+    vc.synth.cancel();
+    overlay.hidden=true;
+    setOrb(null);
+  };
+
+  // Show floating button once voice is available
+  document.addEventListener('DOMContentLoaded',()=>{
+    const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(R&&window.speechSynthesis){
+      // show after login loads
+      setTimeout(()=>{
+        if(window.state?.user)openBtn.hidden=false;
+      },2000);
+    }
+  });
+  // Also show once init completes
+  const _origInit=window.init;
+  if(typeof _origInit==='function'){
+    window.init=async function(){
+      await _origInit();
+      const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(R&&window.speechSynthesis)openBtn.hidden=false;
+    };
+  }
+})();
 </script>
 </body>
 </html>
