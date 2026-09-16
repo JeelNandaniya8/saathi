@@ -17,10 +17,11 @@
   function buildDialog(){
     if(dialog)return;
     dialog=document.createElement('dialog');dialog.className='quick-notes-dialog';dialog.setAttribute('aria-labelledby','quickNotesTitle');
-    dialog.innerHTML='<header class="qn-header"><div><h2 id="quickNotesTitle">Quick notes</h2><p>Private notes, close at hand.</p></div><button type="button" data-qn="close" aria-label="Close quick notes">×</button></header><div class="qn-toolbar"><button type="button" data-qn="new">New note</button><button type="button" data-qn="reload">Refresh</button><input type="search" data-qn="search" placeholder="Find a note" aria-label="Search quick notes"></div><div class="qn-layout"><div class="qn-list" data-qn="list" aria-label="Saved notes"></div><form class="qn-editor" data-qn="form"><label>Title<input data-qn="title" maxlength="80" placeholder="A title, if you like"></label><label class="qn-content-label">Note<textarea data-qn="content" maxlength="10000" required placeholder="An idea, a question, something to remember…"></textarea></label><div class="qn-meta"><span data-qn="counter">0 / 10,000</span><span>Only visible to you</span></div><p class="qn-status" data-qn="status" role="status" aria-live="polite"></p><div class="qn-actions"><button class="qn-save" data-qn="save" type="submit">Save note</button><button data-qn="discard" type="button" hidden>Discard edits</button><button class="qn-delete" data-qn="delete" type="button" hidden>Delete note</button></div></form></div>';
+    dialog.innerHTML='<header class="qn-header"><div><h2 id="quickNotesTitle">Quick notes</h2><p>Private notes, close at hand.</p></div><button type="button" data-qn="close" aria-label="Close quick notes">×</button></header><div class="qn-toolbar"><button type="button" data-qn="new">New note</button><button type="button" data-qn="reload">Refresh</button><button type="button" data-qn="exportpdf" title="Export current note as PDF">Export PDF</button><input type="search" data-qn="search" placeholder="Find a note" aria-label="Search quick notes"></div><div class="qn-layout"><div class="qn-list" data-qn="list" aria-label="Saved notes"></div><form class="qn-editor" data-qn="form"><label>Title<input data-qn="title" maxlength="80" placeholder="A title, if you like"></label><label class="qn-content-label">Note<textarea data-qn="content" maxlength="10000" required placeholder="An idea, a question, something to remember…"></textarea></label><div class="qn-meta"><span data-qn="counter">0 / 10,000</span><span>Only visible to you</span></div><p class="qn-status" data-qn="status" role="status" aria-live="polite"></p><div class="qn-actions"><button class="qn-save" data-qn="save" type="submit">Save note</button><button data-qn="discard" type="button" hidden>Discard edits</button><button class="qn-delete" data-qn="delete" type="button" hidden>Delete note</button></div></form></div>';
     document.body.append(dialog);dialog.querySelectorAll('[data-qn]').forEach(node=>ui[node.dataset.qn]=node);
     ui.close.onclick=()=>dialog.close();dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close()}});
     ui.new.onclick=()=>selectNote(null);ui.reload.onclick=()=>loadNotes(true);ui.search.oninput=renderList;
+    ui.exportpdf.onclick=exportCurrentNotePdf;
     ui.form.addEventListener('submit',saveNote);ui.delete.onclick=deleteNote;
     ui.discard.onclick=()=>{state.dirty=false;selectNote(state.selected,true)};
     for(const input of [ui.title,ui.content])input.addEventListener('input',()=>{state.dirty=true;ui.discard.hidden=false;ui.counter.textContent=ui.content.value.length+' / 10,000';status('Unsaved changes');ui.delete.textContent='Delete note'});
@@ -70,6 +71,35 @@
     if(ui.delete.textContent!=='Confirm delete'){ui.delete.textContent='Confirm delete';status('Delete this saved note? Select Confirm delete to remove it.',true);return}
     state.busy=true;ui.delete.disabled=true;
     try{await state.api('/api/quick-notes/'+state.selected.id,{method:'DELETE',body:JSON.stringify({version:state.selected.version})});state.notes=state.notes.filter(note=>note.id!==state.selected.id);state.dirty=false;state.busy=false;selectNote(null,true);status('Note deleted.')}catch(error){status(error.message,true)}finally{state.busy=false;ui.delete.disabled=false;ui.delete.textContent='Delete note'}
+  }
+  function exportCurrentNotePdf(){
+    if(!ui.content.value.trim()){status('Note is empty.',true);return;}
+    const title = ui.title.value.trim() || 'Saathi Note';
+    const content = ui.content.value.trim();
+    // Using a new window to print text nicely as PDF
+    const win = window.open('','_blank');
+    if(!win) { status('Popup blocked. Cannot export PDF.',true); return; }
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #111; max-width: 800px; margin: 40px auto; padding: 20px; white-space: pre-wrap; }
+          h1 { font-size: 24px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+          .meta { color: #64748b; font-size: 12px; margin-bottom: 40px; }
+          @media print { body { margin: 0; padding: 0; max-width: none; } }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <div class="meta">Exported from Saathi on ${new Date().toLocaleDateString()}</div>
+        <div>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <script>window.onload=()=>setTimeout(()=>{window.print();window.close();},500);<\/script>
+      </body>
+      </html>
+    `);
+    win.document.close();
   }
   function pushSupported(){return window.isSecureContext&&'Notification'in window&&'PushManager'in window&&'serviceWorker'in navigator}
   function renderPush(){
