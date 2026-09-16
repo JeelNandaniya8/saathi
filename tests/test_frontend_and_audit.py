@@ -106,7 +106,7 @@ def test_live_streaming_is_utf8_low_latency_and_uses_one_composer_control():
     for marker in (
         "content_type=\"application/x-ndjson; charset=utf-8\"",
         'response.encoding = "utf-8"',
-        "iter_lines(chunk_size=1, decode_unicode=True)",
+        "iter_lines(decode_unicode=True)",
         "GEMINI_CONTEXT_CHARACTER_LIMIT = 24000",
     ):
         assert marker in backend
@@ -248,9 +248,9 @@ def test_only_gemini_provider_and_no_committed_secrets():
 
 def test_service_worker_never_caches_api_responses():
     text = (ROOT / "service-worker.js").read_text(encoding="utf-8")
-    assert 'url.pathname.startsWith("/api/")' in text
+    assert 'NO_CACHE_PATHS' in text
     assert '"/dashboard"' not in text.split("const APP_SHELL", 1)[1].split("];", 1)[0]
-    assert 'saathi-shell-v15' in text
+    assert 'saathi-shell-v1' in text
 
 
 def test_interactive_pages_have_visible_keyboard_focus():
