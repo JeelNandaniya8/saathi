@@ -436,6 +436,50 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
   </div>
 </dialog>
 
+
+<!-- Voice Call Mode Overlay -->
+<div class="voice-call-overlay" id="voiceCallOverlay" hidden>
+  <div class="voice-call-bars" id="voiceCallBars">
+    <div class="voice-bar" id="vbar1"></div>
+    <div class="voice-bar" id="vbar2"></div>
+    <div class="voice-bar" id="vbar3"></div>
+    <div class="voice-bar" id="vbar4"></div>
+    <div class="voice-bar" id="vbar5"></div>
+  </div>
+  <div class="voice-call-orb" id="voiceCallOrb" onclick="vcToggleListen()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+    </svg>
+  </div>
+  <div class="voice-call-label" id="voiceCallLabel">Tap to speak</div>
+  <div class="voice-call-sub" id="voiceCallSub">Saathi is ready to listen</div>
+  <div class="voice-call-history" id="voiceCallHistory"></div>
+  <div class="voice-call-actions">
+    <button class="voice-call-btn mute" id="vcMuteBtn" onclick="vcToggleMute()" aria-label="Mute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="22" height="22">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+      </svg>
+    </button>
+    <button class="voice-call-btn end" onclick="closeVoiceCall()" aria-label="End call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="22" height="22">
+        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 8.5"/>
+        <line x1="23" y1="1" x2="1" y2="23"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Floating Voice Button -->
+<button class="voice-open-btn" id="voiceOpenBtn" onclick="openVoiceCall()" aria-label="Voice call with Saathi" title="Voice call" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+  </svg>
+</button>
+
+
 <script src="/workspace.js?v=20260915b"></script>
 <script>
 const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],recognition:null,voiceAvailable:false,voiceBase:'',speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
@@ -1102,51 +1146,7 @@ async function init(){
   catch(error){showToast(error.message)}
 }
 init();
-</script>
 
-<!-- Voice Call Mode Overlay -->
-<div class="voice-call-overlay" id="voiceCallOverlay" hidden>
-  <div class="voice-call-bars" id="voiceCallBars">
-    <div class="voice-bar" id="vbar1"></div>
-    <div class="voice-bar" id="vbar2"></div>
-    <div class="voice-bar" id="vbar3"></div>
-    <div class="voice-bar" id="vbar4"></div>
-    <div class="voice-bar" id="vbar5"></div>
-  </div>
-  <div class="voice-call-orb" id="voiceCallOrb" onclick="vcToggleListen()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <rect x="9" y="3" width="6" height="11" rx="3"></rect>
-      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
-    </svg>
-  </div>
-  <div class="voice-call-label" id="voiceCallLabel">Tap to speak</div>
-  <div class="voice-call-sub" id="voiceCallSub">Saathi is ready to listen</div>
-  <div class="voice-call-history" id="voiceCallHistory"></div>
-  <div class="voice-call-actions">
-    <button class="voice-call-btn mute" id="vcMuteBtn" onclick="vcToggleMute()" aria-label="Mute">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="22" height="22">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-      </svg>
-    </button>
-    <button class="voice-call-btn end" onclick="closeVoiceCall()" aria-label="End call">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="22" height="22">
-        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 8.5"/>
-        <line x1="23" y1="1" x2="1" y2="23"/>
-      </svg>
-    </button>
-  </div>
-</div>
-
-<!-- Floating Voice Button -->
-<button class="voice-open-btn" id="voiceOpenBtn" onclick="openVoiceCall()" aria-label="Voice call with Saathi" title="Voice call" hidden>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-    <rect x="9" y="3" width="6" height="11" rx="3"></rect>
-    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
-  </svg>
-</button>
-
-<script>
 // ── Voice Call Mode ──────────────────────────────────────────
 (function(){
   const vc = {
@@ -1293,6 +1293,7 @@ init();
     };
   }
 })();
+
 </script>
 </body>
 </html>
