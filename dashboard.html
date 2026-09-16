@@ -683,6 +683,7 @@ function openView(id,{historyMode='push',focus=true}={}){
   const activeButton=document.querySelector('.nav button.active');
   const group=activeButton?.closest?.('details');if(group)group.open=true;
   window.SaathiDaily?.viewChanged(id);
+  if(state.workspaceReady)loadViewSections(id);
   $('currentViewLabel').textContent=(activeButton?.querySelector('[data-i18n]')?.textContent||activeButton?.textContent)?.trim()||'Today';
   document.title=($('currentViewLabel').textContent)+' · Saathi';
   if(changed){scrollTo({top:0,behavior:'auto'});if(focus){const heading=$(id).querySelector('h1');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true})}}
@@ -779,19 +780,28 @@ const workspaceSections=[
 ];
 $('mockTestForm').addEventListener('submit',generateMockTest);
 async function loadWorkspaceSections(sections=workspaceSections){
-  if(state.loadingSections)return;
-  state.loadingSections=true;$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent='Loading your workspace…';$('retryWorkspace').disabled=true;
-  const failures=[];
-  try{
-    await Promise.allSettled(sections.map(async section=>{
+  state.sectionRequests??=new Map();state.loadedSections??=new Set();
+  function updateStatus(){
+    state.loadingSections=state.sectionRequests.size>0;
+    $('workspaceStatus').hidden=!state.loadingSections&&!state.loadFailures.length;
+    $('workspaceStatusText').textContent=state.loadingSections?'Loading this section…':state.loadFailures.length?'Some sections could not load: '+state.loadFailures.map(item=>item.label).join(', ')+'.':'Your workspace is ready.';
+    $('retryWorkspace').disabled=state.loadingSections;
+  }
+  const requests=sections.map(section=>{
+    if(state.sectionRequests.has(section.key))return state.sectionRequests.get(section.key);
+    // Schedule after registering the request, including synchronous API failures.
+    const request=Promise.resolve().then(async()=>{
       const el=$(section.key);
       if(el)el.setAttribute('aria-busy','true');
       try{
         const data=await api(typeof section.url==='function'?section.url():section.url);
         section.apply(data);
+        state.loadedSections.add(section.key);
+        state.loadFailures=state.loadFailures.filter(item=>item.key!==section.key);
         if(el){el.classList.remove('load-failed');el.querySelector('.section-error')?.remove()}
       }catch(error){
-        failures.push(section);
+        state.loadedSections.delete(section.key);
+        state.loadFailures=state.loadFailures.filter(item=>item.key!==section.key).concat(section);
         if(el){
           el.classList.add('load-failed');
           let note=el.querySelector('.section-error');
@@ -800,12 +810,18 @@ async function loadWorkspaceSections(sections=workspaceSections){
         }
       }finally{
         if(el)el.setAttribute('aria-busy','false');
+        state.sectionRequests.delete(section.key);updateStatus();
       }
-    }));
-    state.loadFailures=failures;
-    $('workspaceStatusText').textContent=failures.length?'Some sections could not load: '+failures.map(item=>item.label).join(', ')+'.':'Your workspace is ready.';
-    $('workspaceStatus').hidden=!failures.length;
-  }finally{state.loadingSections=false;$('retryWorkspace').disabled=false}
+    });
+    state.sectionRequests.set(section.key,request);return request;
+  });
+  updateStatus();await Promise.allSettled(requests);
+}
+function loadViewSections(id,refresh=false){
+  const dependencies={overview:['overview','tasks','reminders','habits'],tasks:['overview','tasks'],reminders:['overview','reminders'],healer:['overview','tasks'],account:['referrals'],study:[]};
+  // Keep due-reminder checks available even when opening a deep link.
+  const keys=['reminders',...(dependencies[id]||[id])];
+  return loadWorkspaceSections(workspaceSections.filter(section=>keys.includes(section.key)&&(refresh||!state.loadedSections?.has(section.key))));
 }
 function updateGreeting(){const hour=new Date().getHours(),language=state.user?.language||'en',words={en:hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
 function playChime(){
@@ -2110,7 +2126,7 @@ async function init(){
     SaathiTheme.refresh();$('journalDate').value=localDate();syncWorkspaceHistory(false);
     const me=await api('/api/me');if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
     state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiWorkspace.connect({user:me.user,api,notify:toast});updateGreeting();
-    await loadWorkspaceSections();
+    state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
     SaathiDaily.connect({api,notify:toast,openView,confirm:confirmAction,tasks:()=>state.tasks,openTest:quickStartFromHistory,openMindmap:loadSavedMindmap,setLanguage:language=>{state.user.language=language;$('languageSelect').value=language;applyLanguage(language)},refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     loadDashboardCareNudge();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
@@ -2120,7 +2136,7 @@ async function init(){
 }
 $('skipWorkspace').addEventListener('click',event=>{event.preventDefault();$('workspaceContent').focus()});
 $('backToToday').addEventListener('click',()=>openView('overview'));
-$('retryWorkspace').addEventListener('click',()=>state.user?loadWorkspaceSections(state.loadFailures.length?state.loadFailures:workspaceSections):init());
+$('retryWorkspace').addEventListener('click',()=>state.user?(state.loadFailures.length?loadWorkspaceSections(state.loadFailures):loadViewSections(state.currentView,true)):init());
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
 window.addEventListener('pagehide',()=>{clearInterval(breathTimer);clearInterval(state.testTimerInterval);activeAmbientNodes.forEach(node=>{try{node.stop?.();node.disconnect()}catch(_){}});audioCtx?.close().catch(()=>{})});
 init();

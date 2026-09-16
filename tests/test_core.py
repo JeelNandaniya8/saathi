@@ -456,7 +456,7 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
             return None
 
         def iter_lines(self, chunk_size=None, decode_unicode=False):
-            # assert chunk_size == 1
+            assert chunk_size == 1
             assert decode_unicode is True
             assert self.encoding == "utf-8"
             yield 'data: {"candidates":[{"content":{"parts":[{"text":"ગુજરાતીમાં "}]}}]}'
@@ -484,6 +484,91 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
     assert ":streamGenerateContent" in captured["url"]
     assert captured["stream"] is True
     assert captured["closed"] is True
+
+
+def test_real_http_stream_delivers_small_unicode_event_before_completion(backend, monkeypatch):
+    import json
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    release = threading.Event()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            payload = {"candidates": [{"content": {"parts": [{"text": "નમસ્તે 👋"}]}}]}
+            event = ("data: " + json.dumps(payload, ensure_ascii=False) + "\n\n").encode()
+            assert len(event) < 512
+            self.wfile.write(event)
+            self.wfile.flush()
+            release.wait(5)
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(backend, "provider_post", lambda url, **kwargs: backend.requests.post(
+        f"http://127.0.0.1:{server.server_port}/", **kwargs))
+    generator = backend.stream_gemini_reply([{"role": "user", "content": "Hello"}])
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        assert pool.submit(next, generator).result(timeout=2) == "નમસ્તે 👋"
+        assert not release.is_set(), "The provider is still waiting, not at EOF"
+    finally:
+        release.set()
+        pool.shutdown(wait=True)
+        generator.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("mode", ["normal", "care", "healer", "explain", "summarise"])
+def test_fast_modes_use_supported_model_without_thinking(backend, monkeypatch, mode):
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("GEMINI_FAST_MODEL", raising=False)
+    assert backend.gemini_endpoint(mode).endswith("gemini-2.5-flash-lite:generateContent")
+    payload = backend.build_gemini_payload([{"role": "user", "content": "Hi"}], mode=mode)
+    assert payload["generationConfig"]["thinkingConfig"] == {"thinkingBudget": 0}
+
+
+def test_model_overrides_and_study_reasoning_are_preserved(backend, monkeypatch):
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    assert backend.gemini_endpoint("deep_study").endswith("gemini-2.5-flash:generateContent")
+    messages = [{"role": "user", "content": "Explain gravity"}]
+    assert "thinkingConfig" not in backend.build_gemini_payload(messages, mode="deep_study")["generationConfig"]
+    monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-3-flash-preview")
+    assert "gemini-3-flash-preview" in backend.gemini_endpoint("normal")
+    assert "thinkingConfig" not in backend.build_gemini_payload(messages)["generationConfig"]
+
+
+def test_context_reuses_cursor_without_closing_it(backend, monkeypatch):
+    calls = []
+
+    class Cursor:
+        def execute(self, query, params):
+            calls.append((query, params))
+        def fetchall(self):
+            return [{"label": "Language", "content": "Gujarati"}]
+        def fetchone(self):
+            return {"language": "gu"}
+        def close(self):
+            pytest.fail("Caller owns this cursor")
+
+    monkeypatch.setattr(backend, "get_db", lambda: pytest.fail("No extra connection"))
+    cursor = Cursor()
+    assert backend.load_active_memory_bundle(7, cursor)[1] == ["Language"]
+    assert backend.load_user_language(7, cursor) == "gu"
+    assert "active = TRUE" in calls[0][0]
+    assert all(params == (7,) for _, params in calls)
 
 
 @pytest.mark.parametrize(

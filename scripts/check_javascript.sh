@@ -11,6 +11,7 @@ node --check workspace.js
 node --check daily-workspace.js
 
 node tests/stream_reader.cjs
+node tests/voice_call.cjs
 
 node tests/workspace_behavior.cjs
 node tests/workspace_extras.cjs

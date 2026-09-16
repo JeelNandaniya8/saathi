@@ -58,7 +58,11 @@ Keep `SAATHI_BILLING_MODE=disabled` until checkout setup has been reviewed. Test
 
 The current products are fixed passes: ₹199 for 30 days or ₹1,499 for 365 days, without automatic renewal. Free accounts receive 1 mock test and 2 mindmaps daily; paid accounts receive 20 of each. Existing attachment size and daily limits still apply. Publish the merchant’s refund, tax and support terms before enabling live checkout.
 
-`GEMINI_FAST_MODEL` defaults to `gemini-3.5-flash-lite` for everyday chat; `GEMINI_MODEL` defaults to `gemini-3.6-flash` for deeper study. Both can be set to a Gemini model available to your project. Connections are reused within each worker thread, and streamed UTF-8 text is decoded incrementally. Cold starts, database location, provider availability and free-tier quotas still affect response time.
+`GEMINI_FAST_MODEL` defaults to `gemini-2.5-flash-lite` for everyday chat; `GEMINI_MODEL` defaults to `gemini-2.5-flash` for deeper study. Both can be set to a Gemini model available to your project. Connections are reused within each worker thread, and streamed UTF-8 text is decoded incrementally. Cold starts, database location, provider availability and free-tier quotas still affect response time.
+
+Streaming forwards even small provider events without Requests' default 512-byte buffer. Ordinary chat disables optional thinking on compatible Gemini 2.5 Flash models; study modes retain reasoning. Chat context reuses its existing database connection, which is released before generation. Dashboard sections load when opened and share in-flight requests instead of fetching every tool at startup. Browser voice uses the same saved streaming chat and browser speech services; voice availability and language quality depend on the device.
+
+The default Render free service sleeps after 15 minutes without traffic and can take about a minute to wake ([Render documentation](https://render.com/docs/free)). Code optimizations cannot remove this hosting delay. Use an always-on service when the product needs consistently warm starts. Deployment environment overrides take precedence over the model defaults above; review existing `GEMINI_FAST_MODEL` and `GEMINI_MODEL` values when upgrading.
 
 CI runs isolated PostgreSQL integration tests in addition to unit and browser behaviour checks. Locally, set `TEST_DATABASE_URL` to a disposable localhost database whose name ends in `_test` to include these tests; use `PGPASSWORD` separately if needed. Never point tests at production.
 

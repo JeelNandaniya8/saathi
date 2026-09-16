@@ -64,7 +64,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-15-daily-workspace"
+RELEASE_ID = "2026-09-16-performance"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2898,14 +2898,17 @@ def stream_conversation_message(conversation_id):
         (conversation_id, user_id),
     )
     recent = list(reversed(cur.fetchall()))
-    cur.close()
-    conn.close()
+    # Reuse this connection for context, then release it before streaming.
+    try:
+        memory_context, memory_labels = load_active_memory_bundle(user_id, cur)
+        language = load_user_language(user_id, cur)
+    finally:
+        cur.close()
+        conn.close()
 
     is_first_user_message = not any(row["role"] == "user" for row in recent)
     context = [{"role": row["role"], "content": row["content"]} for row in recent]
     context.append({"role": "user", "content": content, "attachments": attachments})
-    memory_context, memory_labels = load_active_memory_bundle(user_id)
-    language = load_user_language(user_id)
 
     @stream_with_context
     def generate():
@@ -3796,20 +3799,24 @@ def memory_to_dict(row):
     }
 
 
-def load_active_memory_bundle(user_id):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT label, content FROM memories
-        WHERE user_id = %s AND active = TRUE
-        ORDER BY updated_at DESC LIMIT 20
-        """,
-        (user_id,),
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+def load_active_memory_bundle(user_id, cur=None):
+    conn = get_db() if cur is None else None
+    if conn is not None:
+        cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT label, content FROM memories
+            WHERE user_id = %s AND active = TRUE
+            ORDER BY updated_at DESC LIMIT 20
+            """,
+            (user_id,),
+        )
+        rows = cur.fetchall()
+    finally:
+        if conn is not None:
+            cur.close()
+            conn.close()
     if not rows:
         return "", []
     lines = [f"- {row['label']}: {row['content']}" for row in rows]
@@ -3825,13 +3832,17 @@ def load_active_memories(user_id):
     return load_active_memory_bundle(user_id)[0]
 
 
-def load_user_language(user_id):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT language FROM users WHERE id = %s", (user_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
+def load_user_language(user_id, cur=None):
+    conn = get_db() if cur is None else None
+    if conn is not None:
+        cur = conn.cursor()
+    try:
+        cur.execute("SELECT language FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+    finally:
+        if conn is not None:
+            cur.close()
+            conn.close()
     language = row["language"] if row else "en"
     return language if language in ("en", "gu", "hi") else "en"
 
@@ -4736,10 +4747,6 @@ def upgrade():
 # CHAT (Saathi's personality lives here, on the server)
 # --------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-3.6-flash:generateContent"
-)
 
 SYSTEM_PROMPT = (
     "You are Saathi, a warm AI companion for studying, mentorship, emotional "
@@ -4936,13 +4943,20 @@ def build_gemini_payload(
             "'[filename, Page N]' format supplied with the page text."
         )
 
+    generation_config = {
+        "maxOutputTokens": mode_details["max_output_tokens"],
+        "temperature": mode_details["temperature"],
+    }
+    # Only these 2.5 models support disabling thinking with this API shape.
+    # Respect custom model overrides and keep reasoning for study modes.
+    if selected_mode in FAST_CHAT_MODES and gemini_model(selected_mode) in (
+        "gemini-2.5-flash-lite", "gemini-2.5-flash"
+    ):
+        generation_config["thinkingConfig"] = {"thinkingBudget": 0}
     return {
         "contents": contents,
         "systemInstruction": {"parts": [{"text": system_text}]},
-        "generationConfig": {
-            "maxOutputTokens": mode_details["max_output_tokens"],
-            "temperature": mode_details["temperature"],
-        },
+        "generationConfig": generation_config,
     }
 
 
@@ -4962,12 +4976,20 @@ def gemini_text_and_usage(result):
     return text, usage
 
 
-def gemini_endpoint(mode="normal"):
-    default = "gemini-1.5-flash" if mode in ("normal", "care", "explain", "summary") else "gemini-1.5-pro"
-    model = os.environ.get("GEMINI_FAST_MODEL" if mode in ("normal", "care", "explain", "summary") else "GEMINI_MODEL", default)
+FAST_CHAT_MODES = frozenset(("normal", "care", "healer", "explain", "summarise"))
+
+
+def gemini_model(mode="normal"):
+    fast = mode in FAST_CHAT_MODES
+    default = "gemini-2.5-flash-lite" if fast else "gemini-2.5-flash"
+    model = os.environ.get("GEMINI_FAST_MODEL" if fast else "GEMINI_MODEL", default)
     if not re.fullmatch(r"gemini-[a-zA-Z0-9.-]+", model):
         raise RuntimeError("The AI model configuration needs attention.")
-    return "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"
+    return model
+
+
+def gemini_endpoint(mode="normal"):
+    return "https://generativelanguage.googleapis.com/v1beta/models/" + gemini_model(mode) + ":generateContent"
 
 
 def generate_study_json(instruction, prompt):
@@ -5042,7 +5064,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         # the first model delta reach the browser immediately and preserves
         # Gujarati, Hindi and emoji exactly.
         response.encoding = "utf-8"
-        for raw_line in response.iter_lines(decode_unicode=True):
+        for raw_line in response.iter_lines(chunk_size=1, decode_unicode=True):
             line = str(raw_line or "").strip()
             if not line or not line.startswith("data:"):
                 continue

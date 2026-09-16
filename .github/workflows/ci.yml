@@ -2,7 +2,7 @@ name: Saathi checks
 
 on:
   push:
-    branches: [main, codex/saathi-reliability, codex/saathi-sep15, codex/saathi-daily-workspace]
+    branches: [main, codex/saathi-reliability, codex/saathi-sep15, codex/saathi-daily-workspace, codex/saathi-speed-sep16]
   pull_request:
 
 permissions:

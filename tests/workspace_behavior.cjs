@@ -48,6 +48,16 @@ vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSection
  const sections=[{key:'tasks',label:'Planner',url:'/ok',apply:data=>applied.push(data.items[0])},{key:'memory',label:'Memory',url:'/bad',apply:()=>{}}];
  await ctx.loadWorkspaceSections(sections);assert.deepEqual(applied,[1]);assert.equal(state.loadFailures.length,1);assert.equal($('workspaceStatus').hidden,false);assert.equal($('memory').attrs['aria-busy'],'false');assert.ok($('memory').querySelector('.section-error'));
  ctx.api=async()=>({});await ctx.loadWorkspaceSections(state.loadFailures);assert.equal(state.loadFailures.length,0);assert.equal($('workspaceStatus').hidden,true);assert.equal($('memory').querySelector('.section-error'),null);assert.equal($('journalContent').value,'Unsaved private draft');
+ // Load only the current view, reuse in-flight work, and do not drop rapid navigation.
+ state.loadedSections.clear();const requested=[];let releaseTasks;
+ ctx.workspaceSections=['overview','tasks','reminders','habits','checkins','memory','journal','family','mocktests','mindmaps','referrals'].map(key=>({key,label:key,url:'/'+key,apply(){}}));
+ ctx.api=async url=>{requested.push(url);if(url==='/tasks')await new Promise(resolve=>{releaseTasks=resolve});return {}};
+ const firstLoad=ctx.loadViewSections('overview');await Promise.resolve();
+ const repeated=ctx.loadViewSections('overview'),memoryLoad=ctx.loadViewSections('memory');await memoryLoad;
+ assert.equal(requested.filter(url=>url==='/tasks').length,1,'In-flight requests must be reused');
+ assert.ok(requested.includes('/memory'),'Navigation during startup must load the new view');
+ assert.equal(requested.length,5);assert.ok(!requested.includes('/journal'));assert.ok(!requested.includes('/mocktests'));assert.ok(!requested.includes('/checkins'));
+ releaseTasks();await Promise.all([firstLoad,repeated]);await ctx.loadViewSections('overview');assert.equal(requested.length,5,'Returning to a loaded view must not reload everything');
  // Initial connection failures must leave a usable Retry button.
  const initCtx={state:{user:null},$,SaathiTheme:{refresh(){}},localStorage:{getItem:()=>null},localDate:()=>'',syncWorkspaceHistory(){},api:async()=>{throw Error('Offline')},toast(){}};
  vm.createContext(initCtx);vm.runInContext(source.slice(source.indexOf('async function init(){'),source.indexOf("$('skipWorkspace').addEventListener")),initCtx);

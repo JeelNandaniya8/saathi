@@ -438,7 +438,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 
 
 <!-- Voice Call Mode Overlay -->
-<div class="voice-call-overlay" id="voiceCallOverlay" hidden>
+<div class="voice-call-overlay" id="voiceCallOverlay" role="dialog" aria-modal="true" aria-label="Voice conversation" hidden>
   <div class="voice-call-bars" id="voiceCallBars">
     <div class="voice-bar" id="vbar1"></div>
     <div class="voice-bar" id="vbar2"></div>
@@ -446,13 +446,13 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
     <div class="voice-bar" id="vbar4"></div>
     <div class="voice-bar" id="vbar5"></div>
   </div>
-  <div class="voice-call-orb" id="voiceCallOrb" onclick="vcToggleListen()">
+  <button type="button" class="voice-call-orb" id="voiceCallOrb" onclick="vcToggleListen()" aria-label="Speak or interrupt">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <rect x="9" y="3" width="6" height="11" rx="3"></rect>
       <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
     </svg>
-  </div>
-  <div class="voice-call-label" id="voiceCallLabel">Tap to speak</div>
+  </button>
+  <div class="voice-call-label" id="voiceCallLabel" role="status">Tap to speak</div>
   <div class="voice-call-sub" id="voiceCallSub">Saathi is ready to listen</div>
   <div class="voice-call-history" id="voiceCallHistory"></div>
   <div class="voice-call-actions">
@@ -821,6 +821,7 @@ async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverr
     state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
+    return data;
   }catch(error){if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true});renderMessages();scrollToLatest();}
   finally{setBusy(false);el.input.focus()}
 }
@@ -1142,156 +1143,84 @@ function runChatBreathCycle(phase, seconds){
 
 async function init(){
   SaathiTheme.refresh();
-  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);window.dispatchEvent(new Event('saathi:ready'));loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();
 
-// ── Voice Call Mode ──────────────────────────────────────────
+// Browser voice uses the same authenticated streaming conversation as typing.
 (function(){
-  const vc = {
-    open: false,
-    muted: false,
-    speaking: false,
-    listening: false,
-    recognition: null,
-    synth: window.speechSynthesis,
-    history: [],
-    currentUtterance: null,
-    available: false,
-    lang: 'en-IN',
-  };
-
-  const overlay  = document.getElementById('voiceCallOverlay');
-  const orb      = document.getElementById('voiceCallOrb');
-  const label    = document.getElementById('voiceCallLabel');
-  const sub      = document.getElementById('voiceCallSub');
-  const histBox  = document.getElementById('voiceCallHistory');
-  const openBtn  = document.getElementById('voiceOpenBtn');
-  const muteBtn  = document.getElementById('vcMuteBtn');
-  const bars     = [1,2,3,4,5].map(i => document.getElementById('vbar'+i));
-
-  function setLabel(l,s){label.textContent=l;sub.textContent=s||'';}
-  function setOrb(mode){
-    orb.classList.remove('speaking','listening');
-    if(mode)orb.classList.add(mode);
-    bars.forEach(b=>b.classList.toggle('active',mode==='speaking'));
-  }
-
+  const vc={open:false,muted:false,speaking:false,listening:false,pending:false,turn:0,recognition:null,synth:window.speechSynthesis,history:[],lang:'en-IN'};
+  const byId=id=>document.getElementById(id),overlay=byId('voiceCallOverlay'),orb=byId('voiceCallOrb'),label=byId('voiceCallLabel'),sub=byId('voiceCallSub'),histBox=byId('voiceCallHistory'),openBtn=byId('voiceOpenBtn'),muteBtn=byId('vcMuteBtn');
+  const bars=[1,2,3,4,5].map(i=>byId('vbar'+i));
+  function setLabel(title,detail=''){label.textContent=title;sub.textContent=detail}
+  function setOrb(mode){orb.classList.remove('speaking','listening');if(mode)orb.classList.add(mode);bars.forEach(bar=>bar.classList.toggle('active',mode==='speaking'))}
   function appendHistory(role,text){
-    vc.history.push({role,text});
-    if(vc.history.length>6)vc.history.shift();
-    histBox.innerHTML=vc.history.map(h=>`<p style="margin:0 0 6px"><b style="color:${h.role==='user'?'var(--accent)':'var(--sage)'}">${h.role==='user'?'You':'Saathi'}:</b> ${h.role==='user'?h.text:h.text.replace(/\[▶[^\]]*\]|\[[^\]]*\]/g,'').trim()}</p>`).join('');
+    vc.history.push({role,text});vc.history=vc.history.slice(-6);histBox.replaceChildren();
+    for(const item of vc.history){const row=document.createElement('p'),name=document.createElement('b');name.textContent=item.role==='user'?'You: ':'Saathi: ';row.append(name,document.createTextNode(item.text));histBox.append(row)}
     histBox.scrollTop=histBox.scrollHeight;
   }
-
-  async function speak(text){
-    if(!text||vc.muted)return;
-    if(vc.synth.speaking)vc.synth.cancel();
-    const clean=text.replace(/\[▶[^\]]*\]|\[[^\]]*\]/g,'').replace(/\*+/g,'').trim();
-    return new Promise(resolve=>{
-      const u=new SpeechSynthesisUtterance(clean);
-      u.lang=vc.lang;u.rate=1.05;u.pitch=1;
-      vc.currentUtterance=u;
-      u.onstart=()=>{vc.speaking=true;setOrb('speaking');setLabel('Saathi is speaking','Tap orb to interrupt');};
-      u.onend=u.onerror=()=>{vc.speaking=false;setOrb(null);setLabel('Tap to speak','Your turn');resolve();vcStartListening();};
-      vc.synth.speak(u);
-    });
+  function startListening(){
+    if(!vc.open||vc.muted||vc.pending||vc.speaking||vc.listening||!vc.recognition)return;
+    try{vc.recognition.start()}catch(_){setLabel('Tap to speak','Microphone is not ready yet')}
   }
-
+  function speak(text){
+    if(!text||!vc.open||vc.muted||!vc.synth)return;
+    const turn=vc.turn,u=new SpeechSynthesisUtterance(text.replace(/\*+/g,'').trim());
+    u.lang=vc.lang;u.rate=1.05;vc.speaking=true;
+    u.onstart=()=>{if(vc.open&&turn===vc.turn){setOrb('speaking');setLabel('Saathi is speaking','Tap to interrupt')}};
+    const finish=resume=>{if(!vc.open||turn!==vc.turn)return;vc.speaking=false;setOrb(null);setLabel('Tap to speak','Your turn');if(resume)startListening()};
+    u.onend=()=>finish(true);u.onerror=()=>finish(false);vc.synth.speak(u);
+  }
   async function sendToSaathi(text){
-    setOrb(null);setLabel('Saathi is thinking…','');
-    appendHistory('user',text);
+    if(!vc.open||vc.pending||state.sending)return;
+    const turn=vc.turn;vc.pending=true;setOrb(null);setLabel('Saathi is replying…','Your conversation is saved in this chat');appendHistory('user',text);
     try{
-      const data=await window.api('/api/conversation/send',{
-        method:'POST',
-        body:JSON.stringify({content:text,conversation_id:window.state?.activeId,mode:'care'})
-      });
-      const reply=(data.reply||'I heard you. Could you say that again?');
-      appendHistory('saathi',reply);
-      await speak(reply);
-    }catch(e){
-      setLabel('Tap to speak','Connection issue, try again');
-      setOrb(null);
-      vcStartListening();
-    }
+      const data=await sendContent(text,[],null,'care',false);
+      if(!vc.open||turn!==vc.turn)return;
+      const reply=data?.assistant_message?.content;
+      if(!reply){setLabel('Reply interrupted','Close voice to review or retry your message');return}
+      appendHistory('assistant',reply);vc.pending=false;
+      if(vc.muted)setLabel('Microphone muted','Unmute to continue');else speak(reply);
+    }catch(_){if(vc.open&&turn===vc.turn)setLabel('Connection issue','Close voice to review your message')}
+    finally{if(turn===vc.turn)vc.pending=false}
   }
-
-  function vcStartListening(){
-    if(!vc.recognition||vc.muted||!vc.open)return;
-    try{vc.recognition.start();}catch(e){}
-  }
-
   window.vcToggleListen=function(){
-    if(vc.speaking){vc.synth.cancel();return;}
-    if(vc.listening){vc.recognition?.stop();return;}
-    vcStartListening();
+    if(vc.pending)return;
+    if(vc.speaking){vc.speaking=false;vc.synth.cancel();setOrb(null);setLabel('Tap to speak');return}
+    if(vc.listening){vc.recognition.stop();return}startListening();
   };
-
   window.vcToggleMute=function(){
-    vc.muted=!vc.muted;
-    muteBtn.classList.toggle('muted',vc.muted);
-    muteBtn.title=vc.muted?'Unmute':'Mute';
-    if(vc.muted&&vc.speaking)vc.synth.cancel();
-    if(vc.muted&&vc.listening)vc.recognition?.stop();
+    vc.muted=!vc.muted;muteBtn.classList.toggle('muted',vc.muted);muteBtn.setAttribute('aria-pressed',String(vc.muted));muteBtn.setAttribute('aria-label',vc.muted?'Unmute':'Mute');
+    if(vc.muted){vc.recognition?.abort();vc.speaking=false;vc.synth.cancel();setOrb(null);setLabel('Microphone muted')}
+    else{setLabel('Tap to speak');startListening()}
   };
-
   window.openVoiceCall=function(){
     const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!Recognition){showToast('Voice calls need Chrome or Edge browser.');return;}
-    const user=window.state?.user;
-    vc.lang=user?.language==='gu'?'gu-IN':user?.language==='hi'?'hi-IN':'en-IN';
-    const recognition=new Recognition();
-    recognition.continuous=false;recognition.interimResults=false;recognition.lang=vc.lang;
-    recognition.onstart=()=>{vc.listening=true;setOrb('listening');setLabel('Listening…','Speak now');};
-    recognition.onresult=e=>{
-      const t=Array.from(e.results).map(r=>r[0]?.transcript||'').join(' ').trim();
-      if(t){vc.listening=false;setOrb(null);setLabel('Processing…','');sendToSaathi(t);}
-    };
-    recognition.onerror=e=>{
-      vc.listening=false;setOrb(null);
-      if(e.error==='not-allowed'){setLabel('Mic blocked','Allow microphone access');}
-      else if(e.error!=='no-speech'&&e.error!=='aborted'){setLabel('Tap to speak','Try again');}
-      else{vcStartListening();}
-    };
-    recognition.onend=()=>{vc.listening=false;};
-    vc.recognition=recognition;
-    vc.open=true;
-    vc.history=[];
-    histBox.innerHTML='';
-    overlay.hidden=false;
-    setLabel('Tap to speak','Saathi is ready to listen');
-    setOrb(null);
-    speak({gu:'હા, બોલો. હું સાંભળું છું.',hi:'हाँ, बोलिए। मैं सुन रहा हूँ।',en:'Hello! I\'m here. Go ahead and speak.'}[user?.language]||'Hello, go ahead and speak.');
+    if(!Recognition||!vc.synth){showToast('Voice is not supported in this browser.');return}
+    if(vc.open)return;
+    if(!state.activeId||state.sending||state.selectedFiles.length||el.input.value.trim()){showToast('Finish your reply or send your draft before opening voice.');return}
+    state.recognition?.abort();vc.synth.cancel();
+    vc.turn++;vc.open=true;vc.muted=false;vc.pending=false;vc.speaking=false;vc.listening=false;
+    const turn=vc.turn,user=state.user;vc.lang=user?.language==='gu'?'gu-IN':user?.language==='hi'?'hi-IN':'en-IN';
+    const recognition=new Recognition();recognition.continuous=false;recognition.interimResults=false;recognition.lang=vc.lang;vc.recognition=recognition;
+    recognition.onstart=()=>{if(vc.open&&turn===vc.turn){vc.listening=true;setOrb('listening');setLabel('Listening…','Speak now')}};
+    recognition.onresult=event=>{if(!vc.open||vc.muted||turn!==vc.turn)return;const text=Array.from(event.results).map(result=>result[0]?.transcript||'').join(' ').trim();vc.listening=false;if(text)sendToSaathi(text)};
+    recognition.onerror=event=>{if(!vc.open||turn!==vc.turn)return;vc.listening=false;setOrb(null);if(event.error==='aborted')return;setLabel(event.error==='not-allowed'?'Microphone blocked':'Tap to speak',event.error==='not-allowed'?'Allow microphone access in your browser':'Please try again')};
+    recognition.onend=()=>{if(turn===vc.turn)vc.listening=false};
+    vc.history=[];histBox.replaceChildren();muteBtn.classList.remove('muted');muteBtn.setAttribute('aria-pressed','false');muteBtn.setAttribute('aria-label','Mute');overlay.hidden=false;
+    setOrb(null);setLabel('Tap to speak','Uses your browser voice service; availability varies by language');orb.focus();
   };
-
   window.closeVoiceCall=function(){
-    vc.open=false;
-    vc.recognition?.abort();
-    vc.synth.cancel();
-    overlay.hidden=true;
-    setOrb(null);
+    const pending=vc.pending;vc.open=false;vc.turn++;vc.pending=false;vc.listening=false;vc.speaking=false;vc.recognition?.abort();vc.synth?.cancel();
+    if(pending)state.activeRequest?.abort();overlay.hidden=true;setOrb(null);openBtn.focus();
   };
-
-  // Show floating button once voice is available
-  document.addEventListener('DOMContentLoaded',()=>{
-    const R=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(R&&window.speechSynthesis){
-      // show after login loads
-      setTimeout(()=>{
-        if(window.state?.user)openBtn.hidden=false;
-      },2000);
-    }
+  overlay.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){event.preventDefault();window.closeVoiceCall()}
+    if(event.key==='Tab'){const buttons=Array.from(overlay.querySelectorAll('button')),first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
   });
-  // Also show once init completes
-  const _origInit=window.init;
-  if(typeof _origInit==='function'){
-    window.init=async function(){
-      await _origInit();
-      const R=window.SpeechRecognition||window.webkitSpeechRecognition;
-      if(R&&window.speechSynthesis)openBtn.hidden=false;
-    };
-  }
+  window.addEventListener('saathi:ready',()=>{openBtn.hidden=!(state.user&&(window.SpeechRecognition||window.webkitSpeechRecognition)&&vc.synth)});
+  window.addEventListener('pagehide',()=>{if(vc.open)window.closeVoiceCall()});
 })();
 
 </script>
