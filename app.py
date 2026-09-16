@@ -4963,7 +4963,7 @@ def gemini_text_and_usage(result):
 
 
 def gemini_endpoint(mode="normal"):
-    default = "gemini-3.5-flash-lite" if mode in ("normal", "care", "explain", "summary") else "gemini-3.6-flash"
+    default = "gemini-1.5-flash" if mode in ("normal", "care", "explain", "summary") else "gemini-1.5-pro"
     model = os.environ.get("GEMINI_FAST_MODEL" if mode in ("normal", "care", "explain", "summary") else "GEMINI_MODEL", default)
     if not re.fullmatch(r"gemini-[a-zA-Z0-9.-]+", model):
         raise RuntimeError("The AI model configuration needs attention.")
@@ -5042,7 +5042,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         # the first model delta reach the browser immediately and preserves
         # Gujarati, Hindi and emoji exactly.
         response.encoding = "utf-8"
-        for raw_line in response.iter_lines(chunk_size=1, decode_unicode=True):
+        for raw_line in response.iter_lines(decode_unicode=True):
             line = str(raw_line or "").strip()
             if not line or not line.startswith("data:"):
                 continue
