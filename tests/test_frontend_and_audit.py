@@ -90,7 +90,7 @@ def test_streaming_grounding_and_saved_study_controls_are_wired():
         assert marker in text
     for marker in (
         "def stream_gemini_reply(",
-        ":streamGenerateContent",
+        "provider_send(provider_post",
         "X-Accel-Buffering",
         "def extract_pdf_pages(",
         "def persist_streamed_exchange(",

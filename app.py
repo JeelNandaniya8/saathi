@@ -37,6 +37,9 @@ import study_tools
 import workspace_extras
 import push_notifications
 import daily_workspace
+import response_insights
+import db_pool
+from ai_transport import send as provider_send, ProviderError
 from ai_transport import post as provider_post
 from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context
 from pypdf import PdfReader
@@ -64,7 +67,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-09-16-performance"
+RELEASE_ID = "2026-09-16-reply-recovery"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -409,8 +412,7 @@ def generate_otp():
 # DATABASE SETUP (real PostgreSQL, permanent)
 # --------------------------------------------------------------------
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
-    return conn
+    return db_pool.connect(DATABASE_URL)
 
 
 def rate_limit_key(identifier):
@@ -967,6 +969,7 @@ def public_styles():
 @app.get("/theme.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
+@app.get("/recovery.js")
 @app.get("/daily-workspace.css")
 @app.get("/workspace.css")
 @app.get("/site-theme.css")
@@ -2940,6 +2943,8 @@ def stream_conversation_message(conversation_id):
             yield ndjson_event("complete", data=saved)
         except GeneratorExit:
             raise
+        except ProviderError as error:
+            yield ndjson_event("error", error=str(error), code=error.code, reference=error.reference, retry_after=error.retry_after)
         except RuntimeError as error:
             yield ndjson_event("error", error=str(error))
         except Exception:
@@ -3105,6 +3110,8 @@ def regenerate_conversation_reply(conversation_id):
                 yield ndjson_event("complete", data=save_reply(reply, usage))
             except GeneratorExit:
                 raise
+            except ProviderError as error:
+                yield ndjson_event("error", error=str(error), code=error.code, reference=error.reference, retry_after=error.retry_after)
             except RuntimeError as error:
                 yield ndjson_event("error", error=str(error))
             except Exception:
@@ -4595,6 +4602,7 @@ def export_data():
         ("subject_items", "SELECT * FROM subject_items WHERE user_id=%s ORDER BY id"),
         ("revision_items", "SELECT * FROM revision_items WHERE user_id=%s ORDER BY id"),
         ("quick_notes", "SELECT id,client_id::text,title,content,version,created_at,updated_at FROM quick_notes WHERE user_id=%s ORDER BY updated_at"),
+        ("response_timings", "SELECT request_id::text,conversation_id,first_text_ms,total_ms,outcome,error_code,created_at FROM response_timings WHERE user_id=%s ORDER BY id"),
         ("mock_tests", "SELECT * FROM mock_tests WHERE user_id=%s ORDER BY id"),
         ("mock_test_attempts", "SELECT * FROM mock_test_attempts WHERE user_id=%s ORDER BY id"),
         ("mindmaps", "SELECT * FROM mindmaps WHERE user_id=%s ORDER BY id"),
@@ -4838,7 +4846,7 @@ def build_gemini_payload(
     messages, memory_context="", language="en", mode="normal", file_only=False
 ):
     if not GEMINI_API_KEY:
-        raise RuntimeError("Saathi is not connected yet. Please try again after the server is configured.")
+        raise ProviderError("AI_ACCESS", "Saathi is not connected yet. Please contact support so the AI connection can be configured.")
 
     selected = []
     remaining_characters = GEMINI_CONTEXT_CHARACTER_LIMIT
@@ -4996,14 +5004,14 @@ def generate_study_json(instruction, prompt):
     if not GEMINI_API_KEY:
         raise RuntimeError("AI study tools are not connected yet. Your existing work is saved.")
     try:
-        response = provider_post(gemini_endpoint("deep_study"),
-            headers={"x-goog-api-key": GEMINI_API_KEY},
-            json={"systemInstruction": {"parts": [{"text": instruction}]},
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model("deep_study"),
+            {"systemInstruction": {"parts": [{"text": instruction}]},
                   "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                  "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": 7000, "temperature": 0.35}},
-            timeout=(5, 35))
-        response.raise_for_status()
-        result = response.json()
+                  "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": 7000, "temperature": 0.35}})
+        try:
+            result = response.json()
+        finally:
+            response.close()
         text, _ = gemini_text_and_usage(result)
         if not text or len(text) > 80000:
             raise ValueError("Incomplete document")
@@ -5019,46 +5027,28 @@ def generate_gemini_reply(
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
 
     try:
-        response = provider_post(
-            gemini_endpoint(mode),
-            headers={"x-goog-api-key": GEMINI_API_KEY},
-            json=payload,
-            timeout=(5, 30),
-        )
-        response.raise_for_status()
-        result = response.json()
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES)
+        try:
+            result = response.json()
+        finally:
+            response.close()
         reply, usage = gemini_text_and_usage(result)
         reply = reply.strip()
         if not reply:
             raise ValueError("Empty model response")
         return (reply, usage) if include_usage else reply
-    except requests.exceptions.HTTPError as error:
-        app.logger.warning("Gemini request was rejected with status %s", error.response.status_code)
-        raise RuntimeError("Saathi could not answer this request. Please try again shortly.") from None
-    except requests.exceptions.RequestException:
-        app.logger.exception("Gemini request could not be completed")
-        raise RuntimeError("Saathi cannot connect right now. Please try again shortly.") from None
     except (KeyError, IndexError, TypeError, ValueError):
-        app.logger.exception("Gemini returned an unreadable response")
-        raise RuntimeError("Saathi could not prepare a reply. Please try again.") from None
+        raise ProviderError("AI_FORMAT", "Saathi could not prepare a reply. Please try again.") from None
 
 
 def stream_gemini_reply(messages, memory_context="", language="en", mode="normal", file_only=False):
     """Yield provider text deltas and return final token usage on completion."""
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
-    stream_url = gemini_endpoint(mode).replace(":generateContent", ":streamGenerateContent")
     response = None
     usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
     finish_reason = None
     try:
-        response = provider_post(
-            stream_url + "?alt=sse",
-            headers={"x-goog-api-key": GEMINI_API_KEY},
-            json=payload,
-            stream=True,
-            timeout=(5, 45),
-        )
-        response.raise_for_status()
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, stream=True)
         # Requests otherwise buffers SSE data in 512-byte blocks and may infer
         # Latin-1 when a provider omits a charset. One-byte line iteration lets
         # the first model delta reach the browser immediately and preserves
@@ -5080,15 +5070,12 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         if finish_reason != "STOP":
             raise RuntimeError("The reply stopped before it was complete. Please retry or ask a shorter question.")
         return usage
-    except requests.exceptions.HTTPError as error:
-        app.logger.warning("Gemini stream was rejected with status %s", error.response.status_code)
-        raise RuntimeError("Saathi could not answer this request. Please try again shortly.") from None
+    except requests.exceptions.Timeout:
+        raise ProviderError("AI_TIMEOUT", "The reply timed out. Received text is kept here; please retry when ready.") from None
     except requests.exceptions.RequestException:
-        app.logger.exception("Gemini stream could not be completed")
-        raise RuntimeError("Saathi cannot connect right now. Please try again shortly.") from None
+        raise ProviderError("AI_CONNECTION", "The connection was interrupted. Received text is kept here; please retry when ready.") from None
     except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
-        app.logger.exception("Gemini returned an unreadable stream")
-        raise RuntimeError("Saathi could not prepare a reply. Please try again.") from None
+        raise ProviderError("AI_FORMAT", "Saathi could not prepare a reply. Please try again.") from None
     finally:
         if response is not None:
             response.close()
@@ -5174,6 +5161,7 @@ care.register(app, globals())
 workspace_extras.register(app, globals())
 push_notifications.register(app, globals())
 daily_workspace.register(app, globals())
+response_insights.register(app, globals())
 
 
 if __name__ == "__main__":

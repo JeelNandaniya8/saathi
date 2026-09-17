@@ -303,3 +303,16 @@ Care offers a listening draft, a small step, and a preview of lower-priority dat
 Account > Your rhythm saves an IANA timezone, browser quiet hours, an optional daily reminder digest and optional milestone celebrations. Quiet hours and digests apply to browser alerts; email reminders retain their individually configured schedule. Digests use the existing protected cron endpoint, VAPID configuration and device opt-in. They send a generic summary once per device per local day when reminders are due, with bounded retries and a unique delivery claim. They do not include private titles on the lock screen. Browser delivery remains best effort. No new paid services or AI providers are required.
 
 The skippable first-run form saves language and primary goal. Useful, Wrong and Unclear feedback stays attached to the user's own AI answer; it does not automatically send conversations elsewhere. Migration 017 is additive. New records are included in account export and cascade on account deletion. Payment activation is unchanged.
+
+
+### Reply recovery update (16 September 2026)
+
+Chat distinguishes AI access, quota, model, timeout and connection failures. A rejected model or unsupported thinking setting gets at most one compatibility retry before any output, with a successful workaround reused for ten minutes. Quota and credential errors are not automatically retried. The existing Gemini defaults remain configurable through `GEMINI_FAST_MODEL` and `GEMINI_MODEL`; see [Google’s model lifecycle](https://ai.google.dev/gemini-api/docs/deprecations).
+
+PostgreSQL connections are reused in a bounded pool per server process, with rollback before reuse and stale-connection replacement before application SQL. No failed write is replayed. The configured four-thread Render process uses at most eight pooled connections.
+
+Unsent chat and Quick Note drafts recover on the same browser for 24 hours, scoped to the account and cleared on logout. Reattach files after refreshing. Restored note versions preserve conflict detection, and unchanged chat retries preserve their request ID.
+
+Account → Reply performance shows browser-measured first-text and completion times. It makes no extra Gemini call and stores no message or file text. Weekly review uses saved activity in the selected timezone. Migration `018_response_insights.sql` adds timing records and task completion dates; historical completion dates are intentionally left unknown. Timings keep at most 100 records per account and remove records older than 30 days when read or written.
+
+Deployment check: `python scripts/smoke_test.py https://YOUR-SERVICE.onrender.com`. This checks release `2026-09-16-reply-recovery`; it does not verify signed-in Gemini output or promise a production latency.
