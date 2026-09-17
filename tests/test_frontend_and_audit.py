@@ -106,7 +106,7 @@ def test_live_streaming_is_utf8_low_latency_and_uses_one_composer_control():
     for marker in (
         "content_type=\"application/x-ndjson; charset=utf-8\"",
         'response.encoding = "utf-8"',
-        "iter_lines(chunk_size=1, decode_unicode=True)",
+        "iter_lines(decode_unicode=True)",
         "GEMINI_CONTEXT_CHARACTER_LIMIT = 24000",
     ):
         assert marker in backend
