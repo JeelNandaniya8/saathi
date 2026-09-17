@@ -5064,7 +5064,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         # the first model delta reach the browser immediately and preserves
         # Gujarati, Hindi and emoji exactly.
         response.encoding = "utf-8"
-        for raw_line in response.iter_lines(decode_unicode=True):
+        for raw_line in response.iter_lines(chunk_size=1, decode_unicode=True):
             line = str(raw_line or "").strip()
             if not line or not line.startswith("data:"):
                 continue
