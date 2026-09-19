@@ -11,12 +11,13 @@ class Element {
   querySelectorAll(){return Object.values(this.parts)}showModal(){this.open=true}close(){this.open=false}
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function workspaceEnvironment(api){
+function workspaceEnvironment(api,storage=null){
   const body=new Element(),trigger=new Element(),pushButton=new Element(),pushStatus=new Element(),events={};
   const document={body,createElement:()=>new Element(),querySelectorAll:selector=>selector==='[data-quick-notes]'?[trigger]:selector==='[data-push-toggle]'?[pushButton]:selector==='[data-push-status]'?[pushStatus]:[]};
   const window={addEventListener:(name,fn)=>events[name]=fn};
   const ctx={window,document,navigator:{},crypto:webcrypto,URL,TextEncoder,Uint8Array,atob,setTimeout,clearTimeout,Date};
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('workspace.js','utf8'),ctx);
+  if(storage){ctx.localStorage=storage;window.crypto=webcrypto;vm.runInContext(fs.readFileSync('recovery.js','utf8'),ctx);window.SaathiRecovery.connect({user:{id:1},api})}
   return {ctx,body,trigger,pushButton,pushStatus,events,api,controller:window.SaathiWorkspace};
 }
 (async()=>{
@@ -95,5 +96,15 @@ function workspaceEnvironment(api){
   assert.equal(notified[0].title,'Saathi reminder');assert.ok(!JSON.stringify(notified).includes('Private'));assert.equal(notified[0].options.data.url,'/dashboard#reminders');
   const notification={data:{url:'https://evil.test'},close(){}};handlers.notificationclick({notification,waitUntil:p=>work=p});await work;assert.deepEqual(opened,['/dashboard#reminders']);
   windows=[{url:'https://saathi.test/dashboard#reminders',focus:async()=>focused++}];handlers.notificationclick({notification,waitUntil:p=>work=p});await work;assert.equal(focused,1);assert.equal(opened.length,1);
-  console.log('PASS: note save recovery, conflict/draft retention, deletion, avatars, opt-in push/logout, theme preferences, private push display and safe click routing');
+  // Reload restores unsaved note text and its original conflict version.
+  class Storage{getItem(k){return this[k]??null}setItem(k,v){this[k]=String(v)}removeItem(k){delete this[k]}}
+  const storage=new Storage();let recoveredVersion;
+  const noteApi=async(path,options={})=>{if(options.method==='PATCH'){recoveredVersion=JSON.parse(options.body).version;throw Error('Note changed on another device')}return {notes:[{id:8,client_id:webcrypto.randomUUID(),version:2,title:'Saved',content:'Server content',updated_at:new Date().toISOString()}]}};
+  const beforeReload=workspaceEnvironment(noteApi,storage);beforeReload.controller.connect({user:{id:1},api:noteApi});await beforeReload.controller.openNote(8);
+  const noteUi=beforeReload.body.children[0].parts;noteUi.content.value='My unsaved edit';noteUi.content.events.input();
+  const raw=JSON.parse(storage.getItem('saathi-draft-v1:1:note:8'));raw.version=1;storage.setItem('saathi-draft-v1:1:note:8',JSON.stringify(raw));
+  const afterReload=workspaceEnvironment(noteApi,storage);afterReload.controller.connect({user:{id:1},api:noteApi});await afterReload.controller.openNote(8);
+  const restored=afterReload.body.children[0].parts;assert.equal(restored.content.value,'My unsaved edit');await restored.form.events.submit({preventDefault(){}});assert.equal(recoveredVersion,1);assert.equal(restored.content.value,'My unsaved edit');
+  restored.discard.onclick();assert.equal(restored.content.value,'Server content');assert.equal(storage.getItem('saathi-draft-v1:1:note:8'),null);
+  console.log('PASS: note reload recovery, conflict/draft retention, deletion, avatars, opt-in push/logout, theme preferences, private push display and safe click routing');
 })().catch(error=>{console.error(error);process.exitCode=1});

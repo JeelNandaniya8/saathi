@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('chat.html','utf8');
 const fn=source.slice(source.indexOf('async function streamChatRequest('),source.indexOf('\nfunction renderChatModes'));
-const ctx={AbortController,TextDecoder,FormData,setTimeout,clearTimeout,state:{csrf:'test'},el:{uploadStatus:{}},showRequestProgress(){},location:{},fetch:null};
+const ctx={window:{},AbortController,TextDecoder,FormData,setTimeout,clearTimeout,state:{csrf:'test'},el:{uploadStatus:{}},showRequestProgress(){},location:{},fetch:null};
 vm.createContext(ctx);vm.runInContext(fn,ctx);
 (async()=>{
  let pipe;ctx.fetch=async()=>({ok:true,status:200,body:new ReadableStream({start(c){pipe=c}})});
@@ -18,5 +18,9 @@ vm.createContext(ctx);vm.runInContext(fn,ctx);
  let abortSignal;ctx.fetch=async(url,options)=>{abortSignal=options.signal;return {ok:true,status:200,body:new ReadableStream({start(c){options.signal.addEventListener('abort',()=>c.error(new DOMException('Stopped','AbortError')))}})}};
  const cancelled=ctx.streamChatRequest('/test','{}',()=>{});await new Promise(r=>setImmediate(r));ctx.state.activeRequest.abort();
  await assert.rejects(cancelled,{name:'AbortError'});assert.equal(abortSignal.aborted,true);
+ const timings=[];ctx.window.SaathiRecovery={measureStart:()=>({}),measureDelta:()=>{},measureEnd:(_,outcome,error)=>timings.push({outcome,code:error?.code})};
+ ctx.fetch=async()=>({ok:true,status:200,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('{"type":"error","error":"Usage limit","code":"AI_QUOTA","retry_after":31}\n'));c.close()}})});
+ await assert.rejects(ctx.streamChatRequest('/api/conversations/3/messages/stream','{}',()=>{}),error=>error.code==='AI_QUOTA'&&error.retry_after===31);
+ assert.equal(timings.length,1);assert.equal(timings[0].outcome,'error');assert.equal(timings[0].code,'AI_QUOTA');
  console.log('PASS: incremental Gujarati/emoji before EOF and Stop cancellation');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -23,18 +23,22 @@
     ui.new.onclick=()=>selectNote(null);ui.reload.onclick=()=>loadNotes(true);ui.search.oninput=renderList;
     ui.exportpdf.onclick=exportCurrentNotePdf;
     ui.form.addEventListener('submit',saveNote);ui.delete.onclick=deleteNote;
-    ui.discard.onclick=()=>{state.dirty=false;selectNote(state.selected,true)};
-    for(const input of [ui.title,ui.content])input.addEventListener('input',()=>{state.dirty=true;ui.discard.hidden=false;ui.counter.textContent=ui.content.value.length+' / 10,000';status('Unsaved changes');ui.delete.textContent='Delete note'});
+    ui.discard.onclick=()=>{window.SaathiRecovery?.removeDraft('note',noteDraftKey());state.dirty=false;selectNote(state.notes.find(note=>note.id===state.selected?.id)||state.selected,true)};
+    for(const input of [ui.title,ui.content])input.addEventListener('input',()=>{state.dirty=true;ui.discard.hidden=false;ui.counter.textContent=ui.content.value.length+' / 10,000';status('Unsaved changes');state.confirmDelete=false;ui.delete.textContent='Delete note';saveNoteDraft()});
     ui.content.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();ui.form.requestSubmit()}});
     window.addEventListener('beforeunload',event=>{if(state.dirty){event.preventDefault();event.returnValue=''}});
     selectNote(null,true);
   }
+  function noteDraftKey(){return state.selected?.id||'new'}
+  function saveNoteDraft(){if(state.dirty)window.SaathiRecovery?.saveDraft('note',noteDraftKey(),{title:ui.title.value,content:ui.content.value,version:state.draftVersion??state.selected?.version,client_id:state.clientId})}
   function canSwitch(){if(!state.dirty)return true;status('Save or discard your edits before opening another note.',true);ui.save.focus();return false}
   function selectNote(note,force=false){
     if(state.busy||(!force&&!canSwitch()))return;
-    state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;
-    ui.title.value=note?.title||'';ui.content.value=note?.content||'';ui.delete.hidden=!note;ui.discard.hidden=true;ui.delete.textContent='Delete note';
+    state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;state.draftVersion=null;
+    ui.title.value=note?.title||'';ui.content.value=note?.content||'';ui.delete.hidden=!note;ui.discard.hidden=true;state.confirmDelete=false;ui.delete.textContent='Delete note';
     ui.counter.textContent=ui.content.value.length+' / 10,000';status(note?'Saved to your account.':'Capture a thought. Save when you’re ready.');renderList();
+    const draft=window.SaathiRecovery?.getDraft('note',noteDraftKey());
+    if(draft&&typeof draft.content==='string'&&typeof draft.title==='string'){ui.title.value=draft.title.slice(0,80);ui.content.value=draft.content.slice(0,10000);state.clientId=draft.client_id||state.clientId;state.draftVersion=Number.isInteger(draft.version)?draft.version:null;state.dirty=true;ui.discard.hidden=false;ui.counter.textContent=ui.content.value.length+' / 10,000';status('Browser draft recovered. Review it before saving.')}
     if(dialog.open)ui.content.focus();
   }
   function renderList(){
@@ -57,20 +61,21 @@
   async function saveNote(event){
     event.preventDefault();if(state.busy)return;if(!ui.content.value.trim()){status('Write something before saving.',true);return}
     state.busy=true;ui.save.disabled=true;ui.delete.disabled=true;status('Saving…');
-    const draft={title:ui.title.value,content:ui.content.value};const path=state.selected?'/api/quick-notes/'+state.selected.id:'/api/quick-notes';
-    const body={...draft,...(state.selected?{version:state.selected.version}:{client_id:state.clientId})};
+    const draftKey=noteDraftKey(),draft={title:ui.title.value,content:ui.content.value};const path=state.selected?'/api/quick-notes/'+state.selected.id:'/api/quick-notes';
+    const body={...draft,...(state.selected?{version:state.draftVersion??state.selected.version}:{client_id:state.clientId})};
     try{const result=await state.api(path,{method:state.selected?'PATCH':'POST',body:JSON.stringify(body)});const note=result.note;
       state.notes=[note,...state.notes.filter(item=>item.id!==note.id)];state.selected=note;state.loaded=true;
       const replayChanged=result.replayed&&(note.content!==draft.content.trim()||(draft.title.trim()&&note.title!==draft.title.trim()));
       state.dirty=Boolean(replayChanged)||ui.title.value!==draft.title||ui.content.value!==draft.content;
+      window.SaathiRecovery?.removeDraft('note',draftKey);state.draftVersion=note.version;if(state.dirty)saveNoteDraft();
       if(!state.dirty){ui.title.value=note.title;ui.content.value=note.content}ui.discard.hidden=!state.dirty;ui.delete.hidden=false;renderList();status(state.dirty?'Earlier changes saved. New edits are unsaved.':'Saved to your account.');
     }catch(error){status(error.message||'Your note could not save. Your draft is still here.',true)}finally{state.busy=false;ui.save.disabled=false;ui.delete.disabled=false}
   }
   async function deleteNote(){
     if(!state.selected||state.busy)return;
-    if(ui.delete.textContent!=='Confirm delete'){ui.delete.textContent='Confirm delete';status('Delete this saved note? Select Confirm delete to remove it.',true);return}
+    if(!state.confirmDelete){state.confirmDelete=true;ui.delete.textContent='Confirm delete';status('Delete this saved note? Select Confirm delete to remove it.',true);return}
     state.busy=true;ui.delete.disabled=true;
-    try{await state.api('/api/quick-notes/'+state.selected.id,{method:'DELETE',body:JSON.stringify({version:state.selected.version})});state.notes=state.notes.filter(note=>note.id!==state.selected.id);state.dirty=false;state.busy=false;selectNote(null,true);status('Note deleted.')}catch(error){status(error.message,true)}finally{state.busy=false;ui.delete.disabled=false;ui.delete.textContent='Delete note'}
+    try{await state.api('/api/quick-notes/'+state.selected.id,{method:'DELETE',body:JSON.stringify({version:state.selected.version})});window.SaathiRecovery?.removeDraft('note',noteDraftKey());state.notes=state.notes.filter(note=>note.id!==state.selected.id);state.dirty=false;state.busy=false;selectNote(null,true);status('Note deleted.')}catch(error){status(error.message,true)}finally{state.busy=false;ui.delete.disabled=false;state.confirmDelete=false;ui.delete.textContent='Delete note'}
   }
   function exportCurrentNotePdf(){
     if(!ui.content.value.trim()){status('Note is empty.',true);return;}

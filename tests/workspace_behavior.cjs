@@ -50,11 +50,11 @@ vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSection
  ctx.api=async()=>({});await ctx.loadWorkspaceSections(state.loadFailures);assert.equal(state.loadFailures.length,0);assert.equal($('workspaceStatus').hidden,true);assert.equal($('memory').querySelector('.section-error'),null);assert.equal($('journalContent').value,'Unsaved private draft');
  // Load only the current view, reuse in-flight work, and do not drop rapid navigation.
  state.loadedSections.clear();const requested=[];let releaseTasks;
- ctx.workspaceSections=['overview','tasks','reminders','habits','checkins','memory','journal','family','mocktests','mindmaps','referrals'].map(key=>({key,label:key,url:'/'+key,apply(){}}));
- ctx.api=async url=>{requested.push(url);if(url==='/tasks')await new Promise(resolve=>{releaseTasks=resolve});return {}};
+ ctx.workspaceSections=['overview','today','tasks','reminders','habits','checkins','memory','journal','family','mocktests','mindmaps','referrals'].map(key=>({key,label:key,url:'/'+key,apply(){}}));
+ ctx.api=async url=>{requested.push(url);if(url==='/today')await new Promise(resolve=>{releaseTasks=resolve});return {}};
  const firstLoad=ctx.loadViewSections('overview');await Promise.resolve();
  const repeated=ctx.loadViewSections('overview'),memoryLoad=ctx.loadViewSections('memory');await memoryLoad;
- assert.equal(requested.filter(url=>url==='/tasks').length,1,'In-flight requests must be reused');
+ assert.equal(requested.filter(url=>url==='/today').length,1,'In-flight requests must be reused');
  assert.ok(requested.includes('/memory'),'Navigation during startup must load the new view');
  assert.equal(requested.length,5);assert.ok(!requested.includes('/journal'));assert.ok(!requested.includes('/mocktests'));assert.ok(!requested.includes('/checkins'));
  releaseTasks();await Promise.all([firstLoad,repeated]);await ctx.loadViewSections('overview');assert.equal(requested.length,5,'Returning to a loaded view must not reload everything');

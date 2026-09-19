@@ -303,3 +303,28 @@ Care offers a listening draft, a small step, and a preview of lower-priority dat
 Account > Your rhythm saves an IANA timezone, browser quiet hours, an optional daily reminder digest and optional milestone celebrations. Quiet hours and digests apply to browser alerts; email reminders retain their individually configured schedule. Digests use the existing protected cron endpoint, VAPID configuration and device opt-in. They send a generic summary once per device per local day when reminders are due, with bounded retries and a unique delivery claim. They do not include private titles on the lock screen. Browser delivery remains best effort. No new paid services or AI providers are required.
 
 The skippable first-run form saves language and primary goal. Useful, Wrong and Unclear feedback stays attached to the user's own AI answer; it does not automatically send conversations elsewhere. Migration 017 is additive. New records are included in account export and cascade on account deletion. Payment activation is unchanged.
+
+
+### Reply recovery update (16 September 2026)
+
+Chat distinguishes AI access, quota, model, timeout and connection failures. A rejected model or unsupported thinking setting gets at most one compatibility retry before any output, with a successful workaround reused for ten minutes. Quota and credential errors are not automatically retried. The existing Gemini defaults remain configurable through `GEMINI_FAST_MODEL` and `GEMINI_MODEL`; see [Google’s model lifecycle](https://ai.google.dev/gemini-api/docs/deprecations).
+
+PostgreSQL connections are reused in a bounded pool per server process, with rollback before reuse and stale-connection replacement before application SQL. No failed write is replayed. The configured four-thread Render process uses at most eight pooled connections.
+
+Unsent chat and Quick Note drafts recover on the same browser for 24 hours, scoped to the account and cleared on logout. Reattach files after refreshing. Restored note versions preserve conflict detection, and unchanged chat retries preserve their request ID.
+
+Account → Reply performance shows browser-measured first-text and completion times. It makes no extra Gemini call and stores no message or file text. Weekly review uses saved activity in the selected timezone. Migration `018_response_insights.sql` adds timing records and task completion dates; historical completion dates are intentionally left unknown. Timings keep at most 100 records per account and remove records older than 30 days when read or written.
+
+Deployment check: `python scripts/smoke_test.py https://YOUR-SERVICE.onrender.com`. This checks release `2026-09-16-reply-recovery`; it does not verify signed-in Gemini output or promise a production latency.
+
+### Workspace update, 19 September 2026
+
+Today shows up to three due or undated tasks, due revision and the latest saved chat. Search (Ctrl/Cmd+K) finds owned conversation titles/message text, notes and tasks, using literal text queries of 2–100 characters and up to 18 results. Search does not call AI.
+
+Focus sessions run for 25 or 50 minutes, optionally linked to an open task. Server time and account-level transaction locks keep pause/resume and retries consistent across tabs. The panel can close without stopping the timer. Opening it again refreshes server state. Closing the page does not mark the linked task complete. The latest 100 sessions are retained and included in account exports. Migration `019_focus_sessions.sql` runs with the existing startup migrations.
+
+Chat messages can be edited and resent as a new follow-up while preserving earlier messages. Reattaching an original file counts as a new upload under the existing allowance. Cancelling while the file loads does not send the edited message. Verified PDF references open an owned, sandboxed inline PDF at its cited page. Unmatched or ambiguous references stay as text. Secondary reply controls are grouped under More.
+
+The referral panel is in Account. Today has one dismissible Care card, and the repeated chat Care banner is removed. Reminder scheduling and browser notifications remain available. Mock tests, mindmaps and the wellbeing scripts load only when opened, with retry after a failed load. Gujarati interface copy loads only when Gujarati is selected; saved user writing and AI output are not translated by the interface observer.
+
+CI runs PostgreSQL ownership/concurrency checks, the existing Node behavior checks, and real Chromium desktop/mobile flows with local fixture responses. The browser checks require Playwright 1.62.1 (`NODE_PATH=/tmp/saathi-browser-tests/node_modules node tests/workspace_browser.cjs` after the install steps in `.github/workflows/ci.yml`). They do not send prompts to an AI provider. Provider latency and hosting wake-up time still depend on the live services.

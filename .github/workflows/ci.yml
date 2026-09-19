@@ -2,7 +2,7 @@ name: Saathi checks
 
 on:
   push:
-    branches: [main, codex/saathi-reliability, codex/saathi-sep15, codex/saathi-daily-workspace, codex/saathi-speed-sep16]
+    branches: [main, codex/saathi-reliability, codex/saathi-sep15, codex/saathi-daily-workspace, codex/saathi-speed-sep16, codex/saathi-reply-recovery]
   pull_request:
 
 permissions:
@@ -47,13 +47,23 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Compile backend and smoke checker
-        run: python -m py_compile app.py auth_google.py billing.py care.py study_tools.py ai_transport.py workspace_extras.py push_notifications.py daily_workspace.py scripts/smoke_test.py scripts/generate_push_keys.py
+        run: python -m py_compile app.py auth_google.py billing.py care.py study_tools.py ai_transport.py workspace_extras.py push_notifications.py daily_workspace.py db_pool.py response_insights.py workspace_hub.py scripts/smoke_test.py scripts/generate_push_keys.py
 
       - name: Run backend and security tests
         run: pytest -q
 
       - name: Check browser JavaScript
         run: bash scripts/check_javascript.sh
+
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix /tmp/saathi-browser-tests --no-audit --no-fund playwright@1.62.1
+          /tmp/saathi-browser-tests/node_modules/.bin/playwright install --with-deps chromium --only-shell
+
+      - name: Exercise desktop and mobile browser flows
+        env:
+          NODE_PATH: /tmp/saathi-browser-tests/node_modules
+        run: node tests/workspace_browser.cjs
 
       - name: Check patch whitespace
         run: git diff --check

@@ -211,8 +211,9 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 .care-island-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
-<link rel="stylesheet" href="/workspace.css?v=20260915">
+<link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/daily-workspace.css?v=20260915b">
+<link rel="stylesheet" href="/workspace-hub.css?v=20260919">
 </head>
 <body>
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
@@ -236,33 +237,35 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 </details>
 <a class="chat-link" href="/chat"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="openChat">Open conversation</span></a>
 </nav><div class="account-chip"><span class="avatar" id="sideAvatar">S</span><div><b id="sideName">Loading</b><span id="sidePlan">Free plan</span></div></div></aside><button class="scrim" id="scrim" aria-label="Close navigation"></button>
-<main class="main"><header class="topbar"><div><button class="icon-button menu-button" id="menuButton" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><span class="top-status"><i></i><span id="currentViewLabel">Today</span></span></div><div class="top-actions"><button class="top-button" id="installButton" hidden>Install app</button><a class="top-button" href="/chat"><span>Talk to </span>Saathi →</a><button class="icon-button" id="themeButton" data-theme-toggle aria-label="Change appearance">◐</button></div></header>
+<main class="main"><header class="topbar"><div><button class="icon-button menu-button" id="menuButton" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><span class="top-status"><i></i><span id="currentViewLabel">Today</span></span></div><div class="top-actions"><button class="top-button" type="button" data-workspace-search aria-keyshortcuts="Control+k Meta+k">Search</button><button class="top-button" id="installButton" hidden>Install app</button><a class="top-button" href="/chat"><span>Talk to </span>Saathi →</a><button class="icon-button" id="themeButton" data-theme-toggle aria-label="Change appearance">◐</button></div></header>
 <div class="content" id="workspaceContent" tabindex="-1">
 <div class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"><span id="workspaceStatusText">Loading your workspace…</span><button class="secondary" id="retryWorkspace" type="button" disabled>Retry</button></div>
 <button class="back-to-today" id="backToToday" type="button" hidden>← <span data-i18n="today">Today</span></button>
 <section class="view active" id="overview">
-<!-- Proactive Dynamic Caring Island -->
-<article class="proactive-care-island" id="overviewCareIsland" style="display:none;margin-bottom:18px">
-  <div class="care-island-body">
-    <div class="care-island-avatar" id="islandAvatar">◍</div>
-    <div class="care-island-text">
-      <b id="islandTitle">Saathi Care Nudge</b>
-      <p id="islandMessage">Take care and remember your health comes first.</p>
-    </div>
-    <div class="care-island-actions">
-      <button type="button" class="primary" id="islandActionBtn" style="background:var(--sage);border-color:var(--sage);font-size:12px;padding:8px 16px;display:none"></button>
-      <button type="button" class="quiet" onclick="dismissDashboardCareIsland()" style="border-radius:50%;width:30px;height:30px;padding:0;font-size:16px;cursor:pointer" title="Dismiss" aria-label="Dismiss reminder">×</button>
-    </div>
-  </div>
-</article>
-
-<article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><article class="care-panel"><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, find a small next step, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">Wellbeing</button><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire"></span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold"><span id="streakBadgeText">0 Day Streak</span></span></div>
+<div class="recovery-actions"><button class="secondary" type="button" data-weekly-review>Review your week</button></div>
+<article class="hero-panel"><span class="eyebrow">Your day</span><h1 id="greeting">Good to see you.</h1><p>A clear view of conversations, tasks, reminders and the context you chose to save. You stay in control of every part.</p></article><div class="hub-today"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Start here</span><h2>Your next three steps</h2></div><button class="secondary" type="button" data-focus-session>Focus session</button></div><div id="todayTasks"><p class="helper">Loading your next steps…</p></div></article><div class="grid2"><article class="panel"><h2 id="todayRevision">Revision ready</h2><button class="secondary" data-open="study" type="button">Review now</button></article><article class="panel"><h2>Continue your conversation</h2><div id="todayResume"></div></article></div></div><article class="care-panel" id="todayCare"><button class="quiet" type="button" onclick="document.getElementById('todayCare').hidden=true" aria-label="Dismiss care card">×</button><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, find a small next step, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">Wellbeing</button><button class="secondary" data-open="checkins" type="button">Check in</button><button class="secondary" data-open="journal" type="button">Write privately</button></div></article><div class="metrics"><article class="metric streak-card"><div style="display:flex;align-items:center;justify-content:space-between"><span class="streak-label">Active streak</span><span class="streak-fire" id="streakFire"></span></div><strong class="streak-num" id="metricStreak">0</strong><p id="metricStreakSub">Keep routines going</p><button data-open="habits">Review habits →</button></article><article class="metric"><span>Open tasks</span><strong id="metricTasks">0</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">0</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">0</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">0</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div><div class="badges-row" id="overviewBadges" style="margin-bottom:14px"><span class="badge-pill gold"><span id="streakBadgeText">0 Day Streak</span></span></div>
 
 
 <!-- Viral Referral Banner -->
 
 
-<div class="grid2"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Next steps</span><h2>Your planner</h2></div><button class="quiet" data-open="tasks">View all →</button></div><div class="quick-list" id="overviewTasks"></div></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Schedule</span><h2>Next reminder</h2></div><button class="quiet" data-open="reminders">Manage →</button></div><div class="quick-list" id="overviewReminder"></div></article></div><details class="referral-banner"><summary>Invite a friend</summary>
+<div id="overviewTasks" hidden></div><article class="panel"><div class="panel-head"><h2>Next reminder</h2><button class="quiet" data-open="reminders">Manage →</button></div><div id="overviewReminder"></div></article></section>
+
+<section class="view" id="tasks"><header class="section-head"><span class="eyebrow">Study and everyday planning</span><h1>Make the next step clear.</h1><p>Keep tasks realistic, give important work a due time and mark it complete when it is actually done.</p></header><article class="panel form-panel"><form id="taskForm"><div class="form-grid"><label class="field">Task title<input id="taskTitle" maxlength="180" required placeholder="Revise probability chapter"></label><label class="field">Due date and time<input id="taskDue" type="datetime-local"></label><label class="field">Priority<select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label><label class="field wide">Details, optional<textarea id="taskDetails" maxlength="1000" placeholder="What exactly needs to be completed?"></textarea></label></div><div class="form-actions"><button class="primary" id="taskSubmit" type="submit">Add task</button><button class="secondary" id="taskCancel" type="button" hidden>Cancel edit</button><span class="helper">Your plan is private to your account.</span></div></form></article><div class="filters" id="taskFilters"><button class="filter active" aria-pressed="true" data-filter="open">Open</button><button class="filter" aria-pressed="false" data-filter="all">All</button><button class="filter" aria-pressed="false" data-filter="done">Completed</button></div><div class="item-list" id="taskList"></div></section>
+
+<section class="view" id="reminders"><header class="section-head"><span class="eyebrow">User-controlled routines</span><h1>Remember it without carrying it.</h1><p>Create the exact schedule yourself. For medicine, Saathi stores only the name and time you enter and never chooses a medicine, dose or treatment.</p></header><article class="panel form-panel"><form id="reminderForm"><div class="form-grid"><label class="field">Reminder title<input id="reminderTitle" maxlength="160" required placeholder="Evening medicine"></label><label class="field">Date and time<input id="reminderTime" type="datetime-local" required></label><label class="field">Repeat<select id="reminderRecurrence"><option value="once">Once</option><option value="daily">Every day</option><option value="weekly">Every week</option></select></label><label class="field">Delivery<select id="reminderDelivery"><option value="browser">Browser alerts</option><option value="email">Email and browser</option></select></label><label class="field wide">Note, optional<textarea id="reminderNote" maxlength="500" placeholder="Only include details you are comfortable saving."></textarea></label></div><div class="form-actions"><button class="primary" id="reminderSubmit" type="submit">Create reminder</button><button class="secondary" id="reminderCancel" type="button" hidden>Cancel edit</button><button class="secondary" id="notificationButton" type="button">Enable browser notifications</button></div><p class="helper">Email delivery works only after the server's protected scheduler is configured. Browser alerts need your permission. Background delivery also needs server setup and a supported device. Quiet hours and daily summaries can be chosen in Account. Delivery can fail, so important schedules should be checked independently.</p></form></article><div class="item-list" id="reminderList"></div></section>
+
+<section class="view" id="habits"><header class="section-head"><span class="eyebrow">Small repeatable steps</span><h1>Build routines without pressure.</h1><p>Track only the habits that help you. A missed day is information, not failure, and you can pause any habit.</p></header><article class="panel form-panel"><form id="habitForm"><div class="form-grid"><label class="field">Habit name<input id="habitName" maxlength="120" required placeholder="Review notes for 15 minutes"></label><label class="field">Schedule<select id="habitFrequency"><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="weekly">Once a week</option></select></label></div><div class="form-actions"><button class="primary" type="submit">Add habit</button><span class="helper">Completion uses your device's local date.</span></div></form></article><div class="item-list" id="habitList"></div></section>
+
+<section class="view" id="journal"><header class="section-head"><span class="eyebrow">Private writing</span><h1>A quiet place to write.</h1><p>Journal entries stay attached to your account and are never sent to Gemini unless you copy the text into a conversation yourself.</p></header><article class="panel form-panel"><form id="journalForm"><input id="journalId" type="hidden"><div class="form-grid"><label class="field">Title<input id="journalTitle" maxlength="120" required placeholder="What I learned today"></label><label class="field">Date<input id="journalDate" type="date" required></label><label class="field wide">Entry<textarea id="journalContent" maxlength="20000" required placeholder="Write in your own words..."></textarea></label></div><div class="form-actions"><button class="primary" id="journalSave" type="submit">Save entry</button><button class="secondary" id="journalCancel" type="button" hidden>Cancel edit</button><span class="helper">Private by default. Not used as AI memory.</span></div></form></article><label class="field search-field">Search journal<input id="journalSearch" type="search" maxlength="100" placeholder="Search your titles and writing"></label><div class="item-list" id="journalList"></div></section>
+
+<section class="view" id="checkins"><header class="section-head"><span class="eyebrow">Private reflection</span><h1>Notice the day without judging it.</h1><p>A check-in is a simple personal record, not a diagnosis or a score you need to improve.</p></header><div class="grid2"><article class="panel"><form id="checkinForm"><div class="panel-head"><div><span class="eyebrow">Right now</span><h2>How is the day feeling?</h2></div></div><div class="mood-options" id="moodOptions"><button class="mood-option" type="button" aria-pressed="false" data-mood="1"><span>○</span>Very low</button><button class="mood-option" type="button" aria-pressed="false" data-mood="2"><span>◔</span>Low</button><button class="mood-option active" type="button" aria-pressed="true" data-mood="3"><span>◐</span>Okay</button><button class="mood-option" type="button" aria-pressed="false" data-mood="4"><span>◕</span>Good</button><button class="mood-option" type="button" aria-pressed="false" data-mood="5"><span>●</span>Great</button></div><label class="field" style="margin-top:17px">Energy level<div class="range-row"><input id="energyInput" type="range" min="1" max="5" value="3"><span class="range-value" id="energyValue">3</span></div></label><label class="field" style="margin-top:15px">Reflection, optional<textarea id="checkinNote" maxlength="700" placeholder="What shaped today?"></textarea></label><div class="form-actions"><button class="primary" type="submit">Save check-in</button></div></form></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Recent pattern</span><h2>Your own records</h2><p>This shows only what you entered. It does not interpret mental or physical health.</p></div></div><div class="checkin-stats"><div class="stat-card"><span>Recent mood average</span><strong id="moodAverage">—</strong></div><div class="stat-card"><span>Recent energy average</span><strong id="energyAverage">—</strong></div></div><div class="trend" id="checkinTrend"></div></article></div><div class="item-list" id="checkinList" style="margin-top:12px"></div></section>
+
+<section class="view" id="memory"><header class="section-head"><span class="eyebrow">Visible and editable context</span><h1>Saathi remembers only what you save.</h1><p>Add details that would make future conversations more useful. Pause or delete any item whenever you want. Nothing is extracted automatically.</p></header><article class="panel form-panel"><form id="memoryForm"><div class="form-grid"><label class="field">Short label<input id="memoryLabel" maxlength="60" required placeholder="Study goal"></label><label class="field wide">What should Saathi know?<textarea id="memoryContent" maxlength="500" required placeholder="I am preparing for my mathematics exam in November."></textarea></label></div><div class="form-actions"><button class="primary" type="submit">Save memory</button><span class="helper">Active memories are included only as context in your conversations.</span></div></form></article><div class="item-list" id="memoryList"></div></section>
+
+<section class="view" id="family"><header class="section-head"><span class="eyebrow">Consent based connection</span><h1>Family Bridge keeps privacy boundaries clear.</h1><p>Invite a trusted person. They must sign in with the invited email and accept. Chat, journal, check-ins and memory are never visible to contacts.</p></header><div class="consent-note">No monitoring is active. This foundation records consent for task or reminder sharing only. Actual shared-item delivery will remain off until both people explicitly choose it.</div><article class="panel form-panel" style="margin-top:12px"><form id="contactForm"><div class="form-grid"><label class="field wide">Trusted person's email<input id="contactEmail" type="email" maxlength="200" required placeholder="trusted@example.com"></label></div><div class="form-actions"><button class="primary" type="submit">Send invitation</button><span class="helper">Never add someone without their permission.</span></div></form></article><div class="grid2"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Sent</span><h2>Your invitations</h2></div></div><div class="item-list" id="contactSent"></div></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Received</span><h2>Invitations for you</h2></div></div><div class="item-list" id="contactIncoming"></div></article></div></section>
+
+<section class="view" id="account"><details class="referral-banner"><summary>Invite a friend</summary>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
       <span class="badge-pill accent" style="margin-bottom:8px">🎁 Student Referral & Rewards</span>
@@ -289,24 +292,8 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
     <button type="button" class="secondary" onclick="claimReferralRewards(this)">Check my rewards</button><button type="button" class="primary" onclick="copyReferralLink()" style="height:44px;padding:0 18px;border-radius:12px;font-size:13px">Copy Link</button>
     <button type="button" class="secondary" onclick="shareReferralWhatsApp()" style="height:44px;padding:0 18px;border-radius:12px;background:#25D366;color:#fff;border-color:#25D366;font-size:13px">Share on WhatsApp</button>
   </div>
-</details></section>
-
-<section class="view" id="tasks"><header class="section-head"><span class="eyebrow">Study and everyday planning</span><h1>Make the next step clear.</h1><p>Keep tasks realistic, give important work a due time and mark it complete when it is actually done.</p></header><article class="panel form-panel"><form id="taskForm"><div class="form-grid"><label class="field">Task title<input id="taskTitle" maxlength="180" required placeholder="Revise probability chapter"></label><label class="field">Due date and time<input id="taskDue" type="datetime-local"></label><label class="field">Priority<select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label><label class="field wide">Details, optional<textarea id="taskDetails" maxlength="1000" placeholder="What exactly needs to be completed?"></textarea></label></div><div class="form-actions"><button class="primary" id="taskSubmit" type="submit">Add task</button><button class="secondary" id="taskCancel" type="button" hidden>Cancel edit</button><span class="helper">Your plan is private to your account.</span></div></form></article><div class="filters" id="taskFilters"><button class="filter active" aria-pressed="true" data-filter="open">Open</button><button class="filter" aria-pressed="false" data-filter="all">All</button><button class="filter" aria-pressed="false" data-filter="done">Completed</button></div><div class="item-list" id="taskList"></div></section>
-
-<section class="view" id="reminders"><header class="section-head"><span class="eyebrow">User-controlled routines</span><h1>Remember it without carrying it.</h1><p>Create the exact schedule yourself. For medicine, Saathi stores only the name and time you enter and never chooses a medicine, dose or treatment.</p></header><article class="panel form-panel"><form id="reminderForm"><div class="form-grid"><label class="field">Reminder title<input id="reminderTitle" maxlength="160" required placeholder="Evening medicine"></label><label class="field">Date and time<input id="reminderTime" type="datetime-local" required></label><label class="field">Repeat<select id="reminderRecurrence"><option value="once">Once</option><option value="daily">Every day</option><option value="weekly">Every week</option></select></label><label class="field">Delivery<select id="reminderDelivery"><option value="browser">Browser alerts</option><option value="email">Email and browser</option></select></label><label class="field wide">Note, optional<textarea id="reminderNote" maxlength="500" placeholder="Only include details you are comfortable saving."></textarea></label></div><div class="form-actions"><button class="primary" id="reminderSubmit" type="submit">Create reminder</button><button class="secondary" id="reminderCancel" type="button" hidden>Cancel edit</button><button class="secondary" id="notificationButton" type="button">Enable browser notifications</button></div><p class="helper">Email delivery works only after the server's protected scheduler is configured. Browser alerts need your permission. Background delivery also needs server setup and a supported device. Quiet hours and daily summaries can be chosen in Account. Delivery can fail, so important schedules should be checked independently.</p></form></article><div class="item-list" id="reminderList"></div></section>
-
-<section class="view" id="habits"><header class="section-head"><span class="eyebrow">Small repeatable steps</span><h1>Build routines without pressure.</h1><p>Track only the habits that help you. A missed day is information, not failure, and you can pause any habit.</p></header><article class="panel form-panel"><form id="habitForm"><div class="form-grid"><label class="field">Habit name<input id="habitName" maxlength="120" required placeholder="Review notes for 15 minutes"></label><label class="field">Schedule<select id="habitFrequency"><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="weekly">Once a week</option></select></label></div><div class="form-actions"><button class="primary" type="submit">Add habit</button><span class="helper">Completion uses your device's local date.</span></div></form></article><div class="item-list" id="habitList"></div></section>
-
-<section class="view" id="journal"><header class="section-head"><span class="eyebrow">Private writing</span><h1>A quiet place to write.</h1><p>Journal entries stay attached to your account and are never sent to Gemini unless you copy the text into a conversation yourself.</p></header><article class="panel form-panel"><form id="journalForm"><input id="journalId" type="hidden"><div class="form-grid"><label class="field">Title<input id="journalTitle" maxlength="120" required placeholder="What I learned today"></label><label class="field">Date<input id="journalDate" type="date" required></label><label class="field wide">Entry<textarea id="journalContent" maxlength="20000" required placeholder="Write in your own words..."></textarea></label></div><div class="form-actions"><button class="primary" id="journalSave" type="submit">Save entry</button><button class="secondary" id="journalCancel" type="button" hidden>Cancel edit</button><span class="helper">Private by default. Not used as AI memory.</span></div></form></article><label class="field search-field">Search journal<input id="journalSearch" type="search" maxlength="100" placeholder="Search your titles and writing"></label><div class="item-list" id="journalList"></div></section>
-
-<section class="view" id="checkins"><header class="section-head"><span class="eyebrow">Private reflection</span><h1>Notice the day without judging it.</h1><p>A check-in is a simple personal record, not a diagnosis or a score you need to improve.</p></header><div class="grid2"><article class="panel"><form id="checkinForm"><div class="panel-head"><div><span class="eyebrow">Right now</span><h2>How is the day feeling?</h2></div></div><div class="mood-options" id="moodOptions"><button class="mood-option" type="button" aria-pressed="false" data-mood="1"><span>○</span>Very low</button><button class="mood-option" type="button" aria-pressed="false" data-mood="2"><span>◔</span>Low</button><button class="mood-option active" type="button" aria-pressed="true" data-mood="3"><span>◐</span>Okay</button><button class="mood-option" type="button" aria-pressed="false" data-mood="4"><span>◕</span>Good</button><button class="mood-option" type="button" aria-pressed="false" data-mood="5"><span>●</span>Great</button></div><label class="field" style="margin-top:17px">Energy level<div class="range-row"><input id="energyInput" type="range" min="1" max="5" value="3"><span class="range-value" id="energyValue">3</span></div></label><label class="field" style="margin-top:15px">Reflection, optional<textarea id="checkinNote" maxlength="700" placeholder="What shaped today?"></textarea></label><div class="form-actions"><button class="primary" type="submit">Save check-in</button></div></form></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Recent pattern</span><h2>Your own records</h2><p>This shows only what you entered. It does not interpret mental or physical health.</p></div></div><div class="checkin-stats"><div class="stat-card"><span>Recent mood average</span><strong id="moodAverage">—</strong></div><div class="stat-card"><span>Recent energy average</span><strong id="energyAverage">—</strong></div></div><div class="trend" id="checkinTrend"></div></article></div><div class="item-list" id="checkinList" style="margin-top:12px"></div></section>
-
-<section class="view" id="memory"><header class="section-head"><span class="eyebrow">Visible and editable context</span><h1>Saathi remembers only what you save.</h1><p>Add details that would make future conversations more useful. Pause or delete any item whenever you want. Nothing is extracted automatically.</p></header><article class="panel form-panel"><form id="memoryForm"><div class="form-grid"><label class="field">Short label<input id="memoryLabel" maxlength="60" required placeholder="Study goal"></label><label class="field wide">What should Saathi know?<textarea id="memoryContent" maxlength="500" required placeholder="I am preparing for my mathematics exam in November."></textarea></label></div><div class="form-actions"><button class="primary" type="submit">Save memory</button><span class="helper">Active memories are included only as context in your conversations.</span></div></form></article><div class="item-list" id="memoryList"></div></section>
-
-<section class="view" id="family"><header class="section-head"><span class="eyebrow">Consent based connection</span><h1>Family Bridge keeps privacy boundaries clear.</h1><p>Invite a trusted person. They must sign in with the invited email and accept. Chat, journal, check-ins and memory are never visible to contacts.</p></header><div class="consent-note">No monitoring is active. This foundation records consent for task or reminder sharing only. Actual shared-item delivery will remain off until both people explicitly choose it.</div><article class="panel form-panel" style="margin-top:12px"><form id="contactForm"><div class="form-grid"><label class="field wide">Trusted person's email<input id="contactEmail" type="email" maxlength="200" required placeholder="trusted@example.com"></label></div><div class="form-actions"><button class="primary" type="submit">Send invitation</button><span class="helper">Never add someone without their permission.</span></div></form></article><div class="grid2"><article class="panel"><div class="panel-head"><div><span class="eyebrow">Sent</span><h2>Your invitations</h2></div></div><div class="item-list" id="contactSent"></div></article><article class="panel"><div class="panel-head"><div><span class="eyebrow">Received</span><h2>Invitations for you</h2></div></div><div class="item-list" id="contactIncoming"></div></article></div></section>
-
-<section class="view" id="account">
-<header class="section-head"><span class="eyebrow">Account and privacy</span><h1>Your space stays yours.</h1><p>Update your account details, protect your password, review policies, export your information or remove the account.</p></header>
+</details>
+<header class="section-head"><span class="eyebrow">Account and privacy</span><h1>Your space stays yours.</h1><div class="care-actions"><button class="secondary" type="button" data-response-timings>Reply performance</button><button class="secondary" type="button" data-clear-drafts>Clear browser drafts</button></div><p class="helper">Unsent chat and note drafts can recover on this device for up to 24 hours. Browser copies clear when you log out.</p><p>Update your account details, protect your password, review policies, export your information or remove the account.</p></header>
 <div class="grid2">
 <article class="panel"><div class="profile-card"><span class="avatar" id="profileAvatar">S</span><div><h2 id="profileDisplayName">Saathi user</h2><p id="profileEmail">—</p></div></div><form id="profileForm"><div class="form-grid"><label class="field">Name<input id="profileName" maxlength="50" required></label><label class="field">Username<input id="profileUsername" maxlength="20" required></label></div><div class="form-actions"><button class="primary" type="submit">Save profile</button></div></form></article>
 <article class="panel plan-card"><span class="plan-badge" id="planBadge">Free plan</span><div class="panel-head"><div><h2 style="margin-top:14px" id="planHeaderTitle">Your Saathi plan</h2><p id="planStatus">Active</p></div></div><p id="planDescription">Your saved chats, daily tools and wellbeing space are included. Explore Plus for higher study limits.</p><div class="form-actions" id="planActions"><button class="primary" id="upgradeBtnAccount" type="button" onclick="openUpgradeModal()" style="background:linear-gradient(135deg,var(--gold),#8d6b1d);border-color:var(--gold);color:#fff">⭐ Upgrade to Saathi Plus · ₹199/mo</button></div></article>
@@ -637,16 +624,21 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/workspace.js?v=20260915b"></script>
+<script src="/i18n.js?v=20260919"></script>
+<script src="/lazy-tools.js?v=20260919"></script>
+<script src="/workspace-hub.js?v=20260919"></script>
+<script src="/recovery.js?v=20260919"></script>
+<script src="/workspace.js?v=20260919"></script>
 <script src="/daily-workspace.js?v=20260915b"></script>
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
 function escapeText(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const translations={en:{study:'Study',notes:'Notes',more:'More',today:'Today',planner:'Planner',reminders:'Reminders',habits:'Habits',journal:'Journal',checkins:'Check-ins',memory:'Memory',family:'Family Bridge',account:'Account',mocktests:'Mock Tests',mindmaps:'Mindmaps',healer:'Care',openChat:'Open conversation'},gu:{study:'અભ્યાસ',notes:'નોંધો',more:'વધુ',today:'આજ',planner:'યોજના',reminders:'રીમાઇન્ડર્સ',habits:'આદતો',journal:'જર્નલ',checkins:'ચેક-ઇન',memory:'મેમરી',family:'ફેમિલી બ્રિજ',account:'એકાઉન્ટ',mocktests:'મોક ટેસ્ટ',mindmaps:'માઇન્ડમેપ્સ',healer:'સુખાકારી',openChat:'વાતચીત ખોલો'},hi:{study:'पढ़ाई',notes:'नोट्स',more:'और',today:'आज',planner:'योजना',reminders:'रिमाइंडर',habits:'आदतें',journal:'जर्नल',checkins:'चेक-इन',memory:'मेमोरी',family:'फैमिली ब्रिज',account:'खाता',mocktests:'मॉक टेस्ट',mindmaps:'माइंड मैप्स',healer:'ख़याल और सुकून',openChat:'बातचीत खोलें'}};
-function applyLanguage(language){const chosen=translations[language]?language:'en';document.documentElement.lang=chosen;document.querySelectorAll('[data-i18n]').forEach(node=>{const value=translations[chosen][node.dataset.i18n];if(value)node.textContent=value});if($('languageSelect'))$('languageSelect').value=chosen;if(state.currentView)openView(state.currentView,{historyMode:'none',focus:false})}
+function applyLanguage(language){window.SaathiI18n?.setLanguage(language);const chosen=translations[language]?language:'en';document.documentElement.lang=chosen;document.querySelectorAll('[data-i18n]').forEach(node=>{const value=translations[chosen][node.dataset.i18n];if(value)node.textContent=value});if($('languageSelect'))$('languageSelect').value=chosen;if(state.currentView)openView(state.currentView,{historyMode:'none',focus:false})}
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method),controller=new AbortController();
+  const forwardAbort=()=>controller.abort();if(options.signal?.aborted)controller.abort();else options.signal?.addEventListener('abort',forwardAbort,{once:true});
   const timer=setTimeout(()=>controller.abort(),url.endsWith('/generate')?45000:25000);
   try{
     const response=await fetch(url,{credentials:'include',cache:'no-store',...options,signal:controller.signal,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
@@ -654,8 +646,8 @@ async function api(url,options={}){
     let data;try{data=await response.json()}catch(error){if(error.name==='AbortError')throw error;throw new Error('The server returned an unreadable response. Please retry.')}
     if(!response.ok)throw new Error(data.error||'Something went wrong.');
     return data;
-  }catch(error){if(error.name==='AbortError')throw new Error('The request took too long. Please retry.');if(error instanceof TypeError)throw new Error('Could not connect. Check your connection and retry.');throw error}
-  finally{clearTimeout(timer)}
+  }catch(error){if(error.name==='AbortError'){if(options.signal?.aborted)throw error;throw new Error('The request took too long. Please retry.')}if(error instanceof TypeError)throw new Error('Could not connect. Check your connection and retry.');throw error}
+  finally{clearTimeout(timer);options.signal?.removeEventListener('abort',forwardAbort)}
 }
 
 function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=String(message||'').toLowerCase();if(/error|wrong|could not|cannot|failed|unavailable|not supported|log in/.test(copy))return'error';if(/deleted|removed|saved|added|updated|created|enabled|accepted|changed|copied|pinned|archived|restored/.test(copy))return'success';if(/not available|permission|paused|expired|warning/.test(copy))return'warning';return'info'}
@@ -683,7 +675,7 @@ function openView(id,{historyMode='push',focus=true}={}){
   const activeButton=document.querySelector('.nav button.active');
   const group=activeButton?.closest?.('details');if(group)group.open=true;
   window.SaathiDaily?.viewChanged(id);
-  if(state.workspaceReady)loadViewSections(id);
+  if(state.workspaceReady){if(changed&&id==='overview')state.loadedSections?.delete('today');loadViewSections(id)}
   $('currentViewLabel').textContent=(activeButton?.querySelector('[data-i18n]')?.textContent||activeButton?.textContent)?.trim()||'Today';
   document.title=($('currentViewLabel').textContent)+' · Saathi';
   if(changed){scrollTo({top:0,behavior:'auto'});if(focus){const heading=$(id).querySelector('h1');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true})}}
@@ -764,8 +756,9 @@ $('moodOptions').addEventListener('click',event=>{const button=event.target.clos
 $('memoryForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/memories',{method:'POST',body:JSON.stringify({label:$('memoryLabel').value,content:$('memoryContent').value})});state.memories.unshift(data.memory);event.target.reset();renderMemories();toast('Memory saved and active.')}catch(error){toast(error.message)}finally{button.disabled=false}});
 $('memoryEditForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter,id=state.memoryEditingId;if(!id)return;button.disabled=true;try{const data=await api('/api/memories/'+id,{method:'PATCH',body:JSON.stringify({label:$('memoryEditLabel').value,content:$('memoryEditContent').value,active:$('memoryEditActive').value==='active'})});state.memories=state.memories.map(item=>item.id===id?data.memory:item);closeMemory();renderMemories();toast('Memory updated.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('memoryEditCancel').onclick=closeMemory;$('memoryEditDelete').onclick=()=>{if(state.memoryEditingId)deleteMemory(state.memoryEditingId)};$('memoryDialog').addEventListener('close',()=>{if(!$('memoryDialog').open)state.memoryEditingId=null});
 $('profileForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/profile',{method:'PATCH',body:JSON.stringify({name:$('profileName').value,username:$('profileUsername').value})});setUser(data.user);toast('Profile updated.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('passwordForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{await api('/api/change-password',{method:'POST',body:JSON.stringify({current_password:$('currentPassword').value,new_password:$('newPassword').value})});event.target.reset();toast('Password changed.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('languageSelect').addEventListener('change',async event=>{const previous=state.user?.language||'en';event.target.disabled=true;try{const data=await api('/api/preferences',{method:'PATCH',body:JSON.stringify({language:event.target.value})});setUser(data.user);updateGreeting();toast('Language preference saved.')}catch(error){event.target.value=previous;toast(error.message)}finally{event.target.disabled=false}});document.querySelectorAll('[data-plan]').forEach(button=>button.addEventListener('click',async()=>{try{const data=await api('/api/upgrade',{method:'POST',body:JSON.stringify({plan:button.dataset.plan})});setUser(data.user);toast(data.message)}catch(error){toast(error.message)}}));
-$('logoutButton').onclick=async()=>{try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){toast(error.message,'error')}};$('logoutAllButton').onclick=async()=>{const confirmed=await confirmAction({title:'Log out every device?',message:'Every Saathi session for this account, including this browser, will end immediately.',confirmLabel:'Log out everywhere',tone:'warning'});if(!confirmed)return;const button=$('logoutAllButton');button.disabled=true;try{if(!await SaathiWorkspace.prepareLogout()){button.disabled=false;return}await api('/api/logout-all',{method:'POST',body:'{}'});location.href='/account?next=/dashboard'}catch(error){button.disabled=false;toast(error.message,'error')}};$('deleteAccountButton').onclick=()=>{$('deletePassword').value='';$('deleteDialog').showModal()};$('cancelDelete').onclick=()=>$('deleteDialog').close();$('confirmDelete').onclick=async()=>{const button=$('confirmDelete');button.disabled=true;try{await api('/api/account',{method:'DELETE',body:JSON.stringify({password:$('deletePassword').value})});location.href='/'}catch(error){toast(error.message,'error')}finally{button.disabled=false}};$('installButton').onclick=installApp;$('accountInstallButton').onclick=installApp;window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.deferredInstall=event;$('installButton').hidden=false;$('accountInstallButton').disabled=false;$('accountInstallButton').textContent='Install'});
+$('logoutButton').onclick=async()=>{try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});window.SaathiRecovery?.forgetAccount();location.href='/'}catch(error){toast(error.message,'error')}};$('logoutAllButton').onclick=async()=>{const confirmed=await confirmAction({title:'Log out every device?',message:'Every Saathi session for this account, including this browser, will end immediately.',confirmLabel:'Log out everywhere',tone:'warning'});if(!confirmed)return;const button=$('logoutAllButton');button.disabled=true;try{if(!await SaathiWorkspace.prepareLogout()){button.disabled=false;return}await api('/api/logout-all',{method:'POST',body:'{}'});window.SaathiRecovery?.forgetAccount();location.href='/account?next=/dashboard'}catch(error){button.disabled=false;toast(error.message,'error')}};$('deleteAccountButton').onclick=()=>{$('deletePassword').value='';$('deleteDialog').showModal()};$('cancelDelete').onclick=()=>$('deleteDialog').close();$('confirmDelete').onclick=async()=>{const button=$('confirmDelete');button.disabled=true;try{await api('/api/account',{method:'DELETE',body:JSON.stringify({password:$('deletePassword').value})});window.SaathiRecovery?.forgetAccount();location.href='/'}catch(error){toast(error.message,'error')}finally{button.disabled=false}};$('installButton').onclick=installApp;$('accountInstallButton').onclick=installApp;window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.deferredInstall=event;$('installButton').hidden=false;$('accountInstallButton').disabled=false;$('accountInstallButton').textContent='Install'});
 const workspaceSections=[
+  {key:'today',label:'Today',url:'/api/workspace/today',apply:data=>SaathiHub.renderToday(data)},
   {key:'overview',label:'Overview',url:'/api/overview',apply:data=>{state.overview=data;renderOverview()}},
   {key:'tasks',label:'Planner',url:'/api/tasks',apply:data=>{state.tasks=data.tasks||[];renderTasks()}},
   {key:'reminders',label:'Reminders',url:'/api/reminders',apply:data=>{state.reminders=data.reminders||[];renderReminders()}},
@@ -783,6 +776,7 @@ async function loadWorkspaceSections(sections=workspaceSections){
   state.sectionRequests??=new Map();state.loadedSections??=new Set();
   function updateStatus(){
     state.loadingSections=state.sectionRequests.size>0;
+    if(state.failedTool)return;
     $('workspaceStatus').hidden=!state.loadingSections&&!state.loadFailures.length;
     $('workspaceStatusText').textContent=state.loadingSections?'Loading this section…':state.loadFailures.length?'Some sections could not load: '+state.loadFailures.map(item=>item.label).join(', ')+'.':'Your workspace is ready.';
     $('retryWorkspace').disabled=state.loadingSections;
@@ -795,7 +789,7 @@ async function loadWorkspaceSections(sections=workspaceSections){
       if(el)el.setAttribute('aria-busy','true');
       try{
         const data=await api(typeof section.url==='function'?section.url():section.url);
-        section.apply(data);
+        await section.apply(data);
         state.loadedSections.add(section.key);
         state.loadFailures=state.loadFailures.filter(item=>item.key!==section.key);
         if(el){el.classList.remove('load-failed');el.querySelector('.section-error')?.remove()}
@@ -817,8 +811,12 @@ async function loadWorkspaceSections(sections=workspaceSections){
   });
   updateStatus();await Promise.allSettled(requests);
 }
-function loadViewSections(id,refresh=false){
-  const dependencies={overview:['overview','tasks','reminders','habits'],tasks:['overview','tasks'],reminders:['overview','reminders'],healer:['overview','tasks'],account:['referrals'],study:[]};
+async function loadViewSections(id,refresh=false){
+  try{await window.SaathiTools?.load(id)}catch(error){
+    state.failedTool=id;$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent=error.message;$('retryWorkspace').disabled=false;return;
+  }
+  if(state.failedTool===id)state.failedTool=null;
+  const dependencies={overview:['overview','today','reminders','habits'],tasks:['overview','tasks'],reminders:['overview','reminders'],healer:['overview','tasks'],account:['referrals'],study:[]};
   // Keep due-reminder checks available even when opening a deep link.
   const keys=['reminders',...(dependencies[id]||[id])];
   return loadWorkspaceSections(workspaceSections.filter(section=>keys.includes(section.key)&&(refresh||!state.loadedSections?.has(section.key))));
@@ -951,550 +949,6 @@ async function startPayment(){
   }catch(error){toast(error.message,'error');done()}
 }
 
-function renderMockTestHistory(){
-  const box=$('mockTestHistoryList');
-  if(!box)return;
-  box.replaceChildren();
-  if(!state.mockTests||!state.mockTests.length){
-    box.append(emptyNode('No tests completed yet. Start your first mock test above!'));
-    return;
-  }
-  state.mockTests.forEach(test=>{
-    const card=document.createElement('article');
-    card.className='item';
-    const icon=document.createElement('div');
-    icon.className='avatar';
-    icon.style.cssText='width:36px;height:36px;border-radius:10px;font-size:16px;background:var(--accent-soft);color:var(--accent)';
-    icon.textContent='◈';
-    const copy=document.createElement('div');
-    copy.className='item-copy';
-    const title=document.createElement('b');
-    title.textContent=test.topic;
-    const diffBadge=document.createElement('span');
-    diffBadge.className='priority '+test.difficulty;
-    diffBadge.textContent=test.difficulty;
-    title.append(diffBadge);
-    const sub=document.createElement('p');
-    const scoreStr=test.best_score!=null?`Best: ${test.best_score}/${test.question_count} (${test.best_accuracy}%)`:'Not attempted yet';
-    sub.textContent=`${test.question_count} Questions · ${test.time_limit_minutes} mins · ${scoreStr}`;
-    const date=document.createElement('small');
-    date.textContent=`Created ${formatDate(test.created_at)}`;
-    copy.append(title,sub,date);
-    const actions=document.createElement('div');
-    actions.className='item-actions';
-    const launchBtn=document.createElement('button');
-    launchBtn.className='mini-button';
-    launchBtn.type='button';
-    launchBtn.textContent='Practice Again';
-    launchBtn.onclick=()=>quickStartFromHistory(test);
-    actions.append(launchBtn);
-    card.append(icon,copy,actions);
-    box.append(card);
-  });
-}
-
-async function quickStartFromHistory(test){
-  try{
-    const response=await api('/api/mock-tests/'+test.id);
-    state.activeTest=response.test;state.activeTestAnswers={};state.activeTestFlags=new Set();state.activeTestIndex=0;
-    if(response.result){state.lastAttemptResult=response.result;renderTestResults(response.result);return}
-    const remaining=Math.ceil((new Date(response.test.expires_at).getTime()-Date.now())/1000);
-    if(remaining<=0){$('testTopic').value=test.topic;toast('This test has ended. Generate a new practice test when ready.');return}
-    state.testTotalSeconds=response.test.time_limit_minutes*60;state.testSecondsLeft=remaining;
-    $('mockTestCreatorBox').style.display='none';$('mockTestResultsBox').style.display='none';$('mockTestRunnerBox').style.display='block';
-    $('runnerTopicTitle').textContent=test.topic;startTestTimer();renderQuestion(0);
-  }catch(error){toast(error.message,'error')}
-}
-
-async function generateMockTest(event){
-  if(event)event.preventDefault();
-  const btn=$('testSubmitBtn');
-  btn.disabled=true;
-  const originalText=btn.textContent;
-  btn.textContent='Generating exam with AI... ⏳';
-  const payload={
-    topic:$('testTopic').value.trim(),
-    question_count:parseInt($('testCount').value,10)||10,
-    difficulty:$('testDifficulty').value||'medium',
-    time_limit_minutes:parseInt($('testTimeLimit').value,10)||10,
-    language:$('testLanguage').value||'en'
-  };
-  try{
-    const res=await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
-    state.activeTest=res.test;
-    state.activeTest.questions=res.test.questions||[];
-    if(!state.activeTest.questions.length)throw new Error('This test has no questions. Please retry.');
-    state.activeTestAnswers={};
-    state.activeTestFlags=new Set();
-    state.activeTestIndex=0;
-    state.testTotalSeconds=(res.test.time_limit_minutes||10)*60;
-    state.testSecondsLeft=state.testTotalSeconds;
-    
-    // Switch to runner UI
-    $('mockTestCreatorBox').style.display='none';
-    $('mockTestResultsBox').style.display='none';
-    $('mockTestRunnerBox').style.display='block';
-    
-    $('runnerTopicTitle').textContent=res.test.topic;
-    $('runnerDifficultyBadge').textContent=(res.test.difficulty||'Medium').toUpperCase()+' · '+res.test.question_count+' QUESTIONS';
-    
-    startTestTimer();
-    renderQuestion(0);
-    toast('Mock test ready. You can begin.','success');
-  }catch(error){
-    if(error.message&&error.message.includes('Saathi Plus')){
-      openUpgradeModal();
-    }
-    toast(error.message,'error');
-  }finally{
-    btn.disabled=false;
-    btn.textContent=originalText;
-  }
-}
-
-function startTestTimer(){
-  clearInterval(state.testTimerInterval);
-  updateTimerDisplay();
-  state.testTimerInterval=setInterval(()=>{
-    state.testSecondsLeft=Math.max(0,Math.ceil((new Date(state.activeTest.expires_at).getTime()-Date.now())/1000));
-    updateTimerDisplay();
-    if(state.testSecondsLeft<=0){
-      clearInterval(state.testTimerInterval);
-      toast('Time is up! Submitting your exam automatically...','warning');
-      submitMockTest(true);
-    }
-  },1000);
-}
-
-function updateTimerDisplay(){
-  const mins=Math.floor(state.testSecondsLeft/60);
-  const secs=state.testSecondsLeft%60;
-  const display=$('runnerTimerDisplay');
-  if(!display)return;
-  display.textContent=`⏱️ ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-  if(state.testSecondsLeft<=120){
-    display.classList.add('urgent');
-  }else{
-    display.classList.remove('urgent');
-  }
-}
-
-function renderQuestion(index){
-  const questions=state.activeTest?.questions||[];
-  if(!questions.length)return;
-  if(index<0)index=0;
-  if(index>=questions.length)index=questions.length-1;
-  state.activeTestIndex=index;
-  const q=questions[index];
-  const qId=q.id||(index+1);
-  
-  $('qNumberDisplay').textContent=`Question ${index+1} of ${questions.length}`;
-  $('qTextDisplay').textContent=q.question;
-  
-  const isFlagged=state.activeTestFlags.has(qId);
-  const flagBtn=$('qFlagBtn');
-  flagBtn.textContent=isFlagged?'🚩 Flagged for review':'⚐ Mark for review';
-  flagBtn.style.color=isFlagged?'var(--gold)':'var(--muted)';
-  
-  const optionsWrap=$('qOptionsWrap');
-  optionsWrap.replaceChildren();
-  const letters=['A','B','C','D'];
-  const currentAnswer=state.activeTestAnswers[qId];
-  
-  letters.forEach(letter=>{
-    const optText=q.options?.[letter]||'';
-    const optBtn=document.createElement('button');
-    optBtn.className='option-btn'+(currentAnswer===letter?' selected':'');
-    optBtn.type='button';
-    const badge=document.createElement('span');
-    badge.className='option-badge';
-    badge.textContent=letter;
-    const textSpan=document.createElement('span');
-    textSpan.textContent=optText;
-    optBtn.append(badge,textSpan);
-    optBtn.onclick=()=>selectOption(qId,letter);
-    optionsWrap.append(optBtn);
-  });
-  
-  $('qPrevBtn').disabled=index===0;
-  $('qNextBtn').textContent=index===questions.length-1?'Submit Test →':'Next →';
-  $('qStatusHelper').textContent=currentAnswer?`Selected option ${currentAnswer}`:'Not answered yet';
-  
-  renderPalette();
-}
-
-function selectOption(qId,letter){
-  state.activeTestAnswers[qId]=letter;
-  renderQuestion(state.activeTestIndex);
-}
-
-function toggleFlagCurrentQuestion(){
-  const q=state.activeTest?.questions?.[state.activeTestIndex];
-  if(!q)return;
-  const qId=q.id||(state.activeTestIndex+1);
-  if(state.activeTestFlags.has(qId)){
-    state.activeTestFlags.delete(qId);
-  }else{
-    state.activeTestFlags.add(qId);
-  }
-  renderQuestion(state.activeTestIndex);
-}
-
-function navQuestion(delta){
-  const questions=state.activeTest?.questions||[];
-  const target=state.activeTestIndex+delta;
-  if(target>=questions.length){
-    confirmSubmitTest();
-  }else{
-    renderQuestion(target);
-  }
-}
-
-function renderPalette(){
-  const questions=state.activeTest?.questions||[];
-  const grid=$('paletteGrid');
-  if(!grid)return;
-  grid.replaceChildren();
-  
-  let answeredCount=0;
-  questions.forEach((q,idx)=>{
-    const qId=q.id||(idx+1);
-    const isAnswered=!!state.activeTestAnswers[qId];
-    if(isAnswered)answeredCount++;
-    const isCurrent=idx===state.activeTestIndex;
-    const isFlagged=state.activeTestFlags.has(qId);
-    
-    const btn=document.createElement('button');
-    btn.className='pal-btn'+(isCurrent?' current':'')+(isAnswered?' answered':'')+(isFlagged?' flagged':'');
-    btn.type='button';
-    btn.textContent=String(idx+1);
-    btn.onclick=()=>renderQuestion(idx);
-    grid.append(btn);
-  });
-  
-  if($('paletteAnsweredCount'))$('paletteAnsweredCount').textContent=`${answeredCount}/${questions.length} Answered`;
-}
-
-async function confirmSubmitTest(){
-  const questions=state.activeTest?.questions||[];
-  const total=questions.length;
-  const answered=Object.keys(state.activeTestAnswers).length;
-  const unanswered=total-answered;
-  
-  let message=`You have answered ${answered} of ${total} questions.`;
-  if(unanswered>0){
-    message+=` ${unanswered} question(s) remain unanswered. Are you sure you want to finish and submit now?`;
-  }else{
-    message+=` Are you ready to finish and submit your exam?`;
-  }
-  const confirmed=await confirmAction({
-    title:'Submit Mock Test?',
-    message:message,
-    confirmLabel:'Submit Exam',
-    tone:unanswered>0?'warning':'danger'
-  });
-  if(confirmed){
-    submitMockTest(false);
-  }
-}
-
-async function submitMockTest(isTimeout=false){
-  clearInterval(state.testTimerInterval);
-  const testId=state.activeTest?.id;
-  if(!testId)return;
-  
-  const timeSpent=Math.max(1,state.testTotalSeconds-state.testSecondsLeft);
-  const submitBtn=$('runnerSubmitBtn');
-  if(submitBtn)submitBtn.disabled=true;
-  
-  try{
-    const res=await api(`/api/mock-tests/${testId}/submit`,{
-      method:'POST',
-      body:JSON.stringify({
-        answers:state.activeTestAnswers,
-        time_taken_seconds:timeSpent
-      })
-    });
-    
-    state.lastAttemptResult=res;
-    renderTestResults(res);
-    playChime();
-    blastConfetti();
-    toast('Test evaluated successfully! 🎉','success');
-    
-    // Refresh history in background
-    api('/api/mock-tests/history').then(data=>{
-      state.mockTests=data.tests||[];
-      renderMockTestHistory();
-    }).catch(()=>{});
-  }catch(error){
-    toast(error.message,'error');
-  }finally{
-    if(submitBtn)submitBtn.disabled=false;
-  }
-}
-
-function renderTestResults(data){
-  const attempt=data.attempt;
-  const review=data.review||[];
-  const test=state.activeTest;
-  
-  $('mockTestRunnerBox').style.display='none';
-  $('mockTestCreatorBox').style.display='none';
-  $('mockTestResultsBox').style.display='block';
-  
-  $('resScoreNum').textContent=`${attempt.score}/${attempt.total_questions}`;
-  $('resScorePct').textContent=`${attempt.accuracy_percentage}%`;
-  
-  const pct=attempt.accuracy_percentage;
-  let title='Great Work! 🎉';
-  if(pct>=90)title='Outstanding Mastery! 🏆🌟';
-  else if(pct>=70)title='Solid Performance! 👏';
-  else if(pct<50)title='Keep Practicing! 💪';
-  $('resHeroTitle').textContent=title;
-  
-  const mins=Math.floor(attempt.time_spent_seconds/60);
-  const secs=attempt.time_spent_seconds%60;
-  const timeStr=`${mins}m ${secs}s`;
-  $('resHeroSub').textContent=`You completed the test in ${timeStr} with ${attempt.accuracy_percentage}% accuracy.`;
-  
-  // Update scorecard preview
-  $('previewCandidateName').textContent=$('scorecardIncludeName')?.checked?(state.user?.name||'Student'):'My study session';
-  $('previewTopicName').textContent=test?.topic||'Mock Test';
-  $('previewScoreNum').textContent=`${attempt.score} / ${attempt.total_questions}`;
-  $('previewScorePct').textContent=`(${attempt.accuracy_percentage}% Accuracy)`;
-  $('previewMetaRow').innerHTML=`<span>⏱️ Time: ${timeStr}</span><span>📅 ${new Date().toLocaleDateString()}</span><span>⚡ Level: ${escapeText(test?.difficulty||'Medium')}</span>`;
-  
-  // Render review questions
-  const list=$('reviewQuestionsList');
-  list.replaceChildren();
-  
-  review.forEach((item,idx)=>{
-    const card=document.createElement('div');
-    card.className='review-item';
-    
-    const head=document.createElement('div');
-    head.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
-    
-    const qNum=document.createElement('strong');
-    qNum.style.fontSize='13px';
-    qNum.textContent=`Question ${idx+1}`;
-    
-    const pill=document.createElement('span');
-    let pillClass='unattempted';
-    let pillText='Not Attempted';
-    if(item.is_correct){
-      pillClass='correct';
-      pillText='✓ Correct (+1)';
-    }else if(item.user_answer){
-      pillClass='wrong';
-      pillText='× Incorrect';
-    }
-    pill.className=`review-status-pill ${pillClass}`;
-    pill.textContent=pillText;
-    head.append(qNum,pill);
-    
-    const qPrompt=document.createElement('p');
-    qPrompt.style.cssText='font-size:15px;font-weight:600;margin:0 0 14px;color:var(--ink)';
-    qPrompt.textContent=item.question;
-    
-    const answersRow=document.createElement('div');
-    answersRow.style.cssText='display:flex;gap:18px;font-size:13px;flex-wrap:wrap;margin-bottom:12px';
-    
-    const userAns=document.createElement('div');
-    userAns.innerHTML=`<span style="color:var(--muted)">Your Answer:</span> <strong style="color:${item.is_correct?'var(--sage)':'var(--danger)'}">${escapeText(item.user_answer||'None')} (${escapeText(item.options?.[item.user_answer]||'Unanswered')})</strong>`;
-    
-    const correctAns=document.createElement('div');
-    correctAns.innerHTML=`<span style="color:var(--muted)">Correct Answer:</span> <strong style="color:var(--sage)">${escapeText(item.correct_answer)} (${escapeText(item.options?.[item.correct_answer]||'')})</strong>`;
-    answersRow.append(userAns,correctAns);
-    
-    const expBox=document.createElement('div');
-    expBox.className='review-explanation';
-    expBox.innerHTML=`<strong>💡 Detailed Explanation:</strong><p style="margin:6px 0 0">${escapeText(item.explanation||'Review this topic carefully.')}</p>`;
-    
-    card.append(head,qPrompt,answersRow,expBox);
-    list.append(card);
-  });
-  
-  // Render canvas scorecard
-  generateScorecardCanvas(data);
-}
-
-function generateScorecardCanvas(data){
-  const canvas=$('scorecardCanvas');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  const width=1080;
-  const height=1350;
-  
-  const attempt=data.attempt;
-  const test=state.activeTest;
-  const userName=$('scorecardIncludeName')?.checked?(state.user?.name||'Student'):'My study session';
-  const topic=test?.topic||'General Subject Exam';
-  const mins=Math.floor(attempt.time_spent_seconds/60);
-  const secs=attempt.time_spent_seconds%60;
-  const timeStr=`${mins}m ${secs}s`;
-  
-  // 1. Background Gradient
-  const bgGrad=ctx.createLinearGradient(0,0,width,height);
-  bgGrad.addColorStop(0,'#0e1420');
-  bgGrad.addColorStop(0.5,'#182338');
-  bgGrad.addColorStop(1,'#2c1f0d');
-  ctx.fillStyle=bgGrad;
-  ctx.fillRect(0,0,width,height);
-  
-  // 2. Ambient glows
-  const glow1=ctx.createRadialGradient(900,200,50,900,200,600);
-  glow1.addColorStop(0,'rgba(218,174,74,0.22)');
-  glow1.addColorStop(1,'transparent');
-  ctx.fillStyle=glow1;
-  ctx.fillRect(0,0,width,height);
-  
-  const glow2=ctx.createRadialGradient(200,1100,50,200,1100,500);
-  glow2.addColorStop(0,'rgba(91,124,250,0.18)');
-  glow2.addColorStop(1,'transparent');
-  ctx.fillStyle=glow2;
-  ctx.fillRect(0,0,width,height);
-  
-  // 3. Border frame
-  ctx.strokeStyle='rgba(255,255,255,0.1)';
-  ctx.lineWidth=4;
-  ctx.strokeRect(40,40,width-80,height-80);
-  
-  // 4. Header / Brand
-  ctx.fillStyle='#f1d97f';
-  ctx.font='800 24px Inter, -apple-system, sans-serif';
-  ctx.letterSpacing='4px';
-  ctx.fillText('✦ SAATHI AI EXAM SIMULATOR ✦',80,120);
-  
-  // 5. Candidate Info
-  ctx.fillStyle='#ffffff';
-  ctx.font='700 48px Inter, -apple-system, sans-serif';
-  ctx.fillText(userName,80,195);
-  
-  ctx.fillStyle='#a6aba3';
-  ctx.font='500 28px Inter, -apple-system, sans-serif';
-  ctx.fillText('Subject Assessment: '+topic,80,245);
-  
-  // 6. Central Score Hero Card
-  const cardX=80, cardY=310, cardW=width-160, cardH=580;
-  ctx.fillStyle='rgba(255,255,255,0.05)';
-  ctx.strokeStyle='rgba(229,195,105,0.4)';
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.roundRect(cardX,cardY,cardW,cardH,36);
-  ctx.fill();
-  ctx.stroke();
-  
-  // Big Score Number
-  ctx.fillStyle='#f1d97f';
-  ctx.font='800 130px Inter, -apple-system, sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText(`${attempt.score} / ${attempt.total_questions}`,width/2,500);
-  
-  // Accuracy & Verdict
-  ctx.fillStyle='#ffffff';
-  ctx.font='800 42px Inter, -apple-system, sans-serif';
-  ctx.fillText(`${attempt.accuracy_percentage}% ACCURACY`,width/2,580);
-  
-  const pct=attempt.accuracy_percentage;
-  let verdict='EXCELLENT PERFORMANCE 🌟';
-  if(pct>=90)verdict='OUTSTANDING MASTERY 🏆';
-  else if(pct<50)verdict='GROWTH IN PROGRESS 💪';
-  ctx.fillStyle='#8fb4a0';
-  ctx.font='700 28px Inter, -apple-system, sans-serif';
-  ctx.fillText(verdict,width/2,640);
-  
-  // Stats Row inside Card
-  ctx.textAlign='left';
-  const statBoxY=710, boxW=(cardW-60)/3;
-  
-  // Stat 1: Time
-  ctx.fillStyle='rgba(255,255,255,0.06)';
-  ctx.beginPath();
-  ctx.roundRect(cardX+20,statBoxY,boxW,130,20);
-  ctx.fill();
-  ctx.fillStyle='#a6aba3';
-  ctx.font='600 20px Inter, sans-serif';
-  ctx.fillText('TIME SPENT',cardX+40,statBoxY+45);
-  ctx.fillStyle='#ffffff';
-  ctx.font='700 32px Inter, sans-serif';
-  ctx.fillText(timeStr,cardX+40,statBoxY+95);
-  
-  // Stat 2: Difficulty
-  ctx.fillStyle='rgba(255,255,255,0.06)';
-  ctx.beginPath();
-  ctx.roundRect(cardX+40+boxW,statBoxY,boxW,130,20);
-  ctx.fill();
-  ctx.fillStyle='#a6aba3';
-  ctx.font='600 20px Inter, sans-serif';
-  ctx.fillText('DIFFICULTY',cardX+60+boxW,statBoxY+45);
-  ctx.fillStyle='#ffd166';
-  ctx.font='700 32px Inter, sans-serif';
-  ctx.fillText((test?.difficulty||'Medium').toUpperCase(),cardX+60+boxW,statBoxY+95);
-  
-  // Stat 3: Total Questions
-  ctx.fillStyle='rgba(255,255,255,0.06)';
-  ctx.beginPath();
-  ctx.roundRect(cardX+60+boxW*2,statBoxY,boxW,130,20);
-  ctx.fill();
-  ctx.fillStyle='#a6aba3';
-  ctx.font='600 20px Inter, sans-serif';
-  ctx.fillText('QUESTIONS',cardX+80+boxW*2,statBoxY+45);
-  ctx.fillStyle='#ffffff';
-  ctx.font='700 32px Inter, sans-serif';
-  ctx.fillText(String(attempt.total_questions),cardX+80+boxW*2,statBoxY+95);
-  
-  // 7. Challenge Callout Box
-  ctx.fillStyle='rgba(91,124,250,0.12)';
-  ctx.strokeStyle='rgba(91,124,250,0.3)';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.roundRect(80,940,width-160,200,26);
-  ctx.fill();
-  ctx.stroke();
-  
-  ctx.fillStyle='#ffffff';
-  ctx.font='700 34px Inter, sans-serif';
-  ctx.fillText('⚡ Think you can beat this score?',120,1015);
-  ctx.fillStyle='#bac3ba';
-  ctx.font='500 24px Inter, sans-serif';
-  ctx.fillText('Practise with Saathi: '+location.host,120,1070,840);
-  
-  // 8. Footer Watermark
-  ctx.fillStyle='rgba(255,255,255,0.4)';
-  ctx.font='500 22px Inter, sans-serif';
-  ctx.fillText(`Saathi practice result · AI questions may contain errors · ${new Date().toLocaleDateString()}`,80,1230,920);
-}
-
-function downloadScorecardPng(){
-  const canvas=$('scorecardCanvas');
-  if(!canvas)return;
-  const link=document.createElement('a');
-  const topic=(state.activeTest?.topic||'mock-test').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  link.download=`saathi-scorecard-${topic}.png`;
-  link.href=canvas.toDataURL('image/png');
-  link.click();
-  toast('Scorecard downloaded!','success');
-}
-
-function shareOnWhatsApp(){
-  const attempt=state.lastAttemptResult?.attempt;
-  const topic=state.activeTest?.topic||'Exam';
-  const score=attempt?.score||0;
-  const total=attempt?.total_questions||10;
-  const pct=attempt?.accuracy_percentage||0;
-  const text=encodeURIComponent(`I just scored ${score}/${total} (${pct}%) on "${topic}" using Saathi AI Exam Simulator!\n\nCan you beat my score? Challenge me here:\n${location.origin}/dashboard#mocktests`);
-  window.open(`https://api.whatsapp.com/send?text=${text}`,'_blank');
-}
-
-function retakeOrNewTest(){
-  $('mockTestResultsBox').style.display='none';
-  $('mockTestRunnerBox').style.display='none';
-  $('mockTestCreatorBox').style.display='block';
-  scrollTo({top:0,behavior:'smooth'});
-}
-
 /* ── Viral Referral Frontend Engine ────────────────────────── */
 function renderReferralData(){
   const ref=state.referrals;
@@ -1525,610 +979,16 @@ function shareReferralWhatsApp(){
   window.open(`https://api.whatsapp.com/send?text=${msg}`,'_blank');
 }
 
-/* ── Visual Mindmap Studio Engine ───────────────────────────── */
-async function handleMindmapSubmit(event){
-  event.preventDefault();
-  const input=$('mindmapTopicInput');
-  const topic=input.value.trim();
-  if(!topic)return;
-  const depth=$('mindmapDepth')?.value||'standard';
-  const btn=$('mindmapSubmitBtn');
-  btn.disabled=true;
-  btn.textContent='Generating mindmap…';
-  try{
-    const res=await api('/api/mindmaps/generate',{
-      method:'POST',
-      body:JSON.stringify({topic,language:state.user?.language||'en'})
-    });
-    state.activeMindmap=res.mindmap;
-    if(!state.mindmaps)state.mindmaps=[];
-    state.mindmaps.unshift(res.mindmap);
-    renderMindmapsHistory();
-    displayMindmap(res.mindmap);
-    toast('Mindmap generated successfully! ✨','success');
-  }catch(err){
-    if(err.message&&err.message.includes('Upgrade to Saathi Plus')){
-      openUpgradeModal();
-    }
-    toast(err.message||'Could not generate mindmap','error');
-  }finally{
-    btn.disabled=false;
-    btn.textContent='Generate visual mindmap';
-  }
-}
-
-function displayMindmap(mindmap){
-  if(!mindmap||!mindmap.data)return;
-  $('mindmapCreatorPanel').style.display='none';
-  $('mindmapViewerWrap').style.display='block';
-  $('mindmapActiveTopicBadge').textContent='Mindmap';
-  $('mindmapActiveTitle').textContent=mindmap.topic||mindmap.data.topic;
-  $('mindmapActiveSummary').textContent=mindmap.data.summary||'';
-  renderMindmapTree(mindmap.data);
-  state.mmZoom=1;
-  applyMindmapZoom();
-  scrollTo({top:$('mindmapViewerWrap').offsetTop-80,behavior:'smooth'});
-}
-
-function newMindmapPrompt(){
-  $('mindmapViewerWrap').style.display='none';
-  $('mindmapCreatorPanel').style.display='block';
-  $('mindmapTopicInput').value='';
-  $('mindmapTopicInput').focus();
-  scrollTo({top:$('mindmapCreatorPanel').offsetTop-80,behavior:'smooth'});
-}
-
-function renderMindmapTree(data){
-  const svg=$('mmSvg');
-  const nodesLayer=$('mmNodes');
-  svg.innerHTML='';
-  nodesLayer.innerHTML='';
-  if(!data||!data.root)return;
-
-  const root=data.root;
-  const stageW=1400;
-  const stageH=900;
-  const centerX=stageW/2;
-  const centerY=stageH/2;
-
-  // Place Root Node
-  createNodeEl(nodesLayer,root.label,root.desc,centerX,centerY,'root',root.color||'#4f46e5');
-
-  const children=root.children||[];
-  if(!children.length)return;
-
-  const leftChildren=[];
-  const rightChildren=[];
-  children.forEach((c,idx)=>{
-    if(idx%2===0)rightChildren.push(c);
-    else leftChildren.push(c);
-  });
-
-  function layoutBranch(items,isRight){
-    const count=items.length;
-    const xPillar=isRight?(centerX+320):(centerX-320);
-    const xSub=isRight?(centerX+580):(centerX-580);
-    const startY=count===1?centerY:(centerY-(count-1)*110);
-
-    items.forEach((item,i)=>{
-      const pillarY=count===1?centerY:(startY+i*220);
-      const col=item.color||(isRight?'#0ea5e9':'#10b981');
-
-      drawBezierCurve(svg,centerX,centerY,xPillar,pillarY,col);
-      createNodeEl(nodesLayer,item.label,item.desc,xPillar,pillarY,'pillar',col);
-
-      const subItems=item.children||[];
-      const subCount=subItems.length;
-      if(subCount>0){
-        const subStartY=subCount===1?pillarY:(pillarY-(subCount-1)*45);
-        subItems.forEach((sub,si)=>{
-          const subY=subCount===1?pillarY:(subStartY+si*90);
-          const subCol=sub.color||col;
-          drawBezierCurve(svg,xPillar,pillarY,xSub,subY,subCol);
-          createNodeEl(nodesLayer,sub.label,sub.desc,xSub,subY,'sub',subCol);
-        });
-      }
-    });
-  }
-
-  if(rightChildren.length)layoutBranch(rightChildren,true);
-  if(leftChildren.length)layoutBranch(leftChildren,false);
-
-  const vp=$('mmViewport');
-  setTimeout(()=>{
-    vp.scrollLeft=(stageW-vp.clientWidth)/2;
-    vp.scrollTop=(stageH-vp.clientHeight)/2;
-  },50);
-}
-
-function drawBezierCurve(svg,x1,y1,x2,y2,color){
-  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  const dx=(x2-x1)*0.55;
-  const d=`M ${x1} ${y1} C ${x1+dx} ${y1}, ${x2-dx} ${y2}, ${x2} ${y2}`;
-  path.setAttribute('d',d);
-  path.setAttribute('stroke',color);
-  path.setAttribute('stroke-width','2.5');
-  path.setAttribute('fill','none');
-  path.setAttribute('stroke-linecap','round');
-  path.setAttribute('opacity','0.65');
-  svg.appendChild(path);
-}
-
-function createNodeEl(container,label,desc,x,y,type,color){
-  const el=document.createElement('div');
-  el.className=`mm-node ${type}`;
-  el.style.left=`${x}px`;
-  el.style.top=`${y}px`;
-  if(type!=='root')el.style.borderColor=color;
-
-  const icon=type==='root'?'🌱':(type==='pillar'?'🔹':'💡');
-  const titleEl=document.createElement('div');
-  titleEl.className='mm-title';
-  if(type==='pillar')titleEl.style.color=color;
-  titleEl.textContent=`${icon} ${label}`;
-
-  el.appendChild(titleEl);
-  if(desc){
-    const descEl=document.createElement('div');
-    descEl.className='mm-desc';
-    descEl.textContent=desc;
-    el.appendChild(descEl);
-  }
-
-  container.appendChild(el);
-}
-
-function zoomMindmap(delta){
-  state.mmZoom=Math.min(2.0,Math.max(0.5,+(state.mmZoom+delta).toFixed(2)));
-  applyMindmapZoom();
-}
-
-function resetMindmapZoom(){
-  state.mmZoom=1.0;
-  applyMindmapZoom();
-  const vp=$('mmViewport');
-  vp.scrollLeft=(1400-vp.clientWidth)/2;
-  vp.scrollTop=(900-vp.clientHeight)/2;
-}
-
-function applyMindmapZoom(){
-  const stage=$('mmStage');
-  if(stage)stage.style.transform=`scale(${state.mmZoom})`;
-  if($('mindmapZoomIndicator'))$('mindmapZoomIndicator').textContent=`${Math.round(state.mmZoom*100)}%`;
-}
-
-function renderMindmapsHistory(){
-  const box=$('mindmapsHistoryList');
-  if(!box)return;
-  box.innerHTML='';
-  const items=state.mindmaps||[];
-  if(!items.length){
-    box.innerHTML='<div class="item" style="color:var(--muted);padding:18px">No mindmaps created yet. Enter a topic above to generate your first concept tree!</div>';
-    return;
-  }
-  items.forEach(m=>{
-    const d=document.createElement('div');
-    d.className='item';
-    d.style.display='flex';
-    d.style.alignItems='center';
-    d.style.justifyContent='space-between';
-    d.style.gap='12px';
-    d.style.padding='14px 18px';
-
-    const dt=m.created_at?new Date(m.created_at).toLocaleDateString():'Recent';
-    d.innerHTML=`
-      <div>
-        <strong style="font-size:14px;color:var(--ink);display:block">${escapeText(m.topic)}</strong>
-        <small style="color:var(--muted);font-size:12px">Created ${dt}</small>
-      </div>
-      <button type="button" class="secondary" style="min-height:36px;font-size:12.5px" onclick="loadSavedMindmap(${Number(m.id)})">Open Map →</button>
-    `;
-    box.appendChild(d);
-  });
-}
-
-async function loadSavedMindmap(id){
-  toast('Loading mindmap…','info');
-  try{
-    const res=await api(`/api/mindmaps/${id}`);
-    if(res.mindmap){
-      state.activeMindmap=res.mindmap;
-      displayMindmap(res.mindmap);
-    }
-  }catch(err){
-    toast(err.message||'Could not load mindmap','error');
-  }
-}
-
-function shareMindmapWhatsApp(){
-  const topic=state.activeMindmap?.topic||'Concept';
-  const refCode=state.referrals?.referral_code||'';
-  const link=refCode?`${location.origin}/account?ref=${refCode}&google=1`:`${location.origin}/account?google=1`;
-  const text=encodeURIComponent(`Check out this visual AI concept mindmap on "${topic}" I created with Saathi!\n\nStudy concept trees and master any topic faster here:\n${link}`);
-  window.open(`https://api.whatsapp.com/send?text=${text}`,'_blank');
-}
-
-function exportMindmapPng(){
-  const data=state.activeMindmap?.data;
-  if(!data||!data.root)return;
-  const canvas=document.createElement('canvas');
-  canvas.width=1600;
-  canvas.height=1000;
-  const ctx=canvas.getContext('2d');
-
-  const bgGrad=ctx.createLinearGradient(0,0,1600,1000);
-  bgGrad.addColorStop(0,'#0f172a');
-  bgGrad.addColorStop(0.5,'#1e293b');
-  bgGrad.addColorStop(1,'#090d16');
-  ctx.fillStyle=bgGrad;
-  ctx.fillRect(0,0,1600,1000);
-
-  ctx.fillStyle='#f1d97f';
-  ctx.font='800 24px Inter, sans-serif';
-  ctx.fillText('SAATHI AI · VISUAL CONCEPT MAP',80,70);
-
-  ctx.fillStyle='#ffffff';
-  ctx.font='800 48px Inter, sans-serif';
-  ctx.fillText(data.topic||data.root.label,80,130);
-
-  ctx.fillStyle='#94a3b8';
-  ctx.font='500 22px Inter, sans-serif';
-  ctx.fillText(data.summary||'Hierarchical Study Guide',80,175);
-
-  const root=data.root;
-  const cx=800,cy=560;
-
-  ctx.fillStyle='#1e1b4b';
-  ctx.strokeStyle='#6366f1';
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.roundRect(cx-150,cy-50,300,100,20);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle='#ffffff';
-  ctx.font='800 24px Inter, sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText(root.label,cx,cy+8);
-
-  const pillars=root.children||[];
-  pillars.forEach((p,idx)=>{
-    const angle=(Math.PI*2/pillars.length)*idx;
-    const px=cx+Math.cos(angle)*440;
-    const py=cy+Math.sin(angle)*260;
-
-    ctx.strokeStyle=p.color||'#38bdf8';
-    ctx.lineWidth=2.5;
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.quadraticCurveTo((cx+px)/2,(cy+py)/2-30,px,py);
-    ctx.stroke();
-
-    ctx.fillStyle='#1e293b';
-    ctx.strokeStyle=p.color||'#38bdf8';
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.roundRect(px-140,py-40,280,80,16);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle=p.color||'#38bdf8';
-    ctx.font='700 20px Inter, sans-serif';
-    ctx.fillText(p.label,px,py-4);
-
-    ctx.fillStyle='#cbd5e1';
-    ctx.font='500 13px Inter, sans-serif';
-    const shortDesc=(p.desc||'').slice(0,36)+(p.desc&&p.desc.length>36?'…':'');
-    ctx.fillText(shortDesc,px,py+22);
-  });
-
-  ctx.textAlign='left';
-  ctx.fillStyle='rgba(255,255,255,0.4)';
-  ctx.font='500 18px Inter, sans-serif';
-  ctx.fillText('Saathi study mindmap · '+location.host,80,950,1240);
-
-  const link=document.createElement('a');
-  const safeTopic=(data.topic||'mindmap').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  link.download=`saathi-mindmap-${safeTopic}.png`;
-  link.href=canvas.toDataURL('image/png');
-  link.click();
-  toast('Mindmap PNG poster downloaded! 🌟','success');
-}
-
-/* ── Wellbeing space Logic ────────────────────────── */
-function scrollHealerTo(id){
-  const el=$(id);
-  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-function quickSelectSymptom(text){
-  $('healerSymptomInput').value=text;
-  runHealerConsultation();
-}
-
-async function runHealerConsultation(){
-  const symptomText=($('healerSymptomInput').value||'').trim();
-  if(!symptomText){
-    toast('Please describe your symptoms or select a quick topic above.','warning');
-    $('healerSymptomInput').focus();
-    return;
-  }
-
-  const lang=$('healerLanguageSelect').value||'en';
-  const btn=$('healerConsultBtn');
-  btn.disabled=true;
-  btn.textContent='Preparing your guide…';
-
-  try{
-    const res=await api('/api/healer/consult',{
-      method:'POST',
-      body:JSON.stringify({symptoms:symptomText,language:lang})
-    });
-
-    if(res.ok&&res.report){
-      renderHealerReport(res.report);
-      toast('Your preparation guide is ready','success');
-    }else{
-      toast('Could not prepare your guide. Please try again.','error');
-    }
-  }catch(err){
-    toast(err.message||'Could not connect. Please retry.','error');
-  }finally{
-    btn.disabled=false;
-    btn.textContent='Prepare my next steps';
-  }
-}
-
-function renderHealerReport(report){
-  const out=$('healerResultOutput');out.style.display='block';out.replaceChildren();
-  const card=document.createElement('article');card.className='panel wellbeing-result';
-  const title=document.createElement('h2');title.textContent=report.comfort_title;
-  const intro=document.createElement('p');intro.textContent=report.comfort_message;
-  const explanation=document.createElement('p');explanation.textContent=report.body_explanation;
-  card.append(title,intro,explanation);
-  for(const item of report.home_remedies||[]){
-    const section=document.createElement('section'),heading=document.createElement('h3'),text=document.createElement('p');
-    heading.textContent=item.title;text.textContent=item.tip;section.append(heading,text);card.append(section);
-  }
-  for(const text of report.red_flags||[]){const note=document.createElement('p');note.className='consent-note';note.textContent=text;card.append(note)}
-  const disclaimer=document.createElement('p');disclaimer.className='helper';disclaimer.textContent=report.doctor_disclaimer;card.append(disclaimer);
-  out.append(card);out.scrollIntoView({behavior:'smooth',block:'start'});
-}
-let breathTimer=null;
-let breathState='idle';
-let breathPhase='inhale';
-let breathCount=4;
-
-function toggleBreathingExercise(){
-  const orb=$('zenOrb');
-  const phaseLabel=$('zenPhase');
-  const counter=$('zenCounter');
-  const btn=$('zenToggleBtn');
-
-  if(breathState==='running'){
-    clearInterval(breathTimer);
-    breathState='idle';
-    orb.className='zen-orb';
-    phaseLabel.textContent='Paused';
-    counter.textContent='—';
-    btn.textContent='▶ Resume Breathing';
-    return;
-  }
-
-  breathState='running';
-  btn.textContent='⏸ Pause Breathing';
-  runBreathPhase('inhale',4);
-}
-
-function runBreathPhase(phase,seconds){
-  if(breathState!=='running')return;
-  breathPhase=phase;
-  breathCount=seconds;
-
-  const orb=$('zenOrb');
-  const phaseLabel=$('zenPhase');
-  const counter=$('zenCounter');
-
-  if(phase==='inhale'){
-    orb.className='zen-orb expand';
-    phaseLabel.textContent='Inhale 🌸';
-  }else if(phase==='hold'){
-    orb.className='zen-orb hold';
-    phaseLabel.textContent='Hold 🧘';
-  }else if(phase==='exhale'){
-    orb.className='zen-orb contract';
-    phaseLabel.textContent='Exhale 🍃';
-  }
-
-  counter.textContent=breathCount;
-
-  clearInterval(breathTimer);
-  breathTimer=setInterval(()=>{
-    breathCount--;
-    if(breathCount>0){
-      counter.textContent=breathCount;
-    }else{
-      clearInterval(breathTimer);
-      if(breathPhase==='inhale'){
-        runBreathPhase('exhale',6);
-      }else if(breathPhase==='hold'){
-        runBreathPhase('exhale',6);
-      }else{
-        runBreathPhase('inhale',4);
-      }
-    }
-  },1000);
-}
-
-/* Synthesized Ambient Audio Generator (Web Audio API) */
-let audioCtx=null;
-let activeAmbientSound=null;
-let activeAmbientNodes=[];
-
-function getAudioContext(){
-  if(!audioCtx){
-    const AudioContext=window.AudioContext||window.webkitAudioContext;
-    audioCtx=new AudioContext();
-  }
-  if(audioCtx.state==='suspended')audioCtx.resume();
-  return audioCtx;
-}
-
-function stopAmbientSound(){
-  activeAmbientNodes.forEach(node=>{
-    try{if(node.stop)node.stop();if(node.disconnect)node.disconnect()}catch(e){}
-  });
-  activeAmbientNodes=[];
-  activeAmbientSound=null;
-  document.querySelectorAll('.sound-btn').forEach(b=>b.classList.remove('playing'));
-}
-
-function toggleAmbientSound(type){
-  if(activeAmbientSound===type){
-    stopAmbientSound();
-    toast('Ambient sound paused ⏸','info');
-    return;
-  }
-
-  stopAmbientSound();
-  const ctx=getAudioContext();
-  activeAmbientSound=type;
-
-  if(type==='om'){
-    // Optional soft background tone
-    const osc1=ctx.createOscillator();
-    const osc2=ctx.createOscillator();
-    const gain=ctx.createGain();
-
-    osc1.type='sine';
-    osc1.frequency.setValueAtTime(432,ctx.currentTime); // base tone
-    osc2.type='sine';
-    osc2.frequency.setValueAtTime(216,ctx.currentTime); // lower tone
-
-    gain.gain.setValueAtTime(0.08,ctx.currentTime);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start();
-    osc2.start();
-    activeAmbientNodes=[osc1,osc2,gain];
-    $('sndDrone').classList.add('playing');
-    toast('Playing Soft tone 🕉️','success');
-  }else if(type==='rain'||type==='ocean'){
-    // Pink noise synthesis with bandpass filter
-    const bufferSize=2*ctx.sampleRate;
-    const noiseBuffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
-    const output=noiseBuffer.getChannelData(0);
-    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-
-    for(let i=0;i<bufferSize;i++){
-      const white=Math.random()*2-1;
-      b0=0.99886*b0+white*0.0555179;
-      b1=0.99332*b1+white*0.0750759;
-      b2=0.96900*b2+white*0.1538520;
-      b3=0.86650*b3+white*0.3104856;
-      b4=0.55000*b4+white*0.5329522;
-      b5=-0.7616*b5-white*0.0168980;
-      output[i]=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.08;
-      b6=white*0.115926;
-    }
-
-    const whiteNoise=ctx.createBufferSource();
-    whiteNoise.buffer=noiseBuffer;
-    whiteNoise.loop=true;
-
-    const filter=ctx.createBiquadFilter();
-    filter.type=type==='rain'?'lowpass':'bandpass';
-    filter.frequency.setValueAtTime(type==='rain'?850:400,ctx.currentTime);
-
-    const gain=ctx.createGain();
-    gain.gain.setValueAtTime(0.09,ctx.currentTime);
-
-    whiteNoise.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-
-    whiteNoise.start();
-    activeAmbientNodes=[whiteNoise,filter,gain];
-
-    if(type==='rain'){
-      $('sndRain').classList.add('playing');
-      toast('Gentle soothing rain playing 🌧️','success');
-    }else{
-      $('sndWaves').classList.add('playing');
-      toast('Ocean waves playing 🌊','success');
-    }
-  }
-}
-
-async function loadDashboardCareNudge(){
-  try{
-    const res=await api('/api/care/nudge');
-    if(res.ok&&res.nudge){
-      const n=res.nudge;
-      if(n.phase!=='scheduled')return;
-      state.careNudgeKey='saathi:care:'+state.user.id+':'+n.action.reminder_id+':'+n.action.scheduled_at;
-      if(sessionStorage.getItem(state.careNudgeKey))return;
-      const island=$('overviewCareIsland');
-      if(!island)return;
-      $('islandTitle').textContent=n.title;
-      $('islandMessage').textContent=n.message;
-      const btn=$('islandActionBtn');
-      if(n.action&&n.action.label){
-        btn.style.display='inline-block';
-        btn.textContent=n.action.label;
-        btn.onclick=async()=>{
-          if(n.action.type==='complete_reminder'){
-            try{
-              await api('/api/reminders/'+n.action.reminder_id+'/ack',{method:'POST',body:JSON.stringify({scheduled_at:n.action.scheduled_at})});
-              toast('Reminder marked complete.','success');
-              dismissDashboardCareIsland();
-              await loadWorkspaceSections([
-                {key:'reminders',label:'Reminders',url:'/api/reminders',apply:data=>{state.reminders=data.reminders||[];renderReminders()}},
-                {key:'overview',label:'Overview',url:'/api/overview',apply:data=>{state.overview=data;renderOverview()}}
-              ]);
-            }catch(e){toast(e.message,'error')}
-          }else if(n.action.type==='ambient_sound'){
-            openView('healer');
-            toggleAmbient(n.action.sound||'om');
-            dismissDashboardCareIsland();
-          }else if(n.action.type==='breathing'){
-            openView('healer');
-            $('zenBreathingSection')?.scrollIntoView({behavior:'smooth'});
-            dismissDashboardCareIsland();
-          }else{
-            location.href='/chat';
-          }
-        };
-      }else{
-        btn.style.display='none';
-      }
-      island.style.display='block';
-    }
-  }catch(_){}
-}
-function dismissDashboardCareIsland(){
-  if(state.careNudgeKey)sessionStorage.setItem(state.careNudgeKey,'1');
-  const island=$('overviewCareIsland');
-  if(island){
-    island.style.opacity='0';
-    island.style.transition='opacity .2s ease-out';
-    setTimeout(()=>{island.style.display='none'},200);
-  }
-}
-
 async function init(){
   $('completionSounds').checked=localStorage.getItem('saathi-sounds')==='on';
   $('retryWorkspace').disabled=true;
   try{
     SaathiTheme.refresh();$('journalDate').value=localDate();syncWorkspaceHistory(false);
     const me=await api('/api/me');if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
-    state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiWorkspace.connect({user:me.user,api,notify:toast});updateGreeting();
+    state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiRecovery.connect({user:me.user,api,notify:toast});SaathiWorkspace.connect({user:me.user,api,notify:toast});SaathiHub.connect({user:me.user,api,notify:toast,openView,openTask:async id=>{openView('tasks');await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===id);if(task)editTask(task);else toast('Task not found.')},refreshToday:()=>loadWorkspaceSections(workspaceSections.filter(item=>['today','overview'].includes(item.key)))});updateGreeting();
+    const selectedTask=Number(new URLSearchParams(location.search).get('task'));if(selectedTask>0){await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===selectedTask);if(task)editTask(task);history.replaceState(null,'','/dashboard#tasks')}
     state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
     SaathiDaily.connect({api,notify:toast,openView,confirm:confirmAction,tasks:()=>state.tasks,openTest:quickStartFromHistory,openMindmap:loadSavedMindmap,setLanguage:language=>{state.user.language=language;$('languageSelect').value=language;applyLanguage(language)},refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
-    loadDashboardCareNudge();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
     if(!state.reminderTimer)state.reminderTimer=setInterval(checkDueReminders,30000);checkDueReminders();
   }catch(error){$('sideName').textContent='Connection unavailable';$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent='Your workspace could not connect. Retry when your connection is ready.';toast(error.message,'error')}
@@ -2136,9 +996,9 @@ async function init(){
 }
 $('skipWorkspace').addEventListener('click',event=>{event.preventDefault();$('workspaceContent').focus()});
 $('backToToday').addEventListener('click',()=>openView('overview'));
-$('retryWorkspace').addEventListener('click',()=>state.user?(state.loadFailures.length?loadWorkspaceSections(state.loadFailures):loadViewSections(state.currentView,true)):init());
+$('retryWorkspace').addEventListener('click',()=>state.user?(state.failedTool?loadViewSections(state.failedTool,true):state.loadFailures.length?loadWorkspaceSections(state.loadFailures):loadViewSections(state.currentView,true)):init());
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
-window.addEventListener('pagehide',()=>{clearInterval(breathTimer);clearInterval(state.testTimerInterval);activeAmbientNodes.forEach(node=>{try{node.stop?.();node.disconnect()}catch(_){}});audioCtx?.close().catch(()=>{})});
+window.addEventListener('pagehide',()=>{clearInterval(state.testTimerInterval);window.stopCare?.()});
 init();
 
 </script>

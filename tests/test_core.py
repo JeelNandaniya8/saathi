@@ -280,6 +280,9 @@ def test_gemini_context_limits_and_language(backend, monkeypatch):
     class Response:
         status_code = 200
 
+        def close(self):
+            pass
+
         def raise_for_status(self):
             return None
 
@@ -362,6 +365,9 @@ def test_gemini_multimodal_payload_contains_inline_file(backend, monkeypatch):
 
     class Response:
         status_code = 200
+
+        def close(self):
+            pass
 
         def raise_for_status(self):
             return None

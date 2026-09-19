@@ -309,7 +309,8 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .voice-open-btn svg{width:22px;height:22px}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
-<link rel="stylesheet" href="/workspace.css?v=20260915">
+<link rel="stylesheet" href="/workspace.css?v=20260916c">
+<link rel="stylesheet" href="/workspace-hub.css?v=20260919">
 </head>
 <body>
 <div class="app">
@@ -322,7 +323,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
       <button class="search-clear" id="searchClear" type="button" aria-label="Clear search">×</button>
     </label>
     <button class="archive-toggle" id="archiveToggle" type="button"><span>◇</span><span id="archiveLabel">Archived conversations</span></button>
-    <nav class="history" id="history" aria-label="Saved conversations"><div class="history-state">Loading your conversations…</div></nav>
+    <button class="new-chat" type="button" data-workspace-search>Search workspace</button><nav class="history" id="history" aria-label="Saved conversations"><div class="history-state">Loading your conversations…</div></nav>
     <button class="quick-notes-trigger" type="button" data-quick-notes aria-haspopup="dialog">▤ <span>Quick notes</span></button>
     <div class="account-card">
       <div class="avatar" id="userAvatar">S</div>
@@ -350,20 +351,6 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
         <a class="top-pill" href="/dashboard">Dashboard</a>
       </div>
     </header>
-
-    <div class="chat-care-banner" id="chatCareBanner" style="display:none">
-      <div class="care-banner-content">
-        <div class="care-banner-icon" id="careBannerIcon">💚</div>
-        <div class="care-banner-text">
-          <b id="careBannerTitle">Care Reminder</b>
-          <span id="careBannerMsg">Stay calm and take care.</span>
-        </div>
-      </div>
-      <div class="care-banner-actions">
-        <button type="button" class="care-banner-btn" id="careBannerActionBtn" style="display:none"></button>
-        <button type="button" class="care-banner-close" onclick="dismissChatCareBanner()" aria-label="Dismiss">×</button>
-      </div>
-    </div>
 
     <section class="messages" id="messages" aria-label="Conversation messages">
       <div class="message-list" id="messageList"></div>
@@ -480,7 +467,11 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 </button>
 
 
-<script src="/workspace.js?v=20260915b"></script>
+<dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
+<script src="/i18n.js?v=20260919"></script>
+<script src="/workspace-hub.js?v=20260919"></script>
+<script src="/recovery.js?v=20260919"></script>
+<script src="/workspace.js?v=20260919"></script>
 <script>
 const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],recognition:null,voiceAvailable:false,voiceBase:'',speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
 const el={
@@ -527,17 +518,19 @@ function requestId(){if(crypto.randomUUID)return crypto.randomUUID();return`${Da
 function defaultFilePrompt(mode,count){const noun=count===1?'file':'files',prompts={summarise:`Summarise the attached ${noun} and preserve the important details.`,quiz:`Quiz me using the attached ${noun}. Ask one question at a time.`,flashcards:`Create useful revision flashcards from the attached ${noun}.`,deep_study:`Teach me the attached ${noun} in depth for study and revision.`,explain:`Explain the attached ${noun} in simple steps with an example.`,study_plan:`Create a realistic study plan using the attached ${noun}.`};return prompts[mode]||`Please explain the attached ${noun}.`}
 function showRequestProgress(copy,percent=null,processing=false){el.uploadStatus.hidden=false;el.uploadStatus.classList.toggle('processing',processing);el.uploadCopy.textContent=copy;if(percent!==null)el.uploadProgress.style.width=Math.max(2,Math.min(percent,100))+'%'}
 async function streamChatRequest(url,body,onDelta){
+  const measurement=window.SaathiRecovery?.measureStart(url);
   const controller=new AbortController();state.activeRequest=controller;
-  let reader,buffer='',complete=null;
+  let reader,buffer='',complete=null,outcome='error',failure=null,timedOut=false;
   const decoder=new TextDecoder('utf-8',{fatal:true});
-  let timeout=setTimeout(()=>controller.abort(),90000);
+  const expire=()=>{timedOut=true;controller.abort()};
+  let timeout=setTimeout(expire,90000);
   function consume(line){
     if(!line.trim())return;
     const event=JSON.parse(line);
     if(event.type==='ready')showRequestProgress('Waiting for the first words…',null,true);
-    else if(event.type==='delta'){el.uploadStatus.hidden=true;onDelta(String(event.text||''))}
+    else if(event.type==='delta'){const text=String(event.text||'');if(text)window.SaathiRecovery?.measureDelta(measurement);el.uploadStatus.hidden=true;onDelta(text)}
     else if(event.type==='complete')complete=event.data;
-    else if(event.type==='error')throw new Error(event.error||'Saathi could not finish this reply.');
+    else if(event.type==='error')throw Object.assign(new Error(event.error||'Saathi could not finish this reply.'),{code:event.code,reference:event.reference,retry_after:event.retry_after});
   }
   try{
     const headers={'X-CSRF-Token':state.csrf,'Accept':'application/x-ndjson'};
@@ -549,17 +542,36 @@ async function streamChatRequest(url,body,onDelta){
     reader=response.body.getReader();
     while(true){
       const {value,done}=await reader.read();
-      clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),90000);
+      clearTimeout(timeout);timeout=setTimeout(expire,90000);
       buffer+=done?decoder.decode():decoder.decode(value,{stream:true});
       let end;while((end=buffer.indexOf('\n'))!==-1){consume(buffer.slice(0,end));buffer=buffer.slice(end+1)}
       if(done){if(buffer.trim())consume(buffer);break}
     }
     if(!complete)throw new Error('Connection ended before the reply was saved. Your received text is kept below.');
+    outcome='complete';
     return complete;
   }catch(error){
-    if(error.name==='AbortError')error.message='Reply stopped or timed out. Received text is kept on this screen; it is not saved yet.';
+    failure=error;
+    if(error.name==='AbortError'){outcome=timedOut?'error':'cancelled';if(timedOut)error.code='AI_TIMEOUT';error.message='Reply stopped or timed out. Received text is kept on this screen; it is not saved yet.'}
     throw error;
-  }finally{clearTimeout(timeout);if(reader){try{await reader.cancel()}catch(_){}reader.releaseLock()}}
+  }finally{window.SaathiRecovery?.measureEnd(measurement,outcome,failure);clearTimeout(timeout);if(reader){try{await reader.cancel()}catch(_){}reader.releaseLock()}}
+}
+
+function saveChatDraft(){
+  if(!state.activeId||state.sending)return;
+  // Keep a failed request for recovery until the user edits or retries it.
+  if(!el.input.value&&state.messages.some(message=>message.failed))return;
+  const recovery=window.SaathiRecovery;
+  if(el.input.value)recovery?.saveDraft('chat',state.activeId,{content:el.input.value,mode:el.mode.value,request_id:state.draftRequestId||null});
+  else recovery?.removeDraft('chat',state.activeId);
+}
+function restoreChatDraft(){
+  const draft=window.SaathiRecovery?.getDraft('chat',state.activeId);
+  el.input.value=typeof draft?.content==='string'?draft.content.slice(0,5000):'';
+  state.draftRequestId=typeof draft?.request_id==='string'?draft.request_id:null;
+  if(draft&&state.chatModes.some(mode=>mode.id===draft.mode)){el.mode.value=draft.mode;updateModeDescription()}
+  updateComposer();
+  if(el.input.value)showToast(draft.had_attachments?'Text recovered. Reattach your files before retrying.':'Unsent message recovered. Review it before sending.');
 }
 
 function renderChatModes(modes){state.chatModes=Array.isArray(modes)&&modes.length?modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}];el.mode.replaceChildren();state.chatModes.forEach(mode=>{const option=document.createElement('option');option.value=mode.id;option.textContent=mode.label;el.mode.append(option)});const saved=new URLSearchParams(location.search).get('mode')||localStorage.getItem('saathi-chat-mode');el.mode.value=state.chatModes.some(mode=>mode.id===saved)?saved:'normal';updateModeDescription()}
@@ -614,8 +626,9 @@ async function createConversation(){
 
 async function selectConversation(id){
   if(state.sending){showToast('Wait for the current reply before switching chats.');return}
+  saveChatDraft();
   if(id!==state.activeId){if(state.selectedFiles.length)clearSelectedFiles();state.messages.forEach(releaseLocalPreviews)}
-  state.activeId=id;const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
+  state.activeId=id;restoreChatDraft();const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
   el.list.innerHTML='<div class="history-state">Loading conversation…</div>';
   try{const data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;if(!state.conversations.some(item=>item.id===id)){state.conversations.unshift(normaliseConversationDisplay(data.conversation));renderConversations()}state.messages=(data.messages||[]).map(normaliseMessageDisplay);state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=decodeLegacyText(data.conversation.title);renderMessages();scrollToLatest(false);el.input.focus()}
   catch(error){if(state.activeId===id){state.messages=[];renderMessages();showToast(error.message)}}
@@ -747,14 +760,14 @@ function messageSource(message,index){
 }
 function addDisclosures(body,message,index){
   const source=messageSource(message,index),labels=Array.isArray(message.memory_labels)?message.memory_labels:[];if(!source&&!labels.length)return;const row=document.createElement('div');row.className='message-disclosures';
-  if(source){const chip=document.createElement('span');chip.className='source-chip'+(source.pages.length||!source.hasPdf?' confirmed':'');chip.textContent=source.pages.length?'Source · '+source.names.join(', ')+' · '+source.pages.join(', '):source.hasPdf?'Uploaded PDF · exact page not confirmed':'Source · '+source.names.join(', ')+' · uploaded image';row.append(chip)}
+  if(source){const chip=document.createElement('span');chip.className='source-chip';const files=state.messages[index-1]?.attachments||[];chip.textContent=source.hasPdf?'PDF source: ':'Source: ';const refs=message.source_pages||[];if(!refs.length)chip.append(document.createTextNode(source.names.join(', ')+(source.hasPdf?' · exact page not confirmed':'')));for(const [position,ref] of refs.entries()){if(position)chip.append(document.createTextNode(' · '));const matches=files.filter(file=>file.name===ref.name&&file.mime_type==='application/pdf');const file=matches.length===1?matches[0]:null;if(file&&Number.isInteger(ref.page)&&ref.page>0&&ref.page<=file.page_count){const link=document.createElement('a');link.href='/api/attachments/'+file.id+'/view#page='+ref.page;link.target='_blank';link.rel='noopener noreferrer';link.textContent=ref.name+' · Page '+ref.page;chip.append(link)}else chip.append(document.createTextNode((ref.name||'PDF')+' · Page '+ref.page))}row.append(chip)}
   if(labels.length){const details=document.createElement('details');details.className='memory-used';const summary=document.createElement('summary');summary.textContent='Shared '+labels.length+' saved '+(labels.length===1?'memory':'memories')+' with this reply';const list=document.createElement('ul');labels.forEach(label=>{const item=document.createElement('li');item.textContent=label;list.append(item)});details.append(summary,list);row.append(details)}body.append(row)
 }
 async function setMessageFeedback(message,rating,button){
   const next=message.feedback===rating?null:rating;try{const data=await api('/api/messages/'+message.id+'/feedback',{method:'PATCH',body:JSON.stringify({rating:next})});message.feedback=data.feedback;button.parentElement.querySelectorAll('[data-feedback]').forEach(item=>{const active=item.dataset.feedback===message.feedback;item.classList.toggle('active',active);item.setAttribute('aria-pressed',String(active))});showToast(next?'Thanks. Your feedback was saved.':'Feedback cleared.')}catch(error){showToast(error.message)}
 }
 function readMessage(text,button){
-  if(!('speechSynthesis'in window)){showToast('Read aloud is not supported in this browser.');return}if(state.speakingButton===button){speechSynthesis.cancel();state.speakingButton=null;button.textContent='Read aloud';return}speechSynthesis.cancel();if(state.speakingButton)state.speakingButton.textContent='Read aloud';const utterance=new SpeechSynthesisUtterance(String(text||''));utterance.lang=state.user?.language==='gu'?'gu-IN':state.user?.language==='hi'?'hi-IN':'en-IN';utterance.onend=utterance.onerror=()=>{button.textContent='Read aloud';if(state.speakingButton===button)state.speakingButton=null};state.speakingButton=button;button.textContent='Stop voice';speechSynthesis.speak(utterance)
+  if(!('speechSynthesis'in window)){showToast('Read aloud is not supported in this browser.');return}if(state.speakingButton===button){speechSynthesis.cancel();state.speakingButton=null;button.textContent='Read aloud';return}speechSynthesis.cancel();if(state.speakingButton)state.speakingButton.textContent='Read aloud';const utterance=new SpeechSynthesisUtterance(String(text||''));utterance.lang=state.user?.language==='gu'?'gu-IN':state.user?.language==='hi'?'hi-IN':'en-IN';const voice=window.SaathiRecovery?.voiceFor(utterance.lang);if(voice)utterance.voice=voice;utterance.onend=utterance.onerror=()=>{button.textContent='Read aloud';if(state.speakingButton===button)state.speakingButton=null};state.speakingButton=button;button.textContent='Stop voice';speechSynthesis.speak(utterance)
 }
 function visibleMessage(message){const quiz=parseQuiz(message.content),flash=parseFlashcards(message.content);return{quiz,flash,text:quiz?quiz.clean:flash?flash.clean:message.content}}
 function messageElement(message,index){
@@ -771,9 +784,10 @@ function messageElement(message,index){
     ['Quiz me','Quiz me on your previous answer. Ask one question at a time.','quiz']
   ].forEach(([label,prompt,mode])=>{const button=document.createElement('button');button.className='quick-action';button.type='button';button.textContent=label;button.disabled=state.sending;button.addEventListener('click',()=>sendContent(prompt,null,null,mode));actions.append(button)});body.append(actions)}
   const tools=document.createElement('div');tools.className='message-tools';if(!message.streaming){const copy=document.createElement('button');copy.className='message-tool';copy.type='button';copy.textContent='Copy';copy.addEventListener('click',()=>copyMessage(message.content));tools.append(copy)}
-  if(assistant&&!message.failed&&!message.streaming){const speak=document.createElement('button');speak.className='message-tool';speak.type='button';speak.textContent='Read aloud';speak.addEventListener('click',()=>readMessage(message.content,speak));const feedbackButtons=[['Useful','helpful'],['Wrong','wrong'],['Unclear','unclear']].map(([label,rating])=>{const button=document.createElement('button');button.className='message-tool';button.type='button';button.textContent=label;button.dataset.feedback=rating;button.title='Save feedback privately: '+label;const active=message.feedback===rating;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));button.addEventListener('click',()=>setMessageFeedback(message,rating,button));return button});const task=document.createElement('button');task.className='message-tool';task.type='button';task.textContent='Save task';task.addEventListener('click',()=>openTaskDialog(message));const reminder=document.createElement('button');reminder.className='message-tool';reminder.type='button';reminder.textContent='Set reminder';reminder.addEventListener('click',()=>openReminderDialog(message));tools.append(speak,...feedbackButtons,task,reminder)}
+  if(assistant&&!message.failed&&!message.streaming){const speak=document.createElement('button');speak.className='message-tool';speak.type='button';speak.textContent='Read aloud';speak.addEventListener('click',()=>readMessage(message.content,speak));const feedbackButtons=[['Useful','helpful'],['Wrong','wrong'],['Unclear','unclear']].map(([label,rating])=>{const button=document.createElement('button');button.className='message-tool';button.type='button';button.textContent=label;button.dataset.feedback=rating;button.title='Save feedback privately: '+label;const active=message.feedback===rating;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));button.addEventListener('click',()=>setMessageFeedback(message,rating,button));return button});const task=document.createElement('button');task.className='message-tool';task.type='button';task.textContent='Save task';task.addEventListener('click',()=>openTaskDialog(message));const reminder=document.createElement('button');reminder.className='message-tool';reminder.type='button';reminder.textContent='Set reminder';reminder.addEventListener('click',()=>openReminderDialog(message));const more=document.createElement('details'),summary=document.createElement('summary');more.className='message-more';summary.textContent='More';more.append(summary,speak,...feedbackButtons,task,reminder);tools.append(more)}
   if(message.failed){const retry=document.createElement('button');retry.className='message-tool';retry.type='button';retry.textContent='Try again';retry.addEventListener('click',retryFailed);tools.append(retry)}
   else if(assistant&&!message.streaming&&index===state.messages.length-1){const again=document.createElement('button');again.className='message-tool';again.type='button';again.textContent='Another reply';again.addEventListener('click',regenerateReply);tools.append(again)}
+  if(!assistant&&!message.streaming&&!String(message.id).startsWith('temporary-')){const edit=document.createElement('button');edit.className='message-tool';edit.type='button';edit.textContent='Edit and resend';edit.onclick=()=>editMessage(message);tools.append(edit)}
   body.append(tools);article.append(avatar,body);return article;
 }
 
@@ -808,8 +822,11 @@ function scrollToLatest(smooth=true){el.messages.scrollTo({top:el.messages.scrol
 function releaseLocalPreviews(message){(message?.attachments||[]).forEach(item=>{if(item.local&&item.url)URL.revokeObjectURL(item.url)})}
 async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverride=null,fileOnlyOverride=null){
   const entries=retryFiles?retryFiles.map(file=>({file,previewUrl:null})):state.selectedFiles.slice(),files=entries.map(entry=>entry.file);if(state.sending||!state.activeId||(!content.trim()&&!files.length))return;
-  const mode=modeOverride||el.mode.value||'normal',currentRequestId=retryRequestId||requestId(),fileOnly=files.length?Boolean(fileOnlyOverride??el.fileOnly.checked):false;
+  const draft=window.SaathiRecovery?.getDraft('chat',state.activeId);
+  const reuseDraft=state.draftRequestId&&draft?.content?.trim()===content.trim()&&draft.mode===(modeOverride||el.mode.value||'normal');
+  const mode=modeOverride||el.mode.value||'normal',currentRequestId=retryRequestId||(reuseDraft?state.draftRequestId:null)||requestId(),fileOnly=files.length?Boolean(fileOnlyOverride??el.fileOnly.checked):false;
   const text=content.trim()||defaultFilePrompt(mode,files.length);
+  window.SaathiRecovery?.saveDraft('chat',state.activeId,{content:text,mode,request_id:currentRequestId,had_attachments:files.length>0});state.draftRequestId=null;
   const temporary={id:'temporary-'+Date.now(),role:'user',content:text,created_at:new Date().toISOString(),ai_mode:mode,request_id:currentRequestId,file_only:fileOnly,local_files:files,attachments:entries.map((entry,index)=>({id:'local-'+index,name:entry.file.name,mime_type:entry.file.type,size_bytes:entry.file.size,url:entry.previewUrl||(entry.file.type.startsWith('image/')?URL.createObjectURL(entry.file):''),local:true}))},streaming={id:'streaming-'+Date.now(),role:'assistant',content:'',created_at:new Date().toISOString(),ai_mode:mode,streaming:true};
   const active=currentConversation(),firstUserMessage=!state.messages.some(message=>message.role==='user'),previousTitle=active?.title||null;let optimisticTitle=false;
   if(active&&firstUserMessage&&active.title==='New conversation'){active.title=content.trim()?conversationTitle(text):attachmentConversationTitle(mode,files);active.preview=text;active.updated_at=temporary.created_at;el.chatTitle.textContent=active.title;sortConversations();renderConversations();optimisticTitle=true}
@@ -818,13 +835,32 @@ async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverr
     let body;if(files.length){body=new FormData();body.append('content',text);body.append('mode',mode);body.append('request_id',currentRequestId);body.append('file_only',String(fileOnly));files.forEach(file=>body.append('attachments',file,file.name))}else body=JSON.stringify({content:text,mode,request_id:currentRequestId,file_only:fileOnly});
     let streamFrame=null,receivedFirstDelta=false;const data=await streamChatRequest(`/api/conversations/${state.activeId}/messages/stream`,body,chunk=>{streaming.content+=chunk;if(!receivedFirstDelta){receivedFirstDelta=true;el.uploadStatus.hidden=true}if(streamFrame)return;streamFrame=requestAnimationFrame(()=>{streamFrame=null;const article=el.list.querySelector('[data-message-id="'+streaming.id+'"]'),contentNode=article?.querySelector('.message-content');if(contentNode){renderMarkdown(contentNode,streaming.content);contentNode.classList.add('has-text')}if(el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight<180)scrollToLatest(false)})});
     releaseLocalPreviews(temporary);
-    state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
+    window.SaathiRecovery?.removeDraft('chat',state.activeId);
+    state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming&&message.id!==data.user_message.id&&message.id!==data.assistant_message.id);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
     return data;
   }catch(error){if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true});renderMessages();scrollToLatest();}
   finally{setBusy(false);el.input.focus()}
 }
+
+let editingMessage=null,editController=null,editConversation=null;
+function editMessage(message){
+  if(state.sending)return;
+  if(el.input.value.trim()||state.selectedFiles.length){showToast('Save or send your current draft before editing another message.');return}
+  editingMessage=message;editConversation=state.activeId;document.getElementById('editMessageText').value=message.content;document.getElementById('editMessageNotice').textContent=message.attachments?.length?'The original attachment will be included again.':'';document.getElementById('editMessageDialog').showModal();document.getElementById('editMessageText').focus();
+}
+document.getElementById('editMessageDialog').addEventListener('close',()=>{editController?.abort();editController=null;editingMessage=null});
+document.getElementById('cancelMessageEdit').onclick=()=>document.getElementById('editMessageDialog').close();
+document.getElementById('sendMessageEdit').onclick=async()=>{
+  const message=editingMessage,text=document.getElementById('editMessageText').value.trim(),button=document.getElementById('sendMessageEdit'),dialog=document.getElementById('editMessageDialog');if(!message||!text||state.sending||button.disabled)return;button.disabled=true;
+  const controller=new AbortController();editController=controller;
+  try{
+    const files=await Promise.all((message.attachments||[]).map(async attachment=>{const response=await fetch('/api/attachments/'+attachment.id,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('The original attachment could not load. Your edited text is kept here.');const blob=await response.blob();return new File([blob],attachment.name,{type:attachment.mime_type})}));
+    if(controller.signal.aborted||!dialog.open||state.activeId!==editConversation)return;
+    editController=null;dialog.close();await sendContent(text,files,null,message.ai_mode,message.file_only);
+  }catch(error){if(error.name!=='AbortError'&&dialog.open)document.getElementById('editMessageNotice').textContent=error.message}finally{button.disabled=false;if(editController===controller)editController=null}
+};
 
 async function retryFailed(){
   if(state.sending)return;const failedIndex=state.messages.findIndex(message=>message.failed);if(failedIndex<1)return;const previous=state.messages[failedIndex-1];
@@ -874,7 +910,7 @@ async function deleteConversation(){
   catch(error){showToast(error.message)}finally{document.getElementById('confirmDelete').disabled=false}
 }
 
-async function logout(){try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});location.href='/'}catch(error){showToast(error.message)}}
+async function logout(){try{if(!await SaathiWorkspace.prepareLogout())return;await api('/api/logout',{method:'POST',body:'{}'});window.SaathiRecovery?.forgetAccount();location.href='/'}catch(error){showToast(error.message)}}
 function applyTheme(theme){SaathiTheme.apply(theme)}
 function toggleTheme(){SaathiTheme.toggle()}
 function setupVoiceInput(){
@@ -894,7 +930,7 @@ el.mode.addEventListener('change',updateModeDescription);
 el.composer.addEventListener('dragleave',event=>{if(!el.composer.contains(event.relatedTarget))el.composer.classList.remove('dragging')});
 el.composer.addEventListener('drop',event=>{event.preventDefault();el.composer.classList.remove('dragging');if(!state.sending)chooseFiles(event.dataTransfer?.files)});
 el.input.addEventListener('paste',event=>{const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);if(files.length){event.preventDefault();chooseFiles(files)}});
-el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',updateComposer);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();el.composer.requestSubmit()}});
+el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();el.composer.requestSubmit()}});
 el.search.addEventListener('input',()=>{el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
 document.getElementById('archiveToggle').addEventListener('click',()=>{if(state.sending)return;state.showArchived=!state.showArchived;state.activeId=null;state.messages=[];state.hasMore=false;updateComposer();document.getElementById('archiveToggle').classList.toggle('active',state.showArchived);document.getElementById('archiveLabel').textContent=state.showArchived?'Back to conversations':'Archived conversations';loadConversations()});
@@ -1015,58 +1051,6 @@ function toggleChatAmbient(type){
   }
 }
 
-/* ── Proactive Care Banner in Chat ────────────────────────── */
-async function loadChatCareNudge(){
-  try{
-    const res = await api('/api/care/nudge');
-    if(res.ok && res.nudge){
-      const n = res.nudge;
-      if(n.phase!=='scheduled')return;
-      state.careNudgeKey='saathi:care:'+state.user.id+':'+n.action.reminder_id+':'+n.action.scheduled_at;
-      if(sessionStorage.getItem(state.careNudgeKey))return;
-      const banner = document.getElementById('chatCareBanner');
-      if(!banner) return;
-      document.getElementById('careBannerTitle').textContent = n.title;
-      document.getElementById('careBannerMsg').textContent = n.message;
-      const actBtn = document.getElementById('careBannerActionBtn');
-      if(n.action && n.action.label){
-        actBtn.style.display = 'inline-block';
-        actBtn.textContent = n.action.label;
-        actBtn.onclick = async () => {
-          if(n.action.type === 'complete_reminder'){
-            try{
-              await api('/api/reminders/' + n.action.reminder_id + '/ack', {method:'POST',body:JSON.stringify({scheduled_at:n.action.scheduled_at})});
-              showToast('Reminder marked complete.');
-              dismissChatCareBanner();
-            }catch(e){ showToast(e.message); }
-          } else if(n.action.type === 'ambient_sound'){
-            toggleChatAmbient(n.action.sound || 'om');
-            dismissChatCareBanner();
-          } else if(n.action.type === 'breathing'){
-            openChatBreathing();
-            dismissChatCareBanner();
-          } else {
-            dismissChatCareBanner();
-          }
-        };
-      } else {
-        actBtn.style.display = 'none';
-      }
-      banner.style.display = 'flex';
-    }
-  }catch(_){}
-}
-
-function dismissChatCareBanner(){
-  if(state.careNudgeKey)sessionStorage.setItem(state.careNudgeKey,'1');
-  const banner = document.getElementById('chatCareBanner');
-  if(banner){
-    banner.style.opacity = '0';
-    banner.style.transition = 'opacity .2s ease-out';
-    setTimeout(() => { banner.style.display = 'none'; }, 200);
-  }
-}
-
 /* ── Chat Gentle breathing Engine ────────────────────────── */
 let chatBreathTimer = null;
 let chatBreathState = 'idle';
@@ -1143,7 +1127,7 @@ function runChatBreathCycle(phase, seconds){
 
 async function init(){
   SaathiTheme.refresh();
-  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);window.dispatchEvent(new Event('saathi:ready'));loadChatCareNudge();if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
+  try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiI18n.setLanguage(data.user.language);SaathiHub.connect({user:data.user,api,notify:showToast});SaathiRecovery.connect({user:data.user,api,notify:showToast});SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();await loadConversations();if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);window.dispatchEvent(new Event('saathi:ready'));if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){showToast(error.message)}
 }
 init();
@@ -1167,7 +1151,7 @@ init();
   function speak(text){
     if(!text||!vc.open||vc.muted||!vc.synth)return;
     const turn=vc.turn,u=new SpeechSynthesisUtterance(text.replace(/\*+/g,'').trim());
-    u.lang=vc.lang;u.rate=1.05;vc.speaking=true;
+    u.lang=vc.lang;const voice=window.SaathiRecovery?.voiceFor(vc.lang);if(voice)u.voice=voice;u.rate=1.05;vc.speaking=true;
     u.onstart=()=>{if(vc.open&&turn===vc.turn){setOrb('speaking');setLabel('Saathi is speaking','Tap to interrupt')}};
     const finish=resume=>{if(!vc.open||turn!==vc.turn)return;vc.speaking=false;setOrb(null);setLabel('Tap to speak','Your turn');if(resume)startListening()};
     u.onend=()=>finish(true);u.onerror=()=>finish(false);vc.synth.speak(u);
