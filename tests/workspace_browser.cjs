@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let language='en',focus=null,failMindmaps=true,searches=0;
+   let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
    await page.route('**/*',async route=>{
@@ -22,9 +22,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
-     else if(pathname==='/api/workspace/today')data={tasks:[task],revision_due:2,recent_chat:{id:7,title:'Search'}};
+     else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'}};
      else if(pathname==='/api/overview')data={pending_tasks:1,conversations:1,active_reminders:0,active_memories:0};
-     else if(pathname==='/api/tasks')data={tasks:[task]};
+     else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
+     else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
      else if(pathname==='/api/reminders')data={reminders:[]};
      else if(pathname==='/api/habits')data={habits:[]};
      else if(pathname==='/api/push/config')data={enabled:false};
@@ -92,6 +93,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
    await page.evaluate(()=>openView('overview'));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Dashboard must fit mobile width');
+   await page.evaluate(()=>openView('tasks'));await page.waitForFunction(()=>state.loadedSections?.has('tasks'));
+   await page.evaluate(()=>openView('overview'));
+   await page.locator('#todayTasks').getByRole('button',{name:'Complete',exact:true}).click();
+   await page.locator('#todayTasks .hub-task').waitFor({state:'detached'});
+   await page.evaluate(()=>openView('tasks'));
+   await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
