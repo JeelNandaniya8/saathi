@@ -28,7 +28,7 @@
       }catch(error){if(error.name!=='AbortError'&&turn===sequence)showError(message,error)}
     }
     input.oninput=()=>{clearTimeout(timeout);controller?.abort();sequence++;timeout=setTimeout(run,250)};
-    input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();clearTimeout(timeout);run()}};
+    input.onkeydown=event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();d.close();return}if(event.key==='Enter'){event.preventDefault();clearTimeout(timeout);run()}};
     d.addEventListener('close',()=>{sequence++;clearTimeout(timeout);controller?.abort()});d.showModal();input.focus();
   }
   async function focus(taskId=null){

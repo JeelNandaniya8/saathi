@@ -53,7 +53,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    });
    await page.goto(base+'/dashboard');
    await page.locator('#todayTasks .hub-task-title').waitFor();
-   assert.equal(await page.locator('#workspaceStatus').isVisible(),false);
+   await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
@@ -65,17 +65,18 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('#todayTasks .hub-task-title').textContent(),'Search','User task names must remain unchanged');
    await page.locator('[data-focus-session]').click();
    const focusDialog=page.locator('dialog[open]');await focusDialog.getByRole('button',{name:'ધ્યાનથી કામ શરૂ કરો',exact:true}).waitFor();
+   assert.notEqual(await focusDialog.locator('button.primary').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
    await focusDialog.getByRole('button',{name:'ધ્યાનથી કામ શરૂ કરો',exact:true}).click();
    await focusDialog.getByRole('button',{name:'વિરામ આપો',exact:true}).click();
    await focusDialog.getByRole('button',{name:'ફરી ચાલુ કરો',exact:true}).waitFor();
    await focusDialog.getByRole('button',{name:'બંધ કરો',exact:true}).click();
    await page.locator('[data-focus-session]').click();
    await page.locator('dialog[open]').getByRole('button',{name:'ફરી ચાલુ કરો',exact:true}).waitFor();
-   await page.keyboard.press('Escape');
+   await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'detached'});
    await page.evaluate(()=>SaathiHub.search());
    await page.locator('dialog[open] input').fill('Search');
    await page.locator('.hub-result').waitFor();assert.equal(await page.locator('.hub-result img').count(),0);
-   assert.equal(searches,1);await page.keyboard.press('Escape');
+   assert.equal(searches,1);await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'detached'});
    await page.evaluate(()=>openView('mindmaps'));
    await page.waitForFunction(()=>document.querySelector('#workspaceStatusText').textContent.includes('લોડ થયું નથી'));
    await page.locator('#retryWorkspace').click();
@@ -83,7 +84,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(requests.filter(url=>url==='/dashboard-mindmaps.js').length,2,'A failed lazy load must be retryable');
    await page.evaluate(()=>openView('mocktests'));
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
-   assert.ok(requests.includes('/dashboard-study.js'));
+   await page.waitForFunction(()=>state.loadedSections?.has('mocktests'));assert.ok(requests.includes('/dashboard-study.js'));
    await page.evaluate(()=>openView('healer'));
    await page.waitForFunction(()=>typeof window.stopCare==='function');
    await page.evaluate(()=>openView('account'));
