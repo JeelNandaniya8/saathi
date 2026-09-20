@@ -98,6 +98,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#todayTasks').getByRole('button',{name:'Complete',exact:true}).click();
    await page.locator('#todayTasks .hub-task').waitFor({state:'detached'});
    await page.evaluate(()=>openView('tasks'));
+   await page.locator('#tasks').getByRole('button',{name:'Completed',exact:true}).click();
    await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
