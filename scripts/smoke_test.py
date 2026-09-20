@@ -18,9 +18,9 @@ def fetch(base_url, path, timeout):
     )
     try:
         with urlopen(request, timeout=timeout) as response:
-            return response.status, response.read(), dict(response.headers)
+            return response.status, response.read(), response.headers
     except HTTPError as error:
-        return error.code, error.read(), dict(error.headers)
+        return error.code, error.read(), error.headers
 
 
 def run(base_url, timeout, expected_release=EXPECTED_RELEASE):
