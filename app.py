@@ -5002,8 +5002,10 @@ FAST_CHAT_MODES = frozenset(("normal", "care", "healer", "explain", "summarise")
 
 def gemini_model(mode="normal"):
     fast = mode in FAST_CHAT_MODES
-    default = "gemini-2.5-flash-lite" if fast else "gemini-2.5-flash"
+    default = "gemini-1.5-flash" if fast else "gemini-1.5-pro"
     model = os.environ.get("GEMINI_FAST_MODEL" if fast else "GEMINI_MODEL", default)
+    if model in ("gemini-2.5-flash-lite", "gemini-2.5-flash"):
+        model = "gemini-1.5-flash" if fast else "gemini-1.5-pro"
     if not re.fullmatch(r"gemini-[a-zA-Z0-9.-]+", model):
         raise RuntimeError("The AI model configuration needs attention.")
     return model

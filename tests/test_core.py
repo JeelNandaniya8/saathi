@@ -540,15 +540,15 @@ def test_real_http_stream_delivers_small_unicode_event_before_completion(backend
 def test_fast_modes_use_supported_model_without_thinking(backend, monkeypatch, mode):
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     monkeypatch.delenv("GEMINI_FAST_MODEL", raising=False)
-    assert backend.gemini_endpoint(mode).endswith("gemini-2.5-flash-lite:generateContent")
+    assert backend.gemini_endpoint(mode).endswith("gemini-1.5-flash:generateContent")
     payload = backend.build_gemini_payload([{"role": "user", "content": "Hi"}], mode=mode)
-    assert payload["generationConfig"]["thinkingConfig"] == {"thinkingBudget": 0}
+    assert "thinkingConfig" not in payload["generationConfig"]
 
 
 def test_model_overrides_and_study_reasoning_are_preserved(backend, monkeypatch):
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
-    assert backend.gemini_endpoint("deep_study").endswith("gemini-2.5-flash:generateContent")
+    assert backend.gemini_endpoint("deep_study").endswith("gemini-1.5-pro:generateContent")
     messages = [{"role": "user", "content": "Explain gravity"}]
     assert "thinkingConfig" not in backend.build_gemini_payload(messages, mode="deep_study")["generationConfig"]
     monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-3-flash-preview")
