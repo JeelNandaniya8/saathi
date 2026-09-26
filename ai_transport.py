@@ -53,9 +53,46 @@ _choices = {}
 _choice_lock = threading.Lock()
 
 
+def discover_model(key, fast=True, exclude=None):
+    if not key or key in ('fixture', 'secret-key', 'test-key'):
+        return None
+    try:
+        r = requests.get('https://generativelanguage.googleapis.com/v1beta/models',
+                         headers={'x-goog-api-key': key}, timeout=4)
+        if r.status_code == 200:
+            models = r.json().get('models', [])
+            available = [
+                m['name'].replace('models/', '')
+                for m in models
+                if 'generateContent' in m.get('supportedGenerationMethods', [])
+            ]
+            if exclude:
+                available = [a for a in available if a != exclude]
+            fast_pref = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
+            study_pref = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']
+            prefs = fast_pref if fast else study_pref
+            for p in prefs:
+                if p in available:
+                    return p
+            for a in available:
+                if 'flash' in a:
+                    return a
+            if available:
+                return available[0]
+    except Exception:
+        pass
+    return None
+
+
 def send(post_request, key, model, payload, *, fast=False, stream=False):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
-    fallback = os.environ.get('GEMINI_FALLBACK_MODEL', 'gemini-1.5-flash' if fast else 'gemini-1.5-pro')
+    fast_fallbacks = ('gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash') if fast else ('gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro')
+    fallback = os.environ.get('GEMINI_FALLBACK_MODEL')
+    if not fallback:
+        for f in fast_fallbacks:
+            if f != model:
+                fallback = f
+                break
     with _choice_lock:
         cached = _choices.get((model, fast))
     if cached and cached[2] <= time.monotonic():
@@ -87,12 +124,13 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
                 detail = str(rejected.json().get('error', {}).get('message', '')).lower()
             except (ValueError, AttributeError, TypeError):
                 detail = ''
-            recover_model = rejected.status_code == 404 and current != fallback
+            recover_model = rejected.status_code == 404
             recover_thinking = rejected.status_code == 400 and 'thinking' in detail and 'thinkingConfig' in body.get('generationConfig', {})
             if attempt == 0 and (recover_model or recover_thinking):
                 rejected.close()
                 if recover_model:
-                    current = fallback
+                    discovered = discover_model(key, fast=fast, exclude=current)
+                    current = discovered or fallback
                 omit_thinking = True
                 body.get('generationConfig', {}).pop('thinkingConfig', None)
                 continue
