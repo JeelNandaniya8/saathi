@@ -833,3 +833,20 @@ def test_private_pages_are_not_cached_and_voice_permission_is_chat_only(backend)
     with backend.app.test_request_context('/api/conversations/1/messages/stream'):
         response = backend.add_security_headers(backend.Response('x', content_type='application/x-ndjson; charset=utf-8'))
         assert 'no-transform' in response.headers['Cache-Control']
+
+
+@pytest.mark.parametrize('mode,setting', [('normal', 'GEMINI_FAST_MODEL'), ('deep_study', 'GEMINI_MODEL')])
+@pytest.mark.parametrize('value', ['  gemini-3.5-flash-lite\n', '"gemini-3.5-flash-lite"', '`gemini-3.5-flash-lite`', '“gemini-3.5-flash-lite”', 'models/gemini-3.5-flash-lite', ''])
+def test_model_configuration_normalizes_dashboard_paste(backend, monkeypatch, mode, setting, value):
+    monkeypatch.setenv(setting, value)
+    assert backend.gemini_model(mode) == 'gemini-3.5-flash-lite'
+    monkeypatch.setenv(setting, setting + '=gemini-3.5-flash-lite')
+    assert backend.gemini_model(mode) == 'gemini-3.5-flash-lite'
+
+
+@pytest.mark.parametrize('value', ['https://example.com/model', 'gemini-flash?key=private', 'gemini flash', 'private-key-value'])
+def test_invalid_model_configuration_remains_rejected(backend, monkeypatch, value):
+    monkeypatch.setenv('GEMINI_FAST_MODEL', value)
+    with pytest.raises(RuntimeError, match='Set GEMINI_FAST_MODEL') as caught:
+        backend.gemini_model()
+    assert value not in str(caught.value)

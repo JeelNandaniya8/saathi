@@ -5037,9 +5037,20 @@ FAST_CHAT_MODES = frozenset(("normal", "care", "healer", "explain", "summarise")
 def gemini_model(mode="normal"):
     fast = mode in FAST_CHAT_MODES
     default = "gemini-3.5-flash-lite"
-    model = os.environ.get("GEMINI_FAST_MODEL" if fast else "GEMINI_MODEL", default)
+    setting = "GEMINI_FAST_MODEL" if fast else "GEMINI_MODEL"
+    model = os.environ.get(setting, default).strip()
+    # Accept common dashboard copy/paste wrappers, but never arbitrary URLs.
+    wrappers = "\"'` \t\r\n\u2018\u2019\u201c\u201d"
+    model = model.strip(wrappers)
+    if model.startswith(setting + "="):
+        model = model.split("=", 1)[1].strip(wrappers)
+    if model.startswith("models/"):
+        model = model[len("models/"):]
+    model = model or default
     if not re.fullmatch(r"gemini-[a-zA-Z0-9.-]+", model):
-        raise RuntimeError("The AI model configuration needs attention.")
+        raise RuntimeError(
+            "Set " + setting + " to just gemini-3.5-flash-lite in Render Environment, then save and deploy."
+        )
     return model
 
 
