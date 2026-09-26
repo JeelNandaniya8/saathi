@@ -4764,10 +4764,45 @@ def upgrade():
     }), 503
 
 
+@app.route("/api/ai-diagnostics")
+def ai_diagnostics():
+    raw_key = os.environ.get("GEMINI_API_KEY")
+    if not raw_key:
+        return jsonify({"configured": False, "error": "GEMINI_API_KEY environment variable is not set"}), 503
+    key = raw_key.strip("\"' \t\r\n")
+    masked = key[:4] + "..." + key[-4:] if len(key) > 8 else "***"
+    models_status = None
+    available_models = []
+    error_detail = None
+    try:
+        r = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={key}", timeout=6)
+        models_status = r.status_code
+        if r.status_code == 200:
+            available_models = [
+                m["name"].replace("models/", "")
+                for m in r.json().get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
+        else:
+            error_detail = r.text[:300]
+    except Exception as e:
+        error_detail = str(e)
+    return jsonify({
+        "configured": True,
+        "key_masked": masked,
+        "key_length": len(key),
+        "models_status": models_status,
+        "available_models": available_models,
+        "error_detail": error_detail,
+        "fast_model": gemini_model("normal"),
+        "care_model": gemini_model("care"),
+    })
+
+
 # --------------------------------------------------------------------
 # CHAT (Saathi's personality lives here, on the server)
 # --------------------------------------------------------------------
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip("\"' \t\r\n")
 
 SYSTEM_PROMPT = (
     "You are Saathi, a warm AI companion for studying, mentorship, emotional "

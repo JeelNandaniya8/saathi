@@ -86,6 +86,7 @@ def discover_model(key, fast=True, exclude=None):
 
 def send(post_request, key, model, payload, *, fast=False, stream=False):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
+    key = (key or '').strip("\"' \t\r\n")
     fast_fallbacks = ('gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash') if fast else ('gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro')
     fallback = os.environ.get('GEMINI_FALLBACK_MODEL')
     if not fallback:
@@ -104,7 +105,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
         body.get('generationConfig', {}).pop('thinkingConfig', None)
     for attempt in range(2):
         url = 'https://generativelanguage.googleapis.com/v1beta/models/' + current
-        url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
+        url += (':streamGenerateContent?alt=sse&key=' + key) if stream else (':generateContent?key=' + key)
         response = None
         try:
             options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, 25 if fast else 45))
