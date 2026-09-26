@@ -1,4 +1,5 @@
 """Small reusable HTTPS sessions; provider errors never expose credentials."""
+import os
 import threading
 import copy
 import logging
@@ -54,7 +55,7 @@ _choice_lock = threading.Lock()
 
 def send(post_request, key, model, payload, *, fast=False, stream=False):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
-    fallback = 'gemini-2.5-flash-lite' if fast else 'gemini-2.5-flash'
+    fallback = os.environ.get('GEMINI_FALLBACK_MODEL', 'gemini-1.5-flash' if fast else 'gemini-1.5-pro')
     with _choice_lock:
         cached = _choices.get((model, fast))
     if cached and cached[2] <= time.monotonic():

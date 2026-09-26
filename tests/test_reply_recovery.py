@@ -47,6 +47,7 @@ def test_provider_failures_are_sanitized_and_not_retried(status, message, code, 
 
 @pytest.mark.parametrize('status,detail,model', [
     (404, 'not found', 'gemini-obsolete'),
+    (404, 'not found', 'gemini-2.5-flash-lite'),
     (400, 'thinking configuration unsupported', 'gemini-2.5-flash-lite'),
 ])
 def test_one_compatibility_retry_is_cached_without_mutating_input(status, detail, model):
