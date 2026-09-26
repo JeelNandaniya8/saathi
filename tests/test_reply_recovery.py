@@ -87,6 +87,33 @@ def test_credentials_only_travel_in_headers(stream):
     assert ('alt=sse' in url) is stream
 
 
+def test_unavailable_legacy_model_recovers_to_current_text_model(monkeypatch):
+    listing = response(200)
+    listing.json.return_value = {'models': [
+        {'name': 'models/' + name, 'supportedGenerationMethods': ['generateContent']}
+        for name in ['gemini-2.5-flash', 'gemini-3.8-flash-lite-tts',
+                     'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite']
+    ]}
+    get = Mock(return_value=listing)
+    monkeypatch.setattr(transport.requests, 'get', get)
+    post = Mock(side_effect=[response(404), response(200), response(200)])
+    transport.send(post, 'mock-discovery-key', 'gemini-2.5-flash-lite', {}, fast=True)
+    assert '/gemini-3.5-flash-lite:' in post.call_args.args[0]
+    transport.send(post, 'mock-discovery-key', 'gemini-2.5-flash-lite', {}, fast=True)
+    assert '/gemini-3.5-flash-lite:' in post.call_args.args[0]
+    assert post.call_count == 3 and get.call_count == 1
+
+
+def test_discovery_does_not_choose_specialized_media_models(monkeypatch):
+    listing = response(200)
+    listing.json.return_value = {'models': [
+        {'name': 'models/' + name, 'supportedGenerationMethods': ['generateContent']}
+        for name in ['gemini-3.8-flash-lite-tts', 'gemini-3.1-flash-image', 'gemini-omni-flash-preview']
+    ]}
+    monkeypatch.setattr(transport.requests, 'get', Mock(return_value=listing))
+    assert transport.discover_model('mock-discovery-key') is None
+
+
 def test_pool_release_rolls_back_once_and_discards_broken_connections():
     pool, conn = Mock(), Mock(closed=0)
     lease = db_pool.Lease(pool, conn)

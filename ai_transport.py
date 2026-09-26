@@ -65,11 +65,13 @@ def discover_model(key, fast=True, exclude=None):
                 m['name'].replace('models/', '')
                 for m in models
                 if 'generateContent' in m.get('supportedGenerationMethods', [])
+                and m.get('name', '').startswith('models/gemini-')
+                and not any(word in m['name'] for word in ('tts', 'image', 'audio', 'live', 'robotics', 'computer-use', 'transcribe', 'omni', 'customtools'))
             ]
             if exclude:
                 available = [a for a in available if a != exclude]
-            fast_pref = ['gemini-2.5-flash-lite', 'gemini-2.5-flash']
-            study_pref = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+            fast_pref = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash']
+            study_pref = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
             prefs = fast_pref if fast else study_pref
             for p in prefs:
                 if p in available:
@@ -87,7 +89,7 @@ def discover_model(key, fast=True, exclude=None):
 def send(post_request, key, model, payload, *, fast=False, stream=False):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
     key = (key or '').strip("\"' \t\r\n")
-    fast_fallbacks = ('gemini-2.5-flash-lite', 'gemini-2.5-flash') if fast else ('gemini-2.5-flash', 'gemini-2.5-flash-lite')
+    fast_fallbacks = ('gemini-3.5-flash-lite', 'gemini-3.1-flash-lite')
     fallback = os.environ.get('GEMINI_FALLBACK_MODEL')
     if not fallback:
         for f in fast_fallbacks:
