@@ -77,6 +77,16 @@ def test_fallback_failure_is_bounded_and_timeout_does_not_replay():
     assert 'secret' not in str(caught.value)
 
 
+@pytest.mark.parametrize('stream', [False, True])
+def test_credentials_only_travel_in_headers(stream):
+    post = Mock(return_value=response(200))
+    transport.send(post, '  "private-key"  ', 'gemini-2.5-flash-lite', {}, stream=stream)
+    url = post.call_args.args[0]
+    assert 'private-key' not in url and 'key=' not in url
+    assert post.call_args.kwargs['headers']['x-goog-api-key'] == 'private-key'
+    assert ('alt=sse' in url) is stream
+
+
 def test_pool_release_rolls_back_once_and_discards_broken_connections():
     pool, conn = Mock(), Mock(closed=0)
     lease = db_pool.Lease(pool, conn)

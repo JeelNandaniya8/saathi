@@ -540,20 +540,47 @@ def test_real_http_stream_delivers_small_unicode_event_before_completion(backend
 def test_fast_modes_use_supported_model_without_thinking(backend, monkeypatch, mode):
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     monkeypatch.delenv("GEMINI_FAST_MODEL", raising=False)
-    assert backend.gemini_endpoint(mode).endswith("gemini-1.5-flash:generateContent")
+    assert backend.gemini_endpoint(mode).endswith("gemini-2.5-flash-lite:generateContent")
     payload = backend.build_gemini_payload([{"role": "user", "content": "Hi"}], mode=mode)
-    assert "thinkingConfig" not in payload["generationConfig"]
+    assert payload["generationConfig"]["thinkingConfig"] == {"thinkingBudget": 0}
 
 
 def test_model_overrides_and_study_reasoning_are_preserved(backend, monkeypatch):
     monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
-    assert backend.gemini_endpoint("deep_study").endswith("gemini-1.5-pro:generateContent")
+    assert backend.gemini_endpoint("deep_study").endswith("gemini-2.5-flash:generateContent")
     messages = [{"role": "user", "content": "Explain gravity"}]
     assert "thinkingConfig" not in backend.build_gemini_payload(messages, mode="deep_study")["generationConfig"]
     monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-3-flash-preview")
     assert "gemini-3-flash-preview" in backend.gemini_endpoint("normal")
     assert "thinkingConfig" not in backend.build_gemini_payload(messages)["generationConfig"]
+
+
+@pytest.mark.parametrize("model", ["gemini-2.5-flash", "gemini-2.5-flash-lite"])
+def test_explicit_models_are_not_silently_replaced(backend, monkeypatch, model):
+    monkeypatch.setenv("GEMINI_FAST_MODEL", model)
+    monkeypatch.setenv("GEMINI_MODEL", model)
+    assert backend.gemini_model("normal") == model
+    assert backend.gemini_model("deep_study") == model
+
+
+def test_diagnostics_never_return_credentials_or_raw_errors(backend, monkeypatch):
+    from unittest.mock import Mock
+    import requests
+    key = "private-diagnostic-key"
+    monkeypatch.setenv("GEMINI_API_KEY", key)
+    rejected = Mock(status_code=403, text=key)
+    get = Mock(return_value=rejected)
+    monkeypatch.setattr(backend.requests, "get", get)
+    client = backend.app.test_client()
+    result = client.get("/api/ai-diagnostics")
+    assert key not in result.get_data(as_text=True)
+    assert "key_masked" not in result.json and "key_length" not in result.json
+    assert key not in get.call_args.args[0]
+    assert get.call_args.kwargs["headers"]["x-goog-api-key"] == key
+    rejected.close.assert_called_once()
+    get.side_effect = requests.ConnectionError("provider URL with " + key)
+    assert key not in client.get("/api/ai-diagnostics").get_data(as_text=True)
 
 
 def test_context_reuses_cursor_without_closing_it(backend, monkeypatch):

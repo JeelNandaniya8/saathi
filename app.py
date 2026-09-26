@@ -4770,12 +4770,12 @@ def ai_diagnostics():
     if not raw_key:
         return jsonify({"configured": False, "error": "GEMINI_API_KEY environment variable is not set"}), 503
     key = raw_key.strip("\"' \t\r\n")
-    masked = key[:4] + "..." + key[-4:] if len(key) > 8 else "***"
     models_status = None
     available_models = []
     error_detail = None
     try:
-        r = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={key}", timeout=6)
+        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                         headers={"x-goog-api-key": key}, timeout=6)
         models_status = r.status_code
         if r.status_code == 200:
             available_models = [
@@ -4784,13 +4784,12 @@ def ai_diagnostics():
                 if "generateContent" in m.get("supportedGenerationMethods", [])
             ]
         else:
-            error_detail = r.text[:300]
-    except Exception as e:
-        error_detail = str(e)
+            error_detail = "AI provider rejected the connection."
+        r.close()
+    except Exception:
+        error_detail = "Could not reach the AI provider."
     return jsonify({
         "configured": True,
-        "key_masked": masked,
-        "key_length": len(key),
         "models_status": models_status,
         "available_models": available_models,
         "error_detail": error_detail,
@@ -5037,10 +5036,8 @@ FAST_CHAT_MODES = frozenset(("normal", "care", "healer", "explain", "summarise")
 
 def gemini_model(mode="normal"):
     fast = mode in FAST_CHAT_MODES
-    default = "gemini-1.5-flash" if fast else "gemini-1.5-pro"
+    default = "gemini-2.5-flash-lite" if fast else "gemini-2.5-flash"
     model = os.environ.get("GEMINI_FAST_MODEL" if fast else "GEMINI_MODEL", default)
-    if model in ("gemini-2.5-flash-lite", "gemini-2.5-flash"):
-        model = "gemini-1.5-flash" if fast else "gemini-1.5-pro"
     if not re.fullmatch(r"gemini-[a-zA-Z0-9.-]+", model):
         raise RuntimeError("The AI model configuration needs attention.")
     return model
