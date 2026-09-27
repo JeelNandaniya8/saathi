@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('chat.html','utf8');
 const fn=source.slice(source.indexOf('async function streamChatRequest('),source.indexOf('\nfunction renderChatModes'));
-const ctx={window:{},AbortController,TextDecoder,FormData,setTimeout,clearTimeout,state:{csrf:'test'},el:{uploadStatus:{}},showRequestProgress(){},clearReplyWait(){},location:{},fetch:null};
+const ctx={window:{},AbortController,TextDecoder,FormData,setTimeout,clearTimeout,state:{csrf:'test'},el:{uploadStatus:{}},showRequestProgress(){},location:{},fetch:null};
 vm.createContext(ctx);vm.runInContext(fn,ctx);
 (async()=>{
  let pipe;ctx.fetch=async()=>({ok:true,status:200,body:new ReadableStream({start(c){pipe=c}})});

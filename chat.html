@@ -312,15 +312,15 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .composer>.attach{grid-column:1}.composer>.voice{grid-column:2}.composer>textarea{grid-column:3;min-width:0}.composer>.send{grid-column:4}.composer>.char-count{grid-column:3}
 .message{margin-bottom:20px}.message.streaming .message-tools:empty{display:none}
 </style>
+<link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20260919">
-<link rel="stylesheet" href="/experience.css?v=20260928right">
 </head>
-<body class="hig hig-chat">
+<body>
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
-    <div class="brand-row"><a class="brand" href="/"><span class="orb"></span>Saathi</a></div>
-    <div class="sidebar-tools" role="group" aria-label="Conversation controls"><button class="icon-btn" id="searchConversations" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="closeSidebar" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="new-chat" id="newChat" type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg></button></div>
+    <div class="brand-row"><a class="brand" href="/"><span class="orb"></span>Saathi</a><button class="icon-btn" id="closeSidebar" aria-label="Close sidebar">×</button></div>
+    <button class="new-chat" id="newChat" type="button" title="Start a new conversation"><span>+</span><span>New conversation</span><span class="shortcut">Ctrl ⇧ O</span></button>
     <label class="search" id="searchWrap" aria-label="Search conversations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
       <input id="searchInput" type="search" placeholder="Search conversations" maxlength="100" autocomplete="off">
@@ -339,7 +339,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 
   <main class="main">
     <header class="topbar">
-      
+      <button class="icon-btn mobile-menu" id="openSidebar" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
       <div class="chat-heading"><h1 id="chatTitle">New conversation</h1><p>Private to your signed-in account</p></div>
       <div class="top-actions">
         <details class="sound-disclosure"><summary aria-label="Background sound options">Sounds</summary><div class="ambient-sound-hud" id="ambientHud" aria-label="Background sounds">
@@ -354,7 +354,6 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
         </div></details>
         <a class="top-pill" href="/dashboard">Dashboard</a>
       </div>
-      <div class="chat-navigation" role="group" aria-label="Chat navigation"><button class="icon-btn collapsed-action" id="headerSearch" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="openSidebar" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" aria-controls="sidebar" aria-expanded="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="icon-btn collapsed-action" id="headerNewChat" type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg></button></div>
     </header>
 
     <section class="messages" id="messages" aria-label="Conversation messages">
@@ -381,27 +380,17 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
           <span class="upload-copy" id="uploadCopy">Preparing your message…</span>
           <span class="upload-progress" aria-hidden="true" hidden><i id="uploadProgress"></i></span>
         </div>
-        <textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi" aria-label="Message Saathi"></textarea>
-        <div class="composer-actions">
         <button class="attach" id="attachButton" type="button" aria-label="Attach a photo or PDF" title="Attach a photo or PDF">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 12.5 14.9 5.6a3.5 3.5 0 0 1 5 5L10.7 19.8a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2"></path></svg>
         </button>
         <input class="file-input" id="fileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
-        <button class="voice" id="voiceInput" type="button" aria-label="Dictate a message" title="Dictate a message" hidden>
+        <button class="voice" id="voiceInput" type="button" aria-label="Speak your message" title="Speak your message" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path></svg>
         </button>
-
-<button class="voice-open-btn" type="button" id="voiceOpenBtn" onclick="openVoiceCall()" aria-label="Voice call with Saathi" title="Voice call" hidden>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-    <rect x="9" y="3" width="6" height="11" rx="3"></rect>
-    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
-  </svg>
-<span>Voice</span></button>
+        <textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi" aria-label="Message Saathi"></textarea>
         <span class="char-count" id="charCount">0 / 5000</span>
         <button class="send" id="sendButton" type="submit" aria-label="Send message" disabled>↑</button>
-        </div>
       </form>
-      <p id="replyStatus" class="reply-status" role="status" hidden></p>
       <div class="composer-meta" id="composerMeta">Add a photo or PDF for Saathi to explain. AI can make mistakes, so check important information.</div>
     </div>
   </main>
@@ -473,7 +462,13 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
   </div>
 </div>
 
-
+<!-- Floating Voice Button -->
+<button class="voice-open-btn" id="voiceOpenBtn" onclick="openVoiceCall()" aria-label="Voice call with Saathi" title="Voice call" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+  </svg>
+</button>
 
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
@@ -509,17 +504,10 @@ async function api(url,options={}){
 let toastTimer;
 function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=String(message||'').toLowerCase();if(/error|wrong|could not|cannot|failed|unavailable|not supported|log in/.test(copy))return'error';if(/deleted|removed|saved|added|updated|created|enabled|accepted|changed|copied|pinned|archived|restored|export ready/.test(copy))return'success';if(/stopped|permission|expired|warning|blocked/.test(copy))return'warning';return'info'}
 function showToast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone);el.toast.className='toast '+kind;document.getElementById('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];document.getElementById('toastMessage').textContent=message;el.toast.setAttribute('role',kind==='error'?'alert':'status');el.toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>el.toast.classList.add('show'));toastTimer=setTimeout(()=>el.toast.classList.remove('show'),3200)}
-const chatSidebarMedia=matchMedia('(max-width:900px)');
-function setChatSidebar(open){const mobile=chatSidebarMedia.matches;el.sidebar.hidden=!open;el.sidebar.inert=!open;el.sidebar.classList.toggle('open',open);document.querySelector('.app').classList.toggle('sidebar-collapsed',!open);el.scrim.classList.toggle('show',mobile&&open);document.getElementById('openSidebar').setAttribute('aria-expanded',String(open));document.querySelector('.main').inert=mobile&&open}
-function closeSide(){if(chatSidebarMedia.matches)setChatSidebar(false)}
-function openSide(){setChatSidebar(true)}
-chatSidebarMedia.addEventListener('change',()=>setChatSidebar(!chatSidebarMedia.matches));
-setChatSidebar(!chatSidebarMedia.matches);
-
+function closeSide(){el.sidebar.classList.remove('open');el.scrim.classList.remove('show');document.getElementById('openSidebar').setAttribute('aria-expanded','false')}
+function openSide(){el.sidebar.classList.add('open');el.scrim.classList.add('show');document.getElementById('openSidebar').setAttribute('aria-expanded','true')}
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
-let replyWaitTimers=[];
-function clearReplyWait(){replyWaitTimers.forEach(clearTimeout);replyWaitTimers=[];document.getElementById('replyStatus').hidden=true}
-function setBusy(busy){clearReplyWait();if(busy){for(const [delay,text] of [[8000,'Waiting for Saathi…'],[20000,'Still waiting. Use Stop to cancel this reply.']])replyWaitTimers.push(setTimeout(()=>{const status=document.getElementById('replyStatus');status.textContent=text;status.hidden=false},delay))}state.sending=busy;el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=busy;el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.voice.disabled=busy||!state.voiceAvailable;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
+function setBusy(busy){state.sending=busy;el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=busy;el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.voice.disabled=busy||!state.voiceAvailable;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
 function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop generating':'Send message');el.send.title=stopping?'Stop generating':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId||Boolean(state.loadingConversation);el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
 function readableSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return Math.ceil(bytes/1024)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
 function decodeLegacyText(value){const text=String(value??'');if(!/[ÃÂàð][\u0080-\u00bf]/.test(text))return text;try{const characters=Array.from(text);if(characters.some(character=>character.charCodeAt(0)>255))return text;return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(characters,character=>character.charCodeAt(0)))}catch(error){return text}}
@@ -544,7 +532,7 @@ async function streamChatRequest(url,body,onDelta){
     if(!line.trim())return;
     const event=JSON.parse(line);
     if(event.type==='ready')el.uploadStatus.hidden=true;
-    else if(event.type==='delta'){clearReplyWait();const text=String(event.text||'');if(text)window.SaathiRecovery?.measureDelta(measurement);el.uploadStatus.hidden=true;onDelta(text)}
+    else if(event.type==='delta'){const text=String(event.text||'');if(text)window.SaathiRecovery?.measureDelta(measurement);el.uploadStatus.hidden=true;onDelta(text)}
     else if(event.type==='complete')complete=event.data;
     else if(event.type==='error')throw Object.assign(new Error(event.error||'Saathi could not finish this reply.'),{code:event.code,reference:event.reference,retry_after:event.retry_after});
   }
@@ -645,7 +633,7 @@ async function selectConversation(id){
   saveChatDraft();
   if(id!==state.activeId){if(state.selectedFiles.length)clearSelectedFiles();state.messages.forEach(releaseLocalPreviews)}
   state.loadingConversation=id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;state.activeId=id;restoreChatDraft();updateComposer();const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
-  renderChatLoading();el.input.disabled=true;el.send.disabled=true;
+  el.list.innerHTML='<div class="history-state" role="status">Opening your conversation…</div>';el.input.disabled=true;el.send.disabled=true;
   try{const data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;if(!state.conversations.some(item=>item.id===id)){state.conversations.unshift(normaliseConversationDisplay(data.conversation));renderConversations()}state.messages=(data.messages||[]).map(normaliseMessageDisplay);state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=decodeLegacyText(data.conversation.title);renderMessages();scrollToLatest(false);el.input.focus()}
   catch(error){if(state.activeId===id){state.messages=[];renderMessages();showToast(error.message)}}
   finally{if(state.activeId===id){state.loadingConversation=null;el.input.disabled=false;updateComposer()}}
@@ -935,12 +923,12 @@ function setupVoiceInput(){
   recognition.onstart=()=>{state.voiceBase=el.input.value.trim();el.voice.classList.add('listening');el.voice.setAttribute('aria-label','Stop listening');el.voice.title='Listening… click to stop'};
   recognition.onresult=event=>{const transcript=Array.from(event.results).map(result=>result[0]?.transcript||'').join(' ').trim();el.input.value=(state.voiceBase+(state.voiceBase&&transcript?' ':'')+transcript).slice(0,5000);updateComposer()};
   recognition.onerror=event=>{if(!['aborted','no-speech'].includes(event.error))showToast(event.error==='not-allowed'?'Microphone permission was not granted.':'Voice input could not start.')};
-  recognition.onend=()=>{el.voice.classList.remove('listening');el.voice.setAttribute('aria-label','Dictate a message');el.voice.title='Dictate a message';el.input.focus();updateComposer()};
+  recognition.onend=()=>{el.voice.classList.remove('listening');el.voice.setAttribute('aria-label','Speak your message');el.voice.title='Speak your message';el.input.focus();updateComposer()};
   el.voice.addEventListener('click',()=>{if(el.voice.classList.contains('listening')){recognition.stop();return}recognition.lang=state.user?.language==='gu'?'gu-IN':state.user?.language==='hi'?'hi-IN':'en-IN';try{recognition.start()}catch(error){showToast('Voice input is already starting.')}})
 }
 
 document.getElementById('newChat').addEventListener('click',createConversation);
-document.getElementById('openSidebar').addEventListener('click',()=>setChatSidebar(el.sidebar.hidden));document.getElementById('closeSidebar').addEventListener('click',()=>{setChatSidebar(false);document.getElementById('openSidebar').focus()});for(const id of ['searchConversations','headerSearch'])document.getElementById(id).addEventListener('click',()=>{openSide();el.search.focus()});document.getElementById('headerNewChat').addEventListener('click',createConversation);el.scrim.addEventListener('click',closeSide);
+document.getElementById('openSidebar').addEventListener('click',openSide);document.getElementById('closeSidebar').addEventListener('click',closeSide);el.scrim.addEventListener('click',closeSide);
 el.attach.addEventListener('click',()=>el.fileInput.click());el.fileInput.addEventListener('change',()=>chooseFiles(el.fileInput.files));
 el.mode.addEventListener('change',updateModeDescription);
 ['dragenter','dragover'].forEach(type=>el.composer.addEventListener(type,event=>{event.preventDefault();if(!state.sending)el.composer.classList.add('dragging')}));
@@ -1142,13 +1130,12 @@ function runChatBreathCycle(phase, seconds){
   }, 1000);
 }
 
-function renderChatLoading(){el.list.innerHTML='<div class="chat-loading" role="status"><span class="sr-only">Loading your conversation</span><div></div><div></div><div></div></div>'}
 async function init(){
   SaathiTheme.refresh();
-  renderChatLoading();el.input.disabled=true;el.send.disabled=true;
+  renderMessages();
   const historyRequest=api('/api/conversations?archived=false&search=').then(data=>({data}),error=>({error}));
   try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiI18n.setLanguage(data.user.language);SaathiHub.connect({user:data.user,api,notify:showToast});SaathiRecovery.connect({user:data.user,api,notify:showToast});SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();setupVoiceInput();const initialHistory=await historyRequest;if(initialHistory.error)throw initialHistory.error;await loadConversations('',initialHistory.data);if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);window.dispatchEvent(new Event('saathi:ready'));if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
-  catch(error){el.list.replaceChildren();const notice=document.createElement('p');notice.className='history-state';notice.textContent='Could not load your conversation. Please reload to try again.';el.list.append(notice);showToast(error.message)}
+  catch(error){showToast(error.message)}
 }
 init();
 

@@ -22,12 +22,12 @@ const document={body,title:'',querySelectorAll(sel){if(sel==='.view')return view
 const state={currentView:null,loadingSections:false,loadFailures:[],reminders:[],notified:new Set()};
 const ctx={state,document,$,history,location,matchMedia:()=>media,scrollTo(){},window:{addEventListener:(name,fn)=>events[name]=fn},console,Date,Set};vm.createContext(ctx);
 vm.runInContext(source.slice(source.indexOf('const workspaceViews='),source.indexOf('function applyTheme(theme)')),ctx);
-ctx.syncWorkspaceHistory(false);assert.equal(entries[index],'/dashboard');
+ctx.syncWorkspaceHistory(false);assert.equal(entries[index],'/dashboard#overview');
 for(const id of ['tasks','reminders','memory']){
  $('journalContent').value='Unsaved private draft';
  ctx.openView(id);assert.equal(state.currentView,id);assert.equal(focusTarget,id+'-heading');assert.equal($(id).hidden,false);assert.equal($('overview').hidden,true);
  const count=entries.length;ctx.openView(id);assert.equal(entries.length,count,'Repeated view must not add history');
- history.back();assert.equal(state.currentView,'overview');assert.equal(entries[index],'/dashboard','Back must stay inside dashboard');
+ history.back();assert.equal(state.currentView,'overview');assert.equal(entries[index],'/dashboard#overview','Back must stay inside dashboard');
  history.forward();assert.equal(state.currentView,id);history.back();assert.equal($('journalContent').value,'Unsaved private draft');
 }
 location.hash='#memory';ctx.syncWorkspaceHistory(false);assert.equal(state.currentView,'memory','Refresh/deep link must restore section');
