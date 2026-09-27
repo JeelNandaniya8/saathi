@@ -39,7 +39,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
       data={session:focus};
      }else if(pathname==='/api/focus/1'){
       const action=body().action;focus={...focus,status:action==='pause'?'paused':action==='resume'?'running':'cancelled',version:focus.version+1};data={session:focus};
-     }else if(pathname==='/api/conversations')data={conversations:[{id:7,title:'Search',preview:'Search',updated_at:original.created_at,is_archived:false}]};
+     }else if(pathname==='/api/conversations'&&method==='POST')data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};
+     else if(pathname==='/api/conversations')data={conversations:[{id:7,title:'Search',preview:'Search',updated_at:original.created_at,is_archived:false}]};
      else if(pathname==='/api/conversations/7/messages')data={messages:[original,answer],has_more:false,conversation:{id:7,title:'Search'}};
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
@@ -113,6 +114,23 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('.message-more').count(),1);
    assert.equal(await page.locator('.message-more[open]').count(),0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Chat must fit mobile width');
+   await page.evaluate(()=>createConversation());
+   assert.equal(await page.locator('.message').count(),0);
+   assert.ok(!requests.includes('/api/conversations/8/messages'),'A newly created empty chat needs no extra history request');
+   await page.locator('#chatInput').fill('Hello');
+   let releaseReply;
+   const replyGate=new Promise(resolve=>{releaseReply=resolve});
+   await page.route('**/api/conversations/8/messages/stream',async route=>{
+    await replyGate;
+    await route.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({type:'error',error:'Fixture finished'})+'\n'});
+   });
+   await page.locator('#sendButton').click();
+   await page.locator('.thinking-dots').waitFor();
+   assert.equal(await page.locator('#uploadStatus').isVisible(),false,'Text replies must not show upload status');
+   assert.equal(await page.locator('.upload-progress').isVisible(),false,'No stray progress line');
+   await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
+   releaseReply();
+   await page.locator('.message.failed').waitFor();
    assert.deepEqual(errors,[],'No uncaught errors in real pages');
    console.log('PASS: real Chromium '+width+'px, deferred tools/retry, English/Gujarati, private user text, focus reopen, search escaping and chat edit cancellation');
    await context.close();
