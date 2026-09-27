@@ -11,3 +11,16 @@
 @media(max-width:1000px){[data-page="landing"] .nav-links{display:none}[data-page="landing"] .menu{display:block;flex:none;min-width:36px;min-height:40px}[data-page="landing"] .mobile-menu.open{display:flex;position:fixed;z-index:49;top:85px;left:10px;right:10px;padding:16px;border:1px solid var(--line);border-radius:17px;background:var(--paper);box-shadow:var(--shadow);flex-direction:column;gap:5px}[data-page="landing"] .mobile-menu a{padding:11px;border-radius:10px;font-size:14px}}
 @media(max-width:700px){[data-page="landing"] .mobile-menu.open{top:71px}}
 @media(max-width:600px){[data-page="landing"] .nav-auth{display:none!important}[data-page="landing"] .lang-switch{margin-right:4px}[data-page="landing"] .lang-btn{padding:7px 6px;min-height:34px}[data-page="landing"] .appearance-button{margin:0 3px;min-width:36px}[data-page="landing"] .nav{padding-right:6px}[data-page="landing"] .brand{font-size:16px;gap:7px;flex:none}[data-page="landing"] .menu{margin-left:0}}
+
+/* Let the landing header scroll away instead of covering section headings. */
+[data-page="landing"] .nav-shell{position:relative;top:auto;padding-block:14px}
+[data-page="landing"] .hero{padding-top:64px}
+[data-page="landing"] .faq{width:min(820px,calc(100% - 40px));padding-block:64px}
+[data-page="landing"] .faq .section-head{margin-bottom:28px}
+[data-page="landing"] .faq h2{font-size:clamp(30px,4.5vw,48px);line-height:1.15}
+[data-page="landing"] .faq-item{border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden;background:var(--paper)}
+[data-page="landing"] .faq-q{padding:20px 22px;gap:20px;align-items:center;color:var(--ink);line-height:1.5}
+[data-page="landing"] .faq-q .plus{flex:none}
+[data-page="landing"] .faq-a p{padding:0 22px;margin-bottom:22px}
+[data-page="landing"] .faq-q:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
+@media(max-width:700px){[data-page="landing"] .hero{padding-top:40px}[data-page="landing"] .faq{padding-block:44px}[data-page="landing"] .faq-q{padding:17px}}

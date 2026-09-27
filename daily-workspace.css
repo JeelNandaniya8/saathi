@@ -42,3 +42,9 @@
 @media(max-width:1000px){.dw-grid{grid-template-columns:1fr}.dw-care{grid-template-columns:1fr}.dw-care>a,.dw-care>button{min-height:110px}}
 @media(max-width:500px){.dw-panel{padding:19px}.dw-spaces{grid-template-columns:1fr}.dw-resource{align-items:flex-start;flex-wrap:wrap}.dw-resource-open{min-width:50%}.dw-dialog{padding:20px}.dw-row{flex-wrap:wrap}.dw-dialog-head h2{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.dw-button{transition:none}}
+
+/* One compact navigation list; only the options scroll. */
+.sidebar{overflow:hidden}.sidebar .nav{display:flex;flex-direction:column;justify-content:flex-start;gap:3px;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--strong) transparent}
+.sidebar .nav button,.sidebar .nav a{flex:0 0 auto;min-height:40px;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.4}
+.sidebar .secondary-navigation{display:flex;flex-direction:column;gap:3px;flex:none;margin:4px 0;padding-top:7px;border-top:1px solid var(--line)}
+.sidebar .nav .nav-icon{font-size:16px}.sidebar .account-chip{flex:none}.sidebar .nav .chat-link{margin:8px 0}

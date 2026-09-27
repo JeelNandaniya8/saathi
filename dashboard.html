@@ -212,7 +212,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
-<link rel="stylesheet" href="/daily-workspace.css?v=20260915b">
+<link rel="stylesheet" href="/daily-workspace.css?v=20260927c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20260919">
 </head>
 <body>
@@ -223,7 +223,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <button data-view="study"><span class="nav-icon" aria-hidden="true">◈</span><span data-i18n="study">Study</span></button>
 <button data-view="healer"><span class="nav-icon" aria-hidden="true">◍</span><span data-i18n="healer">Care</span></button>
 <button type="button" data-quick-notes aria-haspopup="dialog"><span class="nav-icon" aria-hidden="true">▤</span><span data-i18n="notes">Notes</span></button>
-<details id="moreNavigation"><summary data-i18n="more">More</summary>
+<div class="secondary-navigation" id="moreNavigation">
 <button data-view="tasks"><span class="nav-icon" aria-hidden="true">□</span><span data-i18n="planner">Planner</span></button>
 <button data-view="reminders"><span class="nav-icon" aria-hidden="true">◇</span><span data-i18n="reminders">Reminders</span></button>
 <button data-view="habits"><span class="nav-icon" aria-hidden="true">✓</span><span data-i18n="habits">Habits</span></button>
@@ -234,7 +234,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <button data-view="mocktests"><span class="nav-icon" aria-hidden="true">◈</span><span data-i18n="mocktests">Mock Tests</span></button>
 <button data-view="mindmaps"><span class="nav-icon" aria-hidden="true">⬡</span><span data-i18n="mindmaps">Mindmaps</span></button>
 <button data-view="account"><span class="nav-icon" aria-hidden="true">◌</span><span data-i18n="account">Account</span></button>
-</details>
+</div>
 <a class="chat-link" href="/chat"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="openChat">Open conversation</span></a>
 </nav><div class="account-chip"><span class="avatar" id="sideAvatar">S</span><div><b id="sideName">Loading</b><span id="sidePlan">Free plan</span></div></div></aside><button class="scrim" id="scrim" aria-label="Close navigation"></button>
 <main class="main"><header class="topbar"><div><button class="icon-button menu-button" id="menuButton" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><span class="top-status"><i></i><span id="currentViewLabel">Today</span></span></div><div class="top-actions"><button class="top-button" type="button" data-workspace-search aria-keyshortcuts="Control+k Meta+k">Search</button><button class="top-button" id="installButton" hidden>Install app</button><a class="top-button" href="/chat"><span>Talk to </span>Saathi →</a><button class="icon-button" id="themeButton" data-theme-toggle aria-label="Change appearance">◐</button></div></header>
