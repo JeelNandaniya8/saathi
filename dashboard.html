@@ -213,7 +213,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/daily-workspace.css?v=20260927c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20260919">
-<link rel="stylesheet" href="/experience.css?v=20260927hig">
+<link rel="stylesheet" href="/experience.css?v=20260928hig">
 </head>
 <body class="hig hig-workspace">
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
@@ -682,7 +682,7 @@ function openView(id,{historyMode='push',focus=true}={}){
 }
 function syncWorkspaceHistory(focus=true){
   const hash=location.hash.slice(1),valid=workspaceViews.includes(hash);
-  openView(valid?hash:'overview',{historyMode:valid?'none':'replace',focus});
+  openView(valid?hash:'overview',{historyMode:valid||!hash?'none':'replace',focus});
 }
 window.addEventListener('popstate',()=>syncWorkspaceHistory());
 window.addEventListener('hashchange',()=>syncWorkspaceHistory());

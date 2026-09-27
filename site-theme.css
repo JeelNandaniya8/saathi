@@ -24,3 +24,43 @@
 [data-page="landing"] .faq-a p{padding:0 22px;margin-bottom:22px}
 [data-page="landing"] .faq-q:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
 @media(max-width:700px){[data-page="landing"] .hero{padding-top:40px}[data-page="landing"] .faq{padding-block:44px}[data-page="landing"] .faq-q{padding:17px}}
+/* Shared HIG presentation for the public landing and account pages. */
+body[data-page]{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--canvas:#f5f5f7;--paper:#fff;--ink:#1d1d1f;--muted:#606066;--soft:#606066;--accent:#0066cc;--accent-deep:#0055aa;--gold:#0066cc;--gold-soft:#e8f2ff;--sage:#0066cc;--sage-soft:#e8f2ff;--line:rgba(60,60,67,.16);--shadow:0 .25rem .75rem rgba(0,0,0,.08);font:1.0625rem/1.6 var(--sans);background:var(--canvas);color:var(--ink)}
+[data-theme="dark"] body[data-page]{--canvas:#111113;--paper:#1c1c1e;--ink:#f5f5f7;--muted:#b4b4bc;--soft:#b4b4bc;--accent:#70b7ff;--accent-deep:#9dceff;--gold:#70b7ff;--gold-soft:#20354d;--sage:#70b7ff;--sage-soft:#20354d;--line:rgba(235,235,245,.18);background:var(--canvas)}
+body[data-page] :is(button,input,textarea,select){font:inherit}
+body[data-page] :is(button,summary,.btn,.btn-login,.btn-start,.nav-links a,.footer a,.back,.link){min-width:2.75rem;min-height:2.75rem;font-size:1rem;align-content:center;transition:transform .3s cubic-bezier(.2,.8,.2,1),background-color .15s ease}
+body[data-page] :is(a,button,input,textarea,select,summary):focus-visible{outline:.1875rem solid var(--accent);outline-offset:.1875rem}
+body[data-page] :is(button,.btn,.btn-login,.btn-start):hover:not(:disabled){filter:brightness(.94)}
+body[data-page] :is(button,.btn,.btn-login,.btn-start):active:not(:disabled){transform:scale(.97)}
+body[data-page] :is(button,input):disabled{opacity:.5;cursor:not-allowed}
+body[data-page] :is(h1,.hero h1){font:700 2.125rem/1.18 var(--sans);letter-spacing:normal}
+body[data-page] :is(h2,.section-head h2,.story h1){font:650 1.75rem/1.25 var(--sans);letter-spacing:normal}
+body[data-page] :is(h3,.story-copy h3){font:600 1.375rem/1.3 var(--sans);letter-spacing:normal}
+body[data-page] :is(p,.field,.field input){font-size:1.0625rem;line-height:1.6}
+body[data-page] :is(small,.hint,.privacy,.eyebrow,.legal){font-size:.8125rem;color:var(--muted)}
+body[data-page] :is(.card,.feature,.plan,.how-card,.care-card,.window,.story,.phone,.faq-item,.float-card,.memory-card,.schedule,.notification,.metric){background:var(--paper);color:var(--ink);border:0;border-radius:1rem;box-shadow:none}
+body[data-page] :is(.hero,.care,.final-cta,.story,.reminder-visual){background:transparent}
+body[data-page] :is(.hero,.story,.card)::before,body[data-page] :is(.hero,.story,.card)::after{display:none}
+body[data-page] :is(.btn,.submit,.btn-start){background:var(--accent);color:var(--paper);box-shadow:none;border-radius:.75rem}
+body[data-page] :is(.btn.light,.btn-login,.tab.active,.plan-chip){background:var(--gold-soft);color:var(--accent);box-shadow:none}
+body[data-page] :is(.orb,.feature-icon){background:var(--gold-soft);color:var(--accent);box-shadow:none}
+body[data-page] .nav{background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(1.25rem);border-bottom:1px solid var(--line);box-shadow:none}
+body[data-page] .mobile-menu{background:var(--paper);backdrop-filter:none;box-shadow:var(--shadow)}
+body[data-page] :is(.faq-item,.feature,.how-card){border-bottom:1px solid var(--line);border-radius:0}
+body[data-page] .faq-q{font-size:1.0625rem}
+body[data-page] .appearance-button{width:2.75rem;height:2.75rem;border-radius:.75rem}
+body[data-page] .field input{min-height:3rem;border-radius:.625rem}
+body[data-page] :is(.story-copy p,.story-foot,.promises,.ticks,.nav-links,.footer){color:var(--muted)}
+@supports(transition-timing-function:linear(0,1)){body[data-page] :is(button,.btn,.btn-login,.btn-start){transition-timing-function:linear(0,.16 9%,.5 22%,.82 38%,1.01 60%,1.015 74%,1)}}
+@media(prefers-reduced-motion:reduce){body[data-page] *,body[data-page] *::before,body[data-page] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+body[data-page] :is(.brand,.nav-cta){min-height:2.75rem;display:inline-flex;align-items:center}
+body[data-page] .hero h1 :is(em,span){color:var(--ink);background:none;-webkit-text-fill-color:currentColor}
+body[data-page] :is(.badge,.trust span,.feature-icon,.float-card){backdrop-filter:none;box-shadow:none}
+body[data-page] .float-card{background:var(--paper)}
+body[data-page] :is(.principles p,.float-card b){color:var(--ink)}
+body[data-page] :is(.window-bar,.shot-side,.shot-main){background:var(--paper);color:var(--ink)}
+body[data-page] :is(.window-bar span,.shot-nav span,.shot-title p,.metric span,.metric p){color:var(--muted)}
+body[data-page] .lang-btn{background:var(--paper);color:var(--ink)}
+body[data-page] .lang-btn.active{background:var(--gold-soft);color:var(--accent)}
+body[data-page] .remember-row{min-height:2.75rem}
+body[data-page] .remember-row input{flex-shrink:0}

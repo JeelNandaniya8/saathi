@@ -102,3 +102,16 @@ button,a,input,textarea,select,summary{-webkit-tap-highlight-color:transparent}b
 .hig .top-status i{background:var(--accent);box-shadow:none}
 .hig .view.active{animation:hig-enter .3s var(--spring)}
 @media(max-width:780px){.hig-workspace .shell{display:block}.hig-workspace .sidebar{width:min(19rem,88vw)}}
+.hig a.brand{min-height:2.75rem}
+.hig-chat .composer-toolbar{width:100%;justify-content:flex-start;align-self:stretch}
+.hig-chat .send{margin-left:auto}
+.hig-chat .chat-heading :is(h1,p){text-align:left}
+.hig-chat .message-content{box-shadow:none}
+.hig-chat .message-avatar{background:var(--accent-soft);color:var(--accent)}
+.hig-workspace .panel>h2{font-size:1.375rem}
+.hig-workspace .top-status{font-size:.9375rem}
+@media(max-width:600px){.hig-workspace .top-status{display:none}.hig-workspace .topbar{padding-inline:.75rem}.hig-workspace .top-actions{gap:.25rem}.hig-workspace .top-button{padding-inline:.5rem}}
+.hig .streak-label{color:var(--muted);font-size:.8125rem}
+.hig .quick-action{background:var(--canvas);color:var(--ink);border-color:var(--line)}
+.hig-workspace .content{overflow-anchor:none}
+.hig-chat .new-chat .shortcut{font-size:.75rem;color:var(--paper);opacity:1}

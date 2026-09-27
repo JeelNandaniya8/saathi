@@ -6,7 +6,7 @@ const original={id:1,role:'user',content:'Search',created_at:'2026-09-19T08:00:0
 const answer={id:2,role:'assistant',content:'Search <script>not executable</script> ગુજરાતી',created_at:original.created_at,source_pages:[]};
 const task={id:1,title:'Search',details:'Saved user writing',priority:'high',completed:false,due_at:null};
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
@@ -56,6 +56,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.goto(base+'/dashboard');
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
+   assert.equal(await page.evaluate(()=>scrollY),0,'Opening Today must not jump below the greeting');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);

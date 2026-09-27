@@ -1,6 +1,6 @@
 # Saathi frontend redesign
 
-Scope: dashboard and conversation workspace. Backend, API routes, database and Render configuration unchanged. Existing creator profile retained.
+Scope: dashboard, conversation workspace, landing, account and public reading/support pages. Backend, API routes, database and Render configuration unchanged. Existing creator profile retained.
 
 ## Before audit (1 poor, 5 strong)
 
@@ -62,6 +62,11 @@ Implemented using a sampled CSS linear() spring curve, not a runtime physics eng
 
 ## Verification and limits
 
-JavaScript syntax and eight existing behavior suites passed, including streaming, cancellation, voice, drafts and recovery. Stream fixture now provides the new waiting-status cleanup callback. Browser verification was blocked by a corrupt Chromium download; no screenshot or pixel-perfect claim is made. Landing/account and specialist tool screens have not received a complete visual audit.
+JavaScript syntax and eight behavior suites passed. Real Chromium interaction tests passed at 1280px and 390px, including navigation, editing, draft protection, failed sends and cancellation. Initial dashboard scroll is now asserted at zero: adding a default #overview fragment during bootstrap had scrolled the greeting off screen.
+
+Axe WCAG A/AA checks found no violations on the tested initial dashboard, chat, landing, account and support states at 390px in both themes. Desktop checks cover the same pages, with a final targeted chat rerun after fixing shortcut contrast. No horizontal overflow was detected in these states. The account checkbox uses its larger associated label as the tap target. These checks are not a certification of every dynamic screen, dialog, assistive technology or browser.
+
+Render served the previous HIG stylesheet successfully (HTTP 200) during this session. The follow-up commit still requires Render to finish deploying. No signed-in production AI call was made; provider response latency remains unverified. No backend or API changes were made.
+
 
 The frontend shows waiting feedback after 8 seconds and clearer Stop guidance after 20 seconds, clearing it on streamed text or completion. It does not retry automatically. Provider latency/timeouts are not repaired by these frontend changes.
