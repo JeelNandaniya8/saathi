@@ -104,6 +104,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
+   if(width>900){const side=await page.locator('#sidebar').boundingBox();assert.ok(side.x>width/2,'Chat history stays on the right');await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false)}
+   await page.locator('#headerSearch').click();await page.locator('#searchInput').waitFor();assert.equal(await page.locator('#searchInput').evaluate(el=>el===document.activeElement),true);
+   await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);
+   if(width>900)await page.locator('#openSidebar').click();
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
    await page.evaluate(()=>SaathiI18n.setLanguage('gu'));
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.message-tool')).some(el=>el.textContent==='બદલીને ફરી મોકલો'));

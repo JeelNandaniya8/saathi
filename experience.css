@@ -12,8 +12,8 @@ button,a,input,textarea,select,summary{-webkit-tap-highlight-color:transparent}b
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 
 /* HIG workspace layer. Loaded last; existing endpoints and component IDs are retained. */
-.hig{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--ink:#1d1d1f;--muted:#606066;--soft:#606066;--paper:#fff;--canvas:#f5f5f7;--sidebar:#f5f5f7;--accent:#0066cc;--accent-deep:#0055aa;--accent-soft:#e8f2ff;--gold:var(--accent);--sage:var(--accent);--sage-soft:var(--accent-soft);--line:rgba(60,60,67,.16);--strong:rgba(60,60,67,.3);--shadow:0 .25rem .75rem rgba(0,0,0,.08);--sidebar-width:15rem;--spring:linear(0,0.16 9%,0.5 22%,0.82 38%,1.01 60%,1.015 74%,1);font:1.0625rem/1.5 var(--sans);background:var(--canvas);color:var(--ink)}
-[data-theme="dark"] .hig{--ink:#f5f5f7;--muted:#b4b4bc;--soft:#b4b4bc;--paper:#1c1c1e;--canvas:#111113;--sidebar:#1c1c1e;--accent:#70b7ff;--accent-deep:#9dceff;--accent-soft:#20354d;--line:rgba(235,235,245,.18);--strong:rgba(235,235,245,.3)}
+.hig{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--shadow:0 .25rem .75rem rgba(0,0,0,.08);--sidebar-width:15rem;--spring:linear(0,0.16 9%,0.5 22%,0.82 38%,1.01 60%,1.015 74%,1);font:1.0625rem/1.5 var(--sans);background:var(--canvas);color:var(--ink)}
+[data-theme="dark"] .hig{}
 .hig :is(button,input,select,textarea){font:inherit}
 .hig :is(h1,h2,h3,p){letter-spacing:normal}
 .hig h1,.hig .hero-panel h1{font-size:2.125rem;line-height:1.18;font-weight:700}
@@ -115,3 +115,19 @@ button,a,input,textarea,select,summary{-webkit-tap-highlight-color:transparent}b
 .hig .quick-action{background:var(--canvas);color:var(--ink);border-color:var(--line)}
 .hig-workspace .content{overflow-anchor:none}
 .hig-chat .new-chat .shortcut{font-size:.75rem;color:var(--paper);opacity:1}
+
+/* Preserve Saathi colours and the requested right-hand conversation history. */
+.hig-chat .app{grid-template-columns:minmax(0,1fr) 17rem;grid-template-areas:"main sidebar"}
+.hig-chat .sidebar{border-right:0;border-left:1px solid var(--line)}
+.hig-chat .app.sidebar-collapsed{grid-template-columns:minmax(0,1fr);grid-template-areas:"main"}
+.hig-chat .sidebar-tools,.hig-chat .chat-navigation{display:flex;align-items:center;gap:.25rem}
+.hig-chat .sidebar-tools{justify-content:flex-end;padding-block:.25rem .75rem}
+.hig-chat .sidebar-tools .new-chat{margin:0;padding:0;width:2.75rem;height:2.75rem;min-height:2.75rem;border:0;display:grid;place-items:center;background:transparent;color:var(--ink);box-shadow:none}
+.hig-chat .sidebar-tools :is(.icon-btn,.new-chat),.hig-chat .chat-navigation .icon-btn{display:grid;width:2.75rem;height:2.75rem;color:var(--ink)}
+.hig-chat :is(.sidebar-tools,.chat-navigation) svg{width:1.25rem;height:1.25rem;pointer-events:none}
+.hig-chat .chat-navigation .collapsed-action{display:none}
+.hig-chat .sidebar-collapsed .chat-navigation .collapsed-action{display:grid}
+.hig-chat .new-chat[data-workspace-search]{background:transparent;color:var(--muted);font-size:.9375rem;min-height:2.75rem;height:auto;box-shadow:none;margin:0 0 .5rem;padding:.5rem .75rem}
+.hig-chat .sidebar .brand-row{justify-content:flex-start}
+.hig-chat .orb{background:var(--gold);box-shadow:none}
+@media(max-width:900px){.hig-chat .app,.hig-chat .app.sidebar-collapsed{display:block}.hig-chat .sidebar{inset:0 0 0 auto;transform:translateX(103%);width:min(19rem,88vw)}.hig-chat .sidebar.open{transform:none}.hig-chat .topbar{flex-wrap:wrap}.hig-chat .chat-navigation{order:3;justify-content:flex-end;width:100%}.hig-chat .chat-navigation .collapsed-action{display:grid}.hig-chat .chat-heading h1{max-width:45vw}}

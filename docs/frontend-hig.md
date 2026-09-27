@@ -70,3 +70,7 @@ Render served the previous HIG stylesheet successfully (HTTP 200) during this se
 
 
 The frontend shows waiting feedback after 8 seconds and clearer Stop guidance after 20 seconds, clearing it on streamed text or completion. It does not retry automatically. Provider latency/timeouts are not repaired by these frontend changes.
+
+## User correction
+
+Restored the original Saathi palette instead of the HIG palette override. Chat history is on the right again. Compact Search, sidebar toggle and New chat icons replace the large New conversation button; controls remain available when collapsed. Earlier palette contrast results describe the previous palette, not a fresh certification of the restored colours.

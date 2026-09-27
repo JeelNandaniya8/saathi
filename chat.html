@@ -314,13 +314,13 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 </style>
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20260919">
-<link rel="stylesheet" href="/experience.css?v=20260928hig">
+<link rel="stylesheet" href="/experience.css?v=20260928right">
 </head>
 <body class="hig hig-chat">
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
-    <div class="brand-row"><a class="brand" href="/"><span class="orb"></span>Saathi</a><button class="icon-btn" id="closeSidebar" aria-label="Close sidebar">×</button></div>
-    <button class="new-chat" id="newChat" type="button" title="Start a new conversation"><span>+</span><span>New conversation</span><span class="shortcut">Ctrl ⇧ O</span></button>
+    <div class="brand-row"><a class="brand" href="/"><span class="orb"></span>Saathi</a></div>
+    <div class="sidebar-tools" role="group" aria-label="Conversation controls"><button class="icon-btn" id="searchConversations" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="closeSidebar" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="new-chat" id="newChat" type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg></button></div>
     <label class="search" id="searchWrap" aria-label="Search conversations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
       <input id="searchInput" type="search" placeholder="Search conversations" maxlength="100" autocomplete="off">
@@ -339,7 +339,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 
   <main class="main">
     <header class="topbar">
-      <button class="icon-btn mobile-menu" id="openSidebar" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
+      
       <div class="chat-heading"><h1 id="chatTitle">New conversation</h1><p>Private to your signed-in account</p></div>
       <div class="top-actions">
         <details class="sound-disclosure"><summary aria-label="Background sound options">Sounds</summary><div class="ambient-sound-hud" id="ambientHud" aria-label="Background sounds">
@@ -354,6 +354,7 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
         </div></details>
         <a class="top-pill" href="/dashboard">Dashboard</a>
       </div>
+      <div class="chat-navigation" role="group" aria-label="Chat navigation"><button class="icon-btn collapsed-action" id="headerSearch" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="openSidebar" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" aria-controls="sidebar" aria-expanded="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="icon-btn collapsed-action" id="headerNewChat" type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg></button></div>
     </header>
 
     <section class="messages" id="messages" aria-label="Conversation messages">
@@ -508,8 +509,13 @@ async function api(url,options={}){
 let toastTimer;
 function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=String(message||'').toLowerCase();if(/error|wrong|could not|cannot|failed|unavailable|not supported|log in/.test(copy))return'error';if(/deleted|removed|saved|added|updated|created|enabled|accepted|changed|copied|pinned|archived|restored|export ready/.test(copy))return'success';if(/stopped|permission|expired|warning|blocked/.test(copy))return'warning';return'info'}
 function showToast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone);el.toast.className='toast '+kind;document.getElementById('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];document.getElementById('toastMessage').textContent=message;el.toast.setAttribute('role',kind==='error'?'alert':'status');el.toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>el.toast.classList.add('show'));toastTimer=setTimeout(()=>el.toast.classList.remove('show'),3200)}
-function closeSide(){el.sidebar.classList.remove('open');el.scrim.classList.remove('show');document.getElementById('openSidebar').setAttribute('aria-expanded','false')}
-function openSide(){el.sidebar.classList.add('open');el.scrim.classList.add('show');document.getElementById('openSidebar').setAttribute('aria-expanded','true')}
+const chatSidebarMedia=matchMedia('(max-width:900px)');
+function setChatSidebar(open){const mobile=chatSidebarMedia.matches;el.sidebar.hidden=!open;el.sidebar.inert=!open;el.sidebar.classList.toggle('open',open);document.querySelector('.app').classList.toggle('sidebar-collapsed',!open);el.scrim.classList.toggle('show',mobile&&open);document.getElementById('openSidebar').setAttribute('aria-expanded',String(open));document.querySelector('.main').inert=mobile&&open}
+function closeSide(){if(chatSidebarMedia.matches)setChatSidebar(false)}
+function openSide(){setChatSidebar(true)}
+chatSidebarMedia.addEventListener('change',()=>setChatSidebar(!chatSidebarMedia.matches));
+setChatSidebar(!chatSidebarMedia.matches);
+
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
 let replyWaitTimers=[];
 function clearReplyWait(){replyWaitTimers.forEach(clearTimeout);replyWaitTimers=[];document.getElementById('replyStatus').hidden=true}
@@ -934,7 +940,7 @@ function setupVoiceInput(){
 }
 
 document.getElementById('newChat').addEventListener('click',createConversation);
-document.getElementById('openSidebar').addEventListener('click',openSide);document.getElementById('closeSidebar').addEventListener('click',closeSide);el.scrim.addEventListener('click',closeSide);
+document.getElementById('openSidebar').addEventListener('click',()=>setChatSidebar(el.sidebar.hidden));document.getElementById('closeSidebar').addEventListener('click',()=>{setChatSidebar(false);document.getElementById('openSidebar').focus()});for(const id of ['searchConversations','headerSearch'])document.getElementById(id).addEventListener('click',()=>{openSide();el.search.focus()});document.getElementById('headerNewChat').addEventListener('click',createConversation);el.scrim.addEventListener('click',closeSide);
 el.attach.addEventListener('click',()=>el.fileInput.click());el.fileInput.addEventListener('change',()=>chooseFiles(el.fileInput.files));
 el.mode.addEventListener('change',updateModeDescription);
 ['dragenter','dragover'].forEach(type=>el.composer.addEventListener(type,event=>{event.preventDefault();if(!state.sending)el.composer.classList.add('dragging')}));
