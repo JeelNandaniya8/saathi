@@ -307,6 +307,10 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 .voice-open-btn[hidden]{display:none}
 .voice-open-btn:hover{transform:scale(1.1)}
 .voice-open-btn svg{width:22px;height:22px}
+
+/* Keep input and Send in stable columns even before voice detection finishes. */
+.composer>.attach{grid-column:1}.composer>.voice{grid-column:2}.composer>textarea{grid-column:3;min-width:0}.composer>.send{grid-column:4}.composer>.char-count{grid-column:3}
+.message{margin-bottom:20px}.message.streaming .message-tools:empty{display:none}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
@@ -504,7 +508,7 @@ function closeSide(){el.sidebar.classList.remove('open');el.scrim.classList.remo
 function openSide(){el.sidebar.classList.add('open');el.scrim.classList.add('show');document.getElementById('openSidebar').setAttribute('aria-expanded','true')}
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
 function setBusy(busy){state.sending=busy;el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=busy;el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.voice.disabled=busy||!state.voiceAvailable;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
-function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop generating':'Send message');el.send.title=stopping?'Stop generating':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId;el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
+function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop generating':'Send message');el.send.title=stopping?'Stop generating':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId||Boolean(state.loadingConversation);el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
 function readableSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return Math.ceil(bytes/1024)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
 function decodeLegacyText(value){const text=String(value??'');if(!/[ÃÂàð][\u0080-\u00bf]/.test(text))return text;try{const characters=Array.from(text);if(characters.some(character=>character.charCodeAt(0)>255))return text;return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(characters,character=>character.charCodeAt(0)))}catch(error){return text}}
 function normaliseConversationDisplay(conversation){return{...conversation,title:decodeLegacyText(conversation?.title),preview:decodeLegacyText(conversation?.preview)}}
@@ -620,7 +624,7 @@ async function createConversation(){
     state.showArchived=false;document.getElementById('archiveToggle').classList.remove('active');document.getElementById('archiveLabel').textContent='Archived conversations';
     el.search.value='';el.searchWrap.classList.remove('has-value');
     const data=await api('/api/conversations',{method:'POST',body:JSON.stringify({})});
-    const conversation=normaliseConversationDisplay(data.conversation);state.conversations=[conversation,...state.conversations.filter(item=>item.id!==conversation.id)];saveChatDraft();state.messages.forEach(releaseLocalPreviews);clearSelectedFiles();state.activeId=conversation.id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;restoreChatDraft();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();updateComposer();closeSide();el.input.focus();
+    const conversation=normaliseConversationDisplay(data.conversation);state.conversations=[conversation,...state.conversations.filter(item=>item.id!==conversation.id)];saveChatDraft();state.messages.forEach(releaseLocalPreviews);clearSelectedFiles();state.loadingConversation=null;el.input.disabled=false;state.activeId=conversation.id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;restoreChatDraft();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();updateComposer();closeSide();el.input.focus();
   }catch(error){showToast(error.message)}
 }
 
@@ -628,10 +632,11 @@ async function selectConversation(id){
   if(state.sending){showToast('Wait for the current reply before switching chats.');return}
   saveChatDraft();
   if(id!==state.activeId){if(state.selectedFiles.length)clearSelectedFiles();state.messages.forEach(releaseLocalPreviews)}
-  state.activeId=id;restoreChatDraft();const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
-  el.list.innerHTML='<div class="history-state">Loading conversation…</div>';
+  state.loadingConversation=id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;state.activeId=id;restoreChatDraft();updateComposer();const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
+  el.list.innerHTML='<div class="history-state" role="status">Opening your conversation…</div>';el.input.disabled=true;el.send.disabled=true;
   try{const data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;if(!state.conversations.some(item=>item.id===id)){state.conversations.unshift(normaliseConversationDisplay(data.conversation));renderConversations()}state.messages=(data.messages||[]).map(normaliseMessageDisplay);state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=decodeLegacyText(data.conversation.title);renderMessages();scrollToLatest(false);el.input.focus()}
   catch(error){if(state.activeId===id){state.messages=[];renderMessages();showToast(error.message)}}
+  finally{if(state.activeId===id){state.loadingConversation=null;el.input.disabled=false;updateComposer()}}
 }
 
 function emptyView(){

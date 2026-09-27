@@ -1,6 +1,6 @@
 """Failure paths that must preserve drafts, credentials and transaction boundaries."""
 from datetime import datetime, timezone
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 import uuid
 
 import psycopg2
@@ -160,3 +160,21 @@ def test_week_window_respects_india_midnight_and_daylight_saving():
     assert since.isoformat() == '2026-09-10T18:30:00+00:00'
     _, _, since = week_window(datetime(2026, 3, 10, 12, tzinfo=timezone.utc), 'America/New_York')
     assert since.hour == 5, 'Use the timezone offset at the start, before DST'
+
+
+def test_pool_checks_transport_once_per_burst_but_rechecks_after_idle(monkeypatch):
+    pool, conn = Mock(), MagicMock(closed=0)
+    pool.getconn.return_value = conn
+    monkeypatch.setattr(db_pool, '_pool', None)
+    monkeypatch.setattr(db_pool, '_identity', None)
+    monkeypatch.setattr(db_pool, 'ThreadedConnectionPool', Mock(return_value=pool))
+    clock = Mock(return_value=100)
+    monkeypatch.setattr(db_pool.time, 'monotonic', clock)
+    db_pool._checked.clear()
+    first = db_pool.connect('fixture-dsn'); first.close()
+    db_pool.connect('fixture-dsn').close()
+    assert conn.cursor.call_count == 1
+    clock.return_value = 106
+    db_pool.connect('fixture-dsn').close()
+    assert conn.cursor.call_count == 2
+    db_pool._checked.clear()
