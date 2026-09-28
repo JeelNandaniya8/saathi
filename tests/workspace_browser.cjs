@@ -6,7 +6,7 @@ const original={id:1,role:'user',content:'Search',created_at:'2026-09-19T08:00:0
 const answer={id:2,role:'assistant',content:'Search <script>not executable</script> ગુજરાતી',created_at:original.created_at,source_pages:[]};
 const task={id:1,title:'Search',details:'Saved user writing',priority:'high',completed:false,due_at:null};
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
@@ -56,6 +56,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.goto(base+'/dashboard');
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
+   assert.equal(await page.evaluate(()=>scrollY),0,'Greeting stays visible on startup');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
@@ -103,6 +104,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
+   assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
+   if(width>900){assert.ok((await page.locator('#sidebar').boundingBox()).x>width/2);await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
+
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
    await page.evaluate(()=>SaathiI18n.setLanguage('gu'));
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.message-tool')).some(el=>el.textContent==='બદલીને ફરી મોકલો'));
