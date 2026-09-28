@@ -10,6 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
+   let chatProfilePending=false,historyWhileProfilePending=false;
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -19,6 +20,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     if(pathname==='/dashboard-mindmaps.js'&&failMindmaps){failMindmaps=false;return route.abort()}
     if(pathname.startsWith('/api/')){
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
+     if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
+     if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
      if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
@@ -104,6 +107,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
+   assert.equal(historyWhileProfilePending,true,'History should load concurrently with the profile');
+   assert.equal(requests.filter(p=>p==='/api/conversations/7/messages').length,1,'Startup history must not be fetched twice');
    assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
    if(width>900){assert.ok((await page.locator('#sidebar').boundingBox()).x>width/2);await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
 

@@ -678,13 +678,14 @@ async function createConversation(){
   }catch(error){showToast(error.message)}
 }
 
+let startupMessages=null;
 async function selectConversation(id){
   if(state.sending){showToast('Wait for the current reply before switching chats.');return}
   saveChatDraft();
   if(id!==state.activeId){if(state.selectedFiles.length)clearSelectedFiles();state.messages.forEach(releaseLocalPreviews)}
   state.loadingConversation=id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;state.activeId=id;restoreChatDraft();updateComposer();const selected=currentConversation();el.chatTitle.textContent=selected?.title||'Conversation';renderConversations();closeConversationMenu();closeSide();
   renderChatLoading();el.input.disabled=true;el.send.disabled=true;
-  try{const data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;if(!state.conversations.some(item=>item.id===id)){state.conversations.unshift(normaliseConversationDisplay(data.conversation));renderConversations()}state.messages=(data.messages||[]).map(normaliseMessageDisplay);state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=decodeLegacyText(data.conversation.title);renderMessages();scrollToLatest(false);el.input.focus()}
+  try{let data;if(startupMessages?.id===id){const pending=startupMessages;startupMessages=null;const result=await pending.promise;if(result.error)throw result.error;data=result.data}else data=await api(`/api/conversations/${id}/messages?limit=100`);if(state.activeId!==id)return;if(!state.conversations.some(item=>item.id===id)){state.conversations.unshift(normaliseConversationDisplay(data.conversation));renderConversations()}state.messages=(data.messages||[]).map(normaliseMessageDisplay);state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;el.chatTitle.textContent=decodeLegacyText(data.conversation.title);renderMessages();scrollToLatest(false);el.input.focus()}
   catch(error){if(state.activeId===id){state.messages=[];renderMessages();showToast(error.message)}}
   finally{if(state.activeId===id){state.loadingConversation=null;el.input.disabled=false;updateComposer()}}
 }
@@ -1175,7 +1176,7 @@ function runChatBreathCycle(phase, seconds){
 function renderChatLoading(){el.list.innerHTML='<div class="chat-placeholder" role="status" aria-label="Loading conversation"><i></i><i></i></div>'}
 async function init(){
   SaathiTheme.refresh();renderChatLoading();el.input.disabled=true;el.send.disabled=true;
-  const historyRequest=api('/api/conversations?archived=false&search=').then(data=>({data}),error=>({error}));
+  const historyRequest=api('/api/conversations?archived=false&search=').then(data=>{const requested=new URLSearchParams(location.search).get('conversation');const id=requested&&/^\d+$/.test(requested)?Number(requested):data.conversations?.[0]?.id;if(id)startupMessages={id,promise:api(`/api/conversations/${id}/messages?limit=100`).then(data=>({data}),error=>({error}))};return {data}},error=>({error}));
   try{const data=await api('/api/me');if(!data.user){location.replace('/account?next=/chat');return}state.user=data.user;state.csrf=data.csrf_token||'';SaathiWorkspace.renderAvatar(document.getElementById('userAvatar'),data.user);SaathiI18n.setLanguage(data.user.language);SaathiHub.connect({user:data.user,api,notify:showToast});SaathiRecovery.connect({user:data.user,api,notify:showToast});SaathiWorkspace.connect({user:data.user,api,notify:showToast});state.attachmentLimits={...state.attachmentLimits,...(data.chat_attachments||{})};renderChatModes(data.chat_modes);document.getElementById('userName').textContent=data.user.name;document.getElementById('userPlan').textContent=data.user.plan==='plus'?'Saathi Plus':'Free plan';const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576);el.attach.title=`Attach a photo or PDF (up to ${maxMb} MB)`;attachmentMeta();const initialHistory=await historyRequest;if(initialHistory.error)throw initialHistory.error;await loadConversations('',initialHistory.data);if(new URLSearchParams(location.search).get('care')==='listen'){await createConversation();el.input.value={gu:'મારે થોડી વાત કરવી છે. પહેલાં સાંભળો અને એક સરળ પ્રશ્ન પૂછો. હું માગું ત્યારે જ સલાહ આપો.',hi:'मैं कुछ बात करना चाहता हूँ। पहले सुनें और एक सरल सवाल पूछें। जब मैं पूछूँ तब ही सलाह दें.',en:'I would like to talk something through. Please listen first and ask one gentle question. Offer advice when I ask for it.'}[state.user.language]||'I would like to talk. Please listen first.';history.replaceState(null,'','/chat');el.input.focus()}updateComposer();setBusy(false);window.dispatchEvent(new Event('saathi:ready'));if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{})}
   catch(error){el.list.textContent='Could not open your chat. Reload to try again.';showToast(error.message)}
 }

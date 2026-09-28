@@ -16,6 +16,9 @@ must be a PostgreSQL connection string such as a Neon URL.
 """
 
 import os
+import gzip
+import time
+from functools import lru_cache
 import re
 import secrets
 import hashlib
@@ -42,7 +45,7 @@ import response_insights
 import db_pool
 from ai_transport import send as provider_send, ProviderError
 from ai_transport import post as provider_post
-from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context
+from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context, has_request_context
 from pypdf import PdfReader
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -137,7 +140,7 @@ CHAT_MODES = {
         "description": "A balanced everyday reply",
         "instruction": (
             "Respond naturally and use the structure that best fits the request. "
-            "Do not add headings or long lists when a short answer is clearer."
+            "For simple requests, answer directly in two to four sentences. Do not pad the answer with headings, recaps or long lists. Expand when the user asks for detail or accuracy requires it."
         ),
         "temperature": 0.8,
         "max_output_tokens": 900,
@@ -250,6 +253,16 @@ PLAN_ENTITLEMENTS = {
 }
 
 
+@lru_cache(maxsize=32)
+def compressed_asset(content):
+    return gzip.compress(content, compresslevel=5, mtime=0)
+
+
+@app.before_request
+def start_request_timing():
+    g.request_started = time.perf_counter()
+
+
 @app.before_request
 def verify_same_origin():
     if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
@@ -267,6 +280,25 @@ def verify_same_origin():
 
 @app.after_request
 def add_security_headers(response):
+    started = getattr(g, "request_started", None)
+    if started is not None:
+        response.headers.add("Server-Timing", f"app;dur={(time.perf_counter() - started) * 1000:.1f}")
+    # Only public source assets: never compress/cache private pages, APIs or streams.
+    if response.status_code in (200, 304) and request.path.endswith((".css", ".js")) and not request.path.startswith("/api/") and request.path != "/service-worker.js":
+        response.headers["Cache-Control"] = "public, max-age=3600, must-revalidate" if request.args.get("v") else "no-cache"
+        response.vary.add("Accept-Encoding")
+        if response.status_code == 200 and request.method == "GET" and request.accept_encodings["gzip"] > 0 and not response.headers.get("Content-Encoding"):
+            response.direct_passthrough = False
+            content = response.get_data()
+            if len(content) > 1024:
+                packed = compressed_asset(content)
+                if len(packed) < len(content):
+                    response.set_data(packed)
+                    response.headers["Content-Encoding"] = "gzip"
+                    etag, _ = response.get_etag()
+                    if etag:
+                        response.set_etag(etag, weak=True)
+
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     if request.path.startswith("/api/attachments/") and request.path.endswith("/view"):
@@ -2123,8 +2155,10 @@ def prepare_chat_attachments(uploaded_files, entitlement):
 
 
 def active_plan_entitlement(cur, user_id):
-    cur.execute("SELECT plan, plan_status, subscription_end_at FROM users WHERE id = %s", (user_id,))
-    user = cur.fetchone()
+    user = getattr(g, "authenticated_user_profile", None) if has_request_context() and getattr(g, "authenticated_user_id", None) == user_id else None
+    if user is None:
+        cur.execute("SELECT plan, plan_status, subscription_end_at FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
     plan = billing.effective_plan(user)
     if plan not in PLAN_ENTITLEMENTS:
         plan = "free"
@@ -3325,7 +3359,7 @@ def require_user_id():
         return None
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT session_version FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language FROM users WHERE id = %s", (user_id,))
     user = cur.fetchone()
     cur.close()
     conn.close()
@@ -3334,6 +3368,7 @@ def require_user_id():
         g.authenticated_user_id = None
         return None
     g.authenticated_user_id = user_id
+    g.authenticated_user_profile = user
     return user_id
 
 
@@ -3852,6 +3887,9 @@ def load_active_memories(user_id):
 
 
 def load_user_language(user_id, cur=None):
+    user = getattr(g, "authenticated_user_profile", None) if has_request_context() and getattr(g, "authenticated_user_id", None) == user_id else None
+    if user is not None and "language" in user:
+        return user["language"] if user["language"] in ("en", "gu", "hi") else "en"
     conn = get_db() if cur is None else None
     if conn is not None:
         cur = conn.cursor()
