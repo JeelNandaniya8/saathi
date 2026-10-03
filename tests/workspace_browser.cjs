@@ -112,6 +112,19 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
    if(width>900){assert.ok((await page.locator('#sidebar').boundingBox()).x>width/2);await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
 
+   await page.locator('#chatInput').fill('Keep my draft');
+   await page.route('**/api/conversations/7/messages?limit=100',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture failure'})}));
+   await page.evaluate(()=>selectConversation(7));
+   await page.getByRole('button',{name:'Retry loading conversation',exact:true}).waitFor();
+   assert.equal(await page.locator('#chatInput').isDisabled(),true);
+   assert.equal(await page.locator('#sendButton').isDisabled(),true);
+   await page.unroute('**/api/conversations/7/messages?limit=100');
+   await page.getByRole('button',{name:'Retry loading conversation',exact:true}).click();
+   await page.locator('.message.user').waitFor();
+   assert.equal(await page.locator('#chatInput').inputValue(),'Keep my draft');
+   await page.reload();await page.locator('.message.user').waitFor();
+   assert.equal(await page.locator('#chatInput').inputValue(),'Keep my draft','Draft survives browser reload');
+   await page.locator('#chatInput').fill('');
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
    await page.evaluate(()=>SaathiI18n.setLanguage('gu'));
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.message-tool')).some(el=>el.textContent==='બદલીને ફરી મોકલો'));

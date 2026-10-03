@@ -20,3 +20,11 @@ Public endpoint checks from this workspace returned HTTP 200 but took about 11�
 ## Verification
 
 142 backend tests passed covering the new compression/privacy/session behavior and existing core, reply recovery, security and reliability paths. Eight JavaScript behavior suites passed. Browser tests cover 1280px and 390px and assert that history starts while the profile is pending and is fetched only once.
+
+## October 3 follow-up
+
+Updated three stale CI expectations to reflect the single voice conversation control, accessible New chat button and eight-thread blueprint. Chat loads now reject older responses even when the user switches A → B → A. Failed history loads show a retry control and block sending until history is recovered; saved drafts survive the retry. The release label now distinguishes this deployment from September 26.
+
+Public production checks from the execution workspace returned HTTP 200 for the homepage and a versioned stylesheet in 6.56s and 6.50s respectively, while both reported `Server-Timing: app;dur=0.4` milliseconds. The stylesheet was gzip encoded and carried the intended one-hour cache policy. This confirms that application timing and asset compression are deployed, but does not establish a user-perceived speed improvement or isolate the remaining network/proxy/queue delay. The live Gunicorn command cannot be verified without hosting access.
+
+Local verification: 214 Python tests passed, 31 database integration tests require the isolated PostgreSQL CI service; nine JavaScript behavior suites passed. Added out-of-order history and retry tests plus desktop/mobile browser checks for failed history, blocked sending and draft restoration after retry/reload. Production AI first-text and full-response timings still require a signed-in account; no credentials or provider request were used in this audit.

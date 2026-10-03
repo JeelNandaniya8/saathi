@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-EXPECTED_RELEASE = "2026-09-26-auto-model-discovery"
+EXPECTED_RELEASE = "2026-10-03-chat-loading-recovery"
 
 
 def fetch(base_url, path, timeout):

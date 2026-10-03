@@ -21,4 +21,5 @@ node tests/workspace_extras.cjs
 node tests/daily_workspace.cjs
 node tests/recovery.cjs
 node tests/chat_recovery.cjs
+node tests/chat_loading.cjs
 node tests/chat_editing.cjs

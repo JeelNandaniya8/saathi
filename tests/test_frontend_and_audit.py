@@ -322,7 +322,7 @@ def test_chat_experience_features_are_real_and_safely_rendered():
         "function parseQuiz(text)",
         "function parseFlashcards(text)",
         "function progressiveReveal(message)",
-        "function setupVoiceInput()",
+        "window.openVoiceCall=",
         "SpeechRecognition||window.webkitSpeechRecognition",
         "speechSynthesis",
         "Shared "+"'+labels.length+'"+" saved ",
@@ -338,7 +338,9 @@ def test_chat_experience_features_are_real_and_safely_rendered():
 def test_new_conversation_control_is_clear_and_does_not_duplicate_blank_chats():
     chat = (ROOT / "chat.html").read_text(encoding="utf-8")
 
-    assert 'id="newChat" type="button" title="Start a new conversation"' in chat
+    button = re.search(r'<button\b[^>]*id="newChat"[^>]*>', chat).group()
+    assert 'type="button"' in button
+    assert 'aria-label="New chat"' in button
     assert 'id="topNewChat"' not in chat
     assert "active?.title==='New conversation'&&!state.messages.length" in chat
     assert "document.getElementById('newChat').addEventListener('click',createConversation)" in chat
@@ -360,4 +362,4 @@ def test_dependencies_are_reproducible_and_scheduled_for_review():
     assert "pytest==" in development
     assert "package-ecosystem: pip" in dependabot
     assert "package-ecosystem: github-actions" in dependabot
-    assert "startCommand: gunicorn --worker-class gthread --workers 1 --threads 4 --timeout 120 app:app" in render
+    assert "startCommand: gunicorn --worker-class gthread --workers 1 --threads 8 --timeout 120 app:app" in render
