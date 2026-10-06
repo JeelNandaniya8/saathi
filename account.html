@@ -26,6 +26,7 @@ body{background:radial-gradient(circle at 14% 8%,rgba(91,124,250,.16),transparen
 [hidden]{display:none!important}.story h1{line-height:1.12}.card-top h2{line-height:1.25}.link-btn{min-height:44px}.field input{font-size:16px}
 .g-account-card:hover{border-color:#4285F4!important;background:#f0f5ff!important;transform:translateY(-1.5px);box-shadow:0 6px 18px rgba(66,133,244,.12)}
 .g-account-card:active{transform:scale(.985)}
+.password-visibility{flex:none;min-width:2.75rem;min-height:2.75rem;border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:.8125rem}.password-visibility:focus-visible{outline:2px solid var(--gold);outline-offset:2px}.input-wrap:has(.password-visibility){display:flex;align-items:center}.input-wrap:has(.password-visibility) input{min-width:0;flex:1}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/site-theme.css?v=20260915">
@@ -41,7 +42,7 @@ body{background:radial-gradient(circle at 14% 8%,rgba(91,124,250,.16),transparen
 <form id="forgotForm" style="display:none"><div class="otp-intro">Enter the email on your account and we will send a reset code.</div><label class="field">Email address<div class="input-wrap"><input id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" required></div></label><button class="submit" id="forgotBtn" type="submit">Send reset code</button><button class="link-btn" type="button" onclick="switchTab('login')">Back to log in</button></form>
 <form id="resetForm" style="display:none"><div class="otp-intro">Enter the code sent to <b id="resetEmailText"></b> and choose a new password.</div><label class="field">Verification code<div class="input-wrap"><input class="otp" id="resetOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div></label><label class="field">New password<div class="input-wrap"><input id="resetPassword" type="password" autocomplete="new-password" maxlength="64" placeholder="At least 8 characters" required></div><span class="strength"><i id="resetStrengthFill"></i></span><span class="hint" id="resetStrengthText">Use at least one letter and one number.</span></label><button class="submit" id="resetBtn" type="submit">Reset password</button><button class="link-btn" type="button" onclick="resendResetCode()">Send a new code</button></form>
 <div class="message" id="message" role="status" aria-live="polite" tabindex="-1"></div><p class="privacy">Your password is hashed before storage. Never share verification codes or passwords with anyone.</p><a class="back" href="/">← Back to Saathi</a></div></section>
-<section class="story"><a class="brand" href="/"><span class="orb"></span>Saathi</a><div class="story-copy"><p class="eyebrow">Your space, ready when you are</p><h1>One account. A calmer everyday.</h1><p>Save conversations, create reminders and return to your Saathi workspace from the same secure account.</p><div class="promises"><article class="promise"><span>◇</span><b>Email verified</b><small>Six-digit verification protects new accounts.</small></article><article class="promise"><span>○</span><b>History saved</b><small>Continue earlier conversations after signing in.</small></article><article class="promise"><span>✓</span><b>Reminders synced</b><small>Your schedules stay connected to your account.</small></article></div></div><footer class="story-foot"><span>Made by Jeel Nandaniya</span><span>AI support with visible limits</span></footer></section></main>
+<section class="story"><a class="brand" href="/"><span class="orb"></span>Saathi</a><div class="story-copy"><p class="eyebrow">Your space, ready when you are</p><h1>One account. A calmer day.</h1><p>Save conversations, create reminders and return to your Saathi workspace from the same secure account.</p><div class="promises"><article class="promise"><span>◇</span><b>Email verified</b><small>Six-digit verification protects new accounts.</small></article><article class="promise"><span>○</span><b>History saved</b><small>Continue earlier conversations after signing in.</small></article><article class="promise"><span>✓</span><b>Reminders synced</b><small>Your schedules stay connected to your account.</small></article></div></div><footer class="story-foot"><span>Made by Jeel Nandaniya</span><span>AI support with visible limits</span></footer></section></main>
 
 
 
@@ -167,9 +168,15 @@ function triggerGoogleSignIn() {
 if(params.get('google')==='1'){
   setTimeout(()=>triggerGoogleSignIn(),400);
 }
+document.querySelectorAll('input[type="password"]').forEach(input=>{
+ const button=document.createElement('button');button.type='button';button.className='password-visibility';button.setAttribute('aria-controls',input.id);button.setAttribute('aria-pressed','false');button.textContent='Show';button.setAttribute('aria-label','Show password');
+ button.addEventListener('click',()=>{const show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'Hide':'Show';button.setAttribute('aria-label',show?'Hide password':'Show password');button.setAttribute('aria-pressed',String(show))});
+ input.parentElement.append(button);
+});
 switchTab(params.get('mode')==='login'||params.get('tab')==='login'?'login':'signup');
 checkExistingSession();
-window.addEventListener('pageshow',()=>checkExistingSession());
+window.addEventListener('pageshow',event=>{if(event.persisted)checkExistingSession()});
 </script>
 </body>
 </html>
+

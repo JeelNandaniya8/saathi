@@ -294,10 +294,10 @@ function renderTestResults(data){
   $('resScorePct').textContent=`${attempt.accuracy_percentage}%`;
   
   const pct=attempt.accuracy_percentage;
-  let title='Great Work! 🎉';
-  if(pct>=90)title='Outstanding Mastery! 🏆🌟';
-  else if(pct>=70)title='Solid Performance! 👏';
-  else if(pct<50)title='Keep Practicing! 💪';
+  let title='Practice complete';
+  if(pct>=90)title='Strong understanding';
+  else if(pct>=70)title='Good progress';
+  else if(pct<50)title='A starting point for revision';
   $('resHeroTitle').textContent=title;
   
   const mins=Math.floor(attempt.time_spent_seconds/60);
@@ -541,4 +541,5 @@ function retakeOrNewTest(){
   $('mockTestCreatorBox').style.display='block';
   scrollTo({top:0,behavior:'smooth'});
 }
+
 
