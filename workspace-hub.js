@@ -52,13 +52,14 @@
     try{const [saved,planner]=await Promise.all([state.api('/api/focus'),state.api('/api/tasks')]);if(!d.open)return;const none=node('option',t('No task selected'));none.value='';tasks.append(none);for(const task of planner.tasks.filter(task=>!task.completed)){const option=node('option',task.title);option.value=task.id;option.setAttribute('data-user-content','');tasks.append(option)}tasks.value=String(saved.session?.task_id||taskId||'');render(saved.session)}catch(error){showError(status,error);actions.append(button('Retry',()=>{d.close();focus(taskId)}))}
   }
   function renderToday(data){
-    const box=document.getElementById('todayTasks');if(!box)return;box.replaceChildren();
-    if(!data.tasks.length)box.append(node('p',t('No tasks due. Add a small next step or leave room for rest.'),'helper'));
+    const box=document.getElementById('todayTasks');if(!box)return;box.removeAttribute('aria-label');box.setAttribute('aria-busy','false');box.replaceChildren();
+    if(!data.tasks.length){box.append(node('p',t('No tasks due. Add a small next step or leave room for rest.'),'helper'));box.append(button('Open planner',()=>state.openView('tasks')));}
     for(const task of data.tasks){const row=node('div',null,'hub-task'),title=node('button',task.title,'hub-task-title');title.type='button';title.onclick=()=>openItem({kind:'task',id:task.id});const done=button('Complete',async()=>{done.disabled=true;try{await state.api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:true})});await state.refreshToday()}catch(error){done.disabled=false;state.notify(t(error.message),'error')}});row.append(title,button('Focus',()=>focus(task.id)),done);box.append(row)}
-    const revisionLabel=node('span','Revision ready');revisionLabel.setAttribute('data-ui-text','');document.getElementById('todayRevision').replaceChildren(revisionLabel,node('span',': '+data.revision_due));
-    const recent=document.getElementById('todayResume');recent.replaceChildren();if(data.recent_chat){const link=node('a',data.recent_chat.title,'secondary');link.href='/chat?conversation='+data.recent_chat.id;recent.append(link)}else recent.append(node('p',t('Your latest conversation will appear here.'),'helper'));
+    const revisionCard=document.getElementById('todayRevisionCard');if(revisionCard)revisionCard.hidden=!(data.revision_due>0);const revisionLabel=node('span','Revision ready');revisionLabel.setAttribute('data-ui-text','');document.getElementById('todayRevision').replaceChildren(revisionLabel,node('span',': '+data.revision_due));
+    const recent=document.getElementById('todayResume');recent.removeAttribute('aria-label');recent.setAttribute('aria-busy','false');recent.replaceChildren();if(data.recent_chat){const link=node('a',data.recent_chat.title,'secondary');link.href='/chat?conversation='+data.recent_chat.id;recent.append(link)}else{const link=node('a',t('Open conversation'),'secondary');link.href='/chat';recent.append(node('p',t('Your latest conversation will appear here.'),'helper'),link);}
   }
   function connect(options){Object.assign(state,options);document.querySelectorAll('[data-workspace-search]').forEach(el=>el.onclick=search);document.querySelectorAll('[data-focus-session]').forEach(el=>el.onclick=()=>focus());}
   document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();search()}});
   window.SaathiHub={connect,search,focus,renderToday};
 })();
+

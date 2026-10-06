@@ -13,7 +13,7 @@ Already shipped: simpler hero CTAs, waitlist, OG image/tags, illustrative demos,
 - [x] Remove dashboard streak card/badge and habit streak pressure; preserve real habit completion history.
 - [x] Replace competitive/viral exam copy with private revision language; retain voluntary sharing.
 - [x] Fix Hindi label, account grammar, password visibility controls and duplicate initial session check.
-- [ ] Prioritize next task, next reminder, recent chat; suppress irrelevant zero-value panels only after successful loading.
+- [x] Prioritize next task, next reminder and recent chat; collapse counters into an optional overview and suppress zero values only after overview loads.
 - [ ] Skeletons matching final dimensions; no greeting flash or layout jump; retry without losing drafts.
 - [ ] Condense repetitive landing stories; retain clear care/limits/privacy copy, visible mobile login/signup and one primary CTA.
 - [ ] Reconcile actual Plus entitlements and referral promises without removing earned benefits.
@@ -98,7 +98,7 @@ Acceptance: changed dates, timezones, unrealistic workloads, overdue tasks and m
 Gate: no known critical privacy/medical/data-loss defects; primary success and recovery flows pass; list untested device/production checks. Scores cannot be guaranteed.
 
 ## Status of this commit
-Only the checked foundation items are implemented. Care profiles, proactive clinical-context workflows, meal support, Classroom integration and adaptive exam plans remain planned.
+Only the checked foundation items are implemented. Today now uses static, low-CPU skeletons for its primary data, guards against false zeroes, and offers direct actions in empty states. Care profiles, proactive clinical-context workflows, meal support, Classroom integration and adaptive exam plans remain planned.
 Syntax and focused behaviour checks accompany the initial changes; live/mobile verification remains outstanding.
 
 ## Primary reference basis (reviewed 6 October 2026)
@@ -106,3 +106,4 @@ Syntax and focused behaviour checks accompany the initial changes; live/mobile v
 - https://developers.google.com/workspace/classroom/guides/push-notifications
 - https://www.cdc.gov/diabetes/treatment/your-diabetes-care-schedule.html
 - https://www.cdc.gov/diabetes/healthy-eating/diabetes-meal-planning.html
+

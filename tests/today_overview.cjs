@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('dashboard.html','utf8'),nodes=new Map();
+const make=()=>({textContent:'—',hidden:false,attrs:{},items:[],parent:{hidden:false},closest(){return this.parent},removeAttribute(k){delete this.attrs[k]},setAttribute(k,v){this.attrs[k]=v},replaceChildren(){this.items=[]},append(...items){this.items.push(...items)}});
+const get=id=>{if(!nodes.has(id))nodes.set(id,make());return nodes.get(id)};
+const state={overview:{},tasks:[],overviewReady:false};
+const ctx={state,$:get,emptyNode:text=>({text}),quickRow:(title,detail)=>({title,detail}),formatDate:v=>v};
+vm.createContext(ctx);vm.runInContext(html.slice(html.indexOf('function renderOverview(){'),html.indexOf('function taskItem(')),ctx);
+ctx.renderOverview();assert.equal(nodes.size,0,'unrelated data arrivals must not render false zeroes');
+state.overviewReady=true;ctx.renderOverview();assert.equal(get('todayStats').hidden,true);assert.equal(get('overviewReminder').attrs['aria-busy'],'false');assert.equal(get('metricTasks').parent.hidden,true);
+state.overview={pending_tasks:2,conversations:1,next_reminder:{title:'Read',next_run_at:'tomorrow'}};ctx.renderOverview();assert.equal(get('todayStats').hidden,false);assert.equal(get('metricTasks').parent.hidden,false);assert.equal(get('metricMemory').parent.hidden,true);assert.equal(get('overviewReminder').items[0].title,'Read');
+state.overview={};ctx.renderOverview();assert.equal(get('todayStats').hidden,true,'clearing counts restores the uncluttered state');
+assert.equal((html.match(/id="overviewReminder"/g)||[]).length,1);
+assert.ok(html.indexOf('id="overviewReminder"')<html.indexOf('id="todayCare"'));
+console.log('PASS pre-load guard, zero/nonzero transitions, reminder status and unique primary layout');
