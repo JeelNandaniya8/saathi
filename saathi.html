@@ -1,18 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{LANG}}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Saathi is a calm AI companion for study, reflection, routines, and everyday progress.">
+<meta name="description" content="{{DESCRIPTION}}">
 <meta name="theme-color" content="#fbfaf6">
-<meta property="og:title" content="Saathi · Your everyday AI companion">
-<meta property="og:description" content="Photo and PDF study, mock tests, mindmaps, quick notes and everyday routines in one private workspace.">
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:locale" content="{{LOCALE}}">
+<meta property="og:image" content="{{BASE_URL}}/saathi-social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Saathi — a calm space for study, notes and routines">
+<meta name="twitter:card" content="summary_large_image">
 <meta property="og:type" content="website">
-<meta property="og:url" content="{{BASE_URL}}/">
-<link rel="canonical" href="{{BASE_URL}}/">
+<meta property="og:url" content="{{BASE_URL}}/?lang={{LANG}}">
+<link rel="canonical" href="{{BASE_URL}}/?lang={{LANG}}">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
-<title>Saathi · Your everyday AI companion</title>
+<title>{{TITLE}}</title>
 <script src="/theme.js?v=20260915"></script>
 <style>
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
@@ -52,12 +58,14 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 <link rel="stylesheet" href="/site-theme.css?v=20260927c">
+<link rel="stylesheet" href="/landing.css?v=20261006">
+<script src="/landing.js?v=20261006" defer></script>
 </head>
 <body data-page="landing">
 <nav class="nav-shell" aria-label="Main navigation"><div class="nav"><a class="brand" href="/"><span class="orb"></span>Saathi</a><div class="nav-links"><a href="#product">Product</a><a href="#how">How it works</a><a href="#care">Care</a><a href="#pricing">Plans</a><a href="/dashboard">Dashboard</a></div><div class="lang-switch" id="langSwitch" role="group" aria-label="Language"><button type="button" class="lang-btn active" data-lang="en">EN</button><button type="button" class="lang-btn" data-lang="gu">ગુજ</button><button type="button" class="lang-btn" data-lang="hi">હિં</button></div><button class="appearance-button" type="button" data-theme-toggle data-theme-action aria-label="Switch colour theme">◐</button><div class="nav-auth" style="display:flex;align-items:center;gap:8px;margin-left:auto"><a class="btn-login" href="/account?tab=login" style="padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:720;color:var(--ink);background:rgba(255,255,255,.8);text-decoration:none">Log in</a><a class="nav-cta" id="navCta" href="/account?tab=signup" style="text-decoration:none">Sign up free →</a></div><button class="menu" id="menuButton" onclick="toggleMenu()" aria-label="Open menu" aria-controls="mobileMenu" aria-expanded="false">☰</button></div></nav>
 <div class="mobile-menu" id="mobileMenu" aria-hidden="true"><a href="/account?tab=login" style="font-weight:750;color:var(--accent)">Log in to your account</a><a href="/account?tab=signup" style="font-weight:750;color:var(--ink)">Create free account</a><a href="#product" onclick="toggleMenu()">Product</a><a href="#how" onclick="toggleMenu()">How it works</a><a href="#care" onclick="toggleMenu()">Care</a><a href="#pricing" onclick="toggleMenu()">Plans</a><a href="/dashboard">Dashboard</a></div>
 
-<header class="hero"><div class="glow one"></div><div class="glow two"></div><div class="hero-copy"><p class="badge" id="heroBadge"><span class="dot"></span>Study well. Make space for yourself.</p><h1 id="heroH1">A little clarity. <em>A calmer day.</em></h1><p class="hero-sub" id="heroSub">Study with photo and PDF support, practise with mock tests, capture quick notes and stay on top of your own routines. In English, Gujarati or Hindi.</p><div class="hero-actions" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px"><a class="btn-google" href="/account?google=1" id="googleCta" style="display:inline-flex;align-items:center;gap:10px;padding:13px 20px;border:1.5px solid var(--line);border-radius:999px;background:#fff;color:#1f2328;font-size:13px;font-weight:720;box-shadow:0 6px 20px rgba(0,0,0,.06);text-decoration:none;transition:transform .18s"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>Sign up with Google</a><a class="btn dark" id="heroCta" href="/account?tab=signup">Get Started Free →</a><button class="btn light" id="heroDemo" onclick="openChat()">Try Live Chat ✨</button></div><div class="trust"><span>✓ <b>You control</b> memory</span><span>◇ <b>Private</b> account</span><span>○ <b>Honest</b> AI limits</span></div></div>
+<header class="hero"><div class="glow one"></div><div class="glow two"></div><div class="hero-copy"><p class="badge" id="heroBadge"><span class="dot"></span>Study well. Make space for yourself.</p><h1 id="heroH1">A little clarity. <em>A calmer day.</em></h1><p class="hero-sub" id="heroSub">Study with photo and PDF support, practise with mock tests, capture quick notes and stay on top of your own routines. In English, Gujarati or Hindi.</p><div class="hero-actions"><a class="btn primary" id="heroCta" href="/account?tab=signup">Start free →</a><button class="btn ghost" id="heroDemo" onclick="openChat()">Try Live Chat</button></div><div class="trust"><span>✓ <b>You control</b> memory</span><span>◇ <b>Private</b> account</span><span>○ <b>Honest</b> AI limits</span></div></div>
 <div class="hero-stage" aria-label="Preview of the Saathi dashboard and reminder"><div class="window hero-window"><div class="window-bar"><span class="dots"><i></i><i></i><i></i></span><span>Today · Saathi</span><span class="secure">● Private workspace</span></div><div class="app-shot"><aside class="shot-side"><div class="shot-brand"><span class="orb"></span>Saathi</div><div class="shot-nav"><span class="active">◉ &nbsp;Today</span><span>○ &nbsp;Chat</span><span>□ &nbsp;Study</span><span>◇ &nbsp;Check-ins</span></div><div class="shot-profile"><b>S</b><span>Your space<br><small>Free plan</small></span></div></aside><div class="shot-main"><div class="shot-title"><small>Your day</small><h3>Good morning.</h3><p>One clear view of what matters today.</p></div><div class="metrics"><article class="metric gold"><span>Study progress</span><strong>68%</strong><div class="bar"><i></i></div><small>4 of 6 tasks complete</small></article><article class="metric"><span>Next check-in</span><b>Revision break</b><p>Today · 8:00 PM</p><small>● Active</small></article><article class="metric"><span>Memory</span><strong>12</strong><p>details in your control</p><small>Review anytime</small></article></div><div class="mini-lists"><article class="mini-list"><small class="kicker">Today&apos;s plan</small><h4>Small steps, clearly ordered.</h4><div class="mini-row done"><i>✓</i>Revise probability</div><div class="mini-row"><i></i>Read chapter five</div></article><article class="mini-list"><small class="kicker">Daily rhythm</small><h4>Your routines, at a glance.</h4><div class="mini-row done"><i>✓</i>Morning walk</div><div class="mini-row"><i></i>Journal for five minutes</div></article></div></div></div></div>
 <div class="phone"><span class="island"></span><div class="phone-time"><span>9:00</span><span>● ●●</span></div><div class="phone-date"><small>Tuesday, 26 August</small><strong>9:00</strong></div><div class="notification"><div class="note-head"><span class="note-icon">◇</span><b>SAATHI</b><time>now</time></div><h4>Your scheduled reminder</h4><p>It&apos;s time for the reminder you scheduled.</p><div class="note-actions"><span>✓ Complete</span><span>Remind me in 30 min</span></div></div></div><div class="float-card study"><b>Study plan ready</b>6 clear tasks · ✓</div><div class="float-card memory"><b>Memory is visible</b>Review anytime</div></div></header>
 
@@ -82,7 +90,7 @@
 <article class="feature"><div class="feature-icon" aria-hidden="true">○</div><h3>Visible Context & Privacy</h3><p>You control what Saathi remembers. No silent tracking, honest AI boundaries, and full export/deletion controls anytime.</p></article>
 </div></section>
 
-<section class="section pricing" id="pricing"><div class="section-head reveal"><p class="eyebrow">Simple plans</p><h2>Start free. Upgrade when the extra tools are real.</h2><p>Plus and Family are planned products. Checkout is disabled until verified billing, tax, cancellation and support systems are ready.</p></div><div class="plans reveal"><article class="plan"><span class="label">Available</span><h3>Free</h3><div class="price">₹0</div><p>Build a useful daily workspace without payment.</p><ul><li>Account and saved conversations</li><li>Basic study planner and reminders</li><li>Limited photo and PDF study uploads during beta</li><li>Privacy, export and deletion controls</li></ul><button class="btn light" onclick="goAccount('free')">Start free</button></article><article class="plan featured"><span class="label">Coming soon</span><h3>Saathi Plus</h3><div class="price">₹199<small>/30 days planned</small></div><p>A student-first workspace for deeper study and continuity.</p><ul><li>More notes, image and PDF study uploads</li><li>20 mock tests and 20 mindmaps per day</li><li>Up to 50 file uploads per day, within size limits</li></ul><button class="btn" type="button" disabled aria-disabled="true">Coming soon</button></article><article class="plan"><span class="label">Coming soon</span><h3>Saathi Family</h3><div class="price">₹599<small>/month planned</small></div><p>Separate private accounts with consent-based shared tools.</p><ul><li>Up to four private member spaces</li><li>Shared tasks and reminders by choice</li><li>No automatic access to chats or journals</li></ul><button class="btn light" type="button" disabled aria-disabled="true">Coming soon</button></article></div></section>
+<section class="section pricing" id="pricing"><div class="section-head reveal"><p class="eyebrow">Simple plans</p><h2>Start free. Upgrade when the extra tools are real.</h2><p>Plus and Family are planned products. Checkout is disabled until verified billing, tax, cancellation and support systems are ready.</p></div><div class="plans reveal"><article class="plan"><span class="label">Available</span><h3>Free</h3><div class="price">₹0</div><p>Build a useful daily workspace without payment.</p><ul><li>Account and saved conversations</li><li>Basic study planner and reminders</li><li>Limited photo and PDF study uploads during beta</li><li>Privacy, export and deletion controls</li></ul><button class="btn light" onclick="goAccount('free')">Start free</button></article><article class="plan featured"><span class="label">Coming soon</span><h3>Saathi Plus</h3><div class="price">₹199<small>/30 days planned</small></div><p>A student-first workspace for deeper study and continuity.</p><ul><li>More notes, image and PDF study uploads</li><li>20 mock tests and 20 mindmaps per day</li><li>Up to 50 file uploads per day, within size limits</li></ul><button class="btn light" type="button" data-waitlist="plus">Join Waitlist</button></article><article class="plan"><span class="label">Coming soon</span><h3>Saathi Family</h3><div class="price">₹599<small>/month planned</small></div><p>Separate private accounts with consent-based shared tools.</p><ul><li>Up to four private member spaces</li><li>Shared tasks and reminders by choice</li><li>No automatic access to chats or journals</li></ul><button class="btn light" type="button" data-waitlist="family">Join Waitlist</button></article></div></section>
 
 <section class="care reveal" id="care"><div class="care-copy"><p class="eyebrow">Care, without overstepping</p><h2>Support should feel reassuring and stay honest.</h2><p>Saathi can help with everyday planning and reflection. It is still AI, can make mistakes, and is not a doctor, therapist or emergency service.</p></div><div class="care-stack"><article class="care-card"><b>Your account stays yours</b><p>Passwords are hashed and the AI provider key remains on your server.</p></article><article class="care-card"><b>Reminders are created by you</b><p>Saathi never selects a medicine or dose. It only follows the schedule you enter.</p></article><article class="care-card"><b>Limits stay visible</b><p>Important health, legal or financial information should be checked with a qualified person.</p></article></div></section>
 
@@ -96,14 +104,14 @@
 <script>
 const overlay=document.getElementById('overlay'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput'),chatSend=document.getElementById('chatSend'),promptChips=document.getElementById('promptChips');
 let conversation=[],historyLoaded=false,currentUser=null,guestQuestionsCount=0;
-let currentLang=localStorage.getItem('saathi-language')||'en';
+let currentLang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('saathi-language')||'en';
 
 const I18N={
   en:{
     badge:"Study well. Make space for yourself.",
     h1:"A little clarity. <em>A calmer day.</em>",
     sub:"Understand photos and PDFs, practise with mock tests and mindmaps, and keep notes and routines in one calm space. In English, Gujarati and Hindi.",
-    heroCta:"Meet your Saathi →",
+    heroCta:"Start free →",
     navCta:"Start free →",
     seeWorks:"See how it works",
     chips:[
@@ -166,6 +174,7 @@ function applyLang(lang){
   const seeWorks=document.getElementById('heroSeeWorks');if(seeWorks)seeWorks.textContent=data.seeWorks;
   const greeting=document.getElementById('demoGreeting');if(greeting&&!conversation.length)greeting.textContent=data.greeting;
   const subTitle=document.getElementById('chatSub');if(subTitle)subTitle.textContent=data.chatSub;
+  window.updateLandingLanguage?.(lang);
   renderChips();
 }
 
@@ -276,5 +285,11 @@ document.querySelectorAll('.reveal').forEach(element=>observer.observe(element))
   if(new URLSearchParams(location.search).get('chat')==='1')openChat();
 })();
 </script>
+<dialog id="waitlistDialog" aria-labelledby="waitlistTitle">
+<form id="waitlistForm"><button type="button" class="waitlist-close" id="waitlistClose" aria-label="Close">×</button>
+<h2 id="waitlistTitle">Join the waitlist</h2><p id="waitlistCopy"></p>
+<label for="waitlistEmail" id="waitlistLabel">Email</label><input id="waitlistEmail" type="email" name="email" autocomplete="email" maxlength="200" required>
+<p id="waitlistPrivacy"></p><button class="btn primary" id="waitlistSubmit" type="submit">Join Waitlist</button>
+<p id="waitlistStatus" role="status" aria-live="polite"></p></form></dialog>
 </body>
 </html>

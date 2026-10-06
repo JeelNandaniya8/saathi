@@ -1,0 +1,17 @@
+{
+  "en": {
+    "title": "Saathi · A calmer way to study",
+    "description": "Study with PDFs and photos, practise with AI mock exams, organise notes and build gentle routines. Saathi brings clarity daily in English, Gujarati and Hindi.",
+    "locale": "en_IN"
+  },
+  "gu": {
+    "title": "સાથી · શાંતિથી અભ્યાસ કરો",
+    "description": "સાથી સાથે PDF અને ફોટામાંથી શીખો, AI મોક પરીક્ષાથી અભ્યાસ કરો, ખાનગી નોંધો સાચવો અને રોજની દિનચર્યા ગોઠવો. અંગ્રેજી, ગુજરાતી અને હિન્દીમાં તમારા અભ્યાસનો સરળ સાથી.",
+    "locale": "gu_IN"
+  },
+  "hi": {
+    "title": "साथी · सुकून से पढ़ाई करें",
+    "description": "साथी के साथ PDF और फ़ोटो से सीखें, AI मॉक परीक्षा से अभ्यास करें, निजी नोट्स सहेजें और दिनचर्या बनाएं। अंग्रेज़ी, गुजराती और हिन्दी में पढ़ाई का आपका सहज साथी।",
+    "locale": "hi_IN"
+  }
+}

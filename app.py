@@ -16,6 +16,7 @@ must be a PostgreSQL connection string such as a Neon URL.
 """
 
 import os
+from html import escape
 import gzip
 import time
 from functools import lru_cache
@@ -946,7 +947,48 @@ def public_file_response(filename, mimetype="text/html"):
 
 @app.route("/")
 def home():
-    return public_file_response("saathi.html")
+    language = request.args.get("lang", "en")
+    metadata = json.loads((PROJECT_ROOT / "landing-meta.json").read_text())
+    if language not in metadata:
+        language = "en"
+    values = {**{key.upper(): value for key, value in metadata[language].items()},
+              "LANG": language, "BASE_URL": APP_BASE_URL or request.url_root.rstrip("/")}
+    page = (PROJECT_ROOT / "saathi.html").read_text()
+    for key, value in values.items():
+        page = page.replace("{{" + key + "}}", escape(value, quote=True))
+    return Response(page, mimetype="text/html")
+
+
+@app.post("/api/waitlist")
+def join_waitlist():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="Please enter a valid email.", code="invalid"), 400
+    email = data.get("email")
+    plan = data.get("plan")
+    language = data.get("language", "en")
+    if (not isinstance(email, str) or len(email) > 200 or not EMAIL_RE.fullmatch(email.strip())
+            or plan not in ("plus", "family") or language not in ("en", "gu", "hi")):
+        return jsonify(error="Please check your email and plan.", code="invalid"), 400
+    conn = None
+    try:
+        blocked = limited("waitlist", "public", 5, 60)
+        if blocked:
+            return blocked
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""INSERT INTO plan_waitlist (email, plan, language)
+                VALUES (%s, %s, %s) ON CONFLICT (email, plan) DO NOTHING""",
+                (email.strip().lower(), plan, language))
+        conn.commit()
+    except psycopg2.Error:
+        if conn:
+            conn.rollback()
+        return jsonify(error="We could not save your request. Please try again shortly.", code="unavailable"), 503
+    finally:
+        if conn:
+            conn.close()
+    return jsonify(ok=True)
 
 
 @app.route("/account")
@@ -1001,6 +1043,10 @@ def public_styles():
     return send_from_directory(".", "public.css", mimetype="text/css")
 
 
+@app.get("/landing.js")
+@app.get("/landing.css")
+@app.get("/landing-meta.json")
+@app.get("/saathi-social.png")
 @app.get("/theme.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
