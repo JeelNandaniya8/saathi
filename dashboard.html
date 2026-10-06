@@ -788,7 +788,9 @@ async function loadWorkspaceSections(sections=workspaceSections){
       const el=$(section.key);
       if(el)el.setAttribute('aria-busy','true');
       try{
-        const data=await api(typeof section.url==='function'?section.url():section.url);
+        const pending=state.startupSections?.get(section.key);state.startupSections?.delete(section.key);
+        const result=pending?await pending:null;if(result?.error)throw result.error;
+        const data=result?result.data:await api(typeof section.url==='function'?section.url():section.url);
         await section.apply(data);
         state.loadedSections.add(section.key);
         state.loadFailures=state.loadFailures.filter(item=>item.key!==section.key);
@@ -984,7 +986,11 @@ async function init(){
   $('retryWorkspace').disabled=true;
   try{
     SaathiTheme.refresh();$('journalDate').value=localDate();syncWorkspaceHistory(false);
-    const me=await api('/api/me');if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
+    const profile=api('/api/me');
+    if((state.currentView||'overview')==='overview'){
+      state.startupSections=new Map(workspaceSections.filter(section=>['overview','today','reminders','habits'].includes(section.key)).map(section=>[section.key,api(typeof section.url==='function'?section.url():section.url).then(data=>({data}),error=>({error}))]));
+    }
+    const me=await profile;if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
     state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiRecovery.connect({user:me.user,api,notify:toast});SaathiWorkspace.connect({user:me.user,api,notify:toast});SaathiHub.connect({user:me.user,api,notify:toast,openView,openTask:async id=>{openView('tasks');await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===id);if(task)editTask(task);else toast('Task not found.')},refreshToday:()=>{state.loadedSections?.delete('tasks');return loadWorkspaceSections(workspaceSections.filter(item=>['today','overview'].includes(item.key)))}});updateGreeting();
     const selectedTask=Number(new URLSearchParams(location.search).get('task'));if(selectedTask>0){await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===selectedTask);if(task)editTask(task);history.replaceState(null,'','/dashboard#tasks')}
     state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
@@ -1004,3 +1010,4 @@ init();
 </script>
 </body>
 </html>
+

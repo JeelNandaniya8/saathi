@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('dashboard.html','utf8');
+const requests=[],pending={},applied=[],elements=new Map();
+const element=()=>({hidden:false,disabled:false,setAttribute(){},classList:{remove(){},add(){}},querySelector(){return null},prepend(){}});
+const state={currentView:'overview',loadFailures:[]};
+const sections=['overview','today','reminders','habits'].map(key=>({key,label:key,url:'/api/'+key,apply:data=>applied.push(data.key)}));
+const ctx={state,workspaceSections:sections,$:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id)},api:url=>{requests.push(url);return new Promise(resolve=>pending[url]=resolve)},document:{createElement:element}};
+vm.createContext(ctx);
+const start=source.indexOf("    const profile=api('/api/me');"),end=source.indexOf('    const me=await profile;',start);
+vm.runInContext(source.slice(start,end),ctx);
+assert.equal(requests.length,5,'profile and four overview requests start together');
+vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSections('),source.indexOf('async function loadViewSections(')),ctx);
+(async()=>{const loading=ctx.loadWorkspaceSections(sections);for(const section of sections)pending[section.url]({key:section.key});pending['/api/me']({user:{id:1}});await loading;assert.equal(requests.length,5,'startup data is reused without refetch');assert.equal(applied.length,4);assert.equal(state.startupSections.size,0,'temporary cache is drained');console.log('PASS parallel startup, no duplicate fetches, temporary cache cleanup')})().catch(error=>{console.error(error);process.exitCode=1});

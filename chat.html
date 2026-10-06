@@ -557,7 +557,7 @@ chatSidebarMedia.addEventListener('change',()=>setChatSidebar(!chatSidebarMedia.
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
 let replyWaitTimer;
 function clearReplyWait(){clearTimeout(replyWaitTimer);document.getElementById('replyStatus').hidden=true}
-function setBusy(busy){clearReplyWait();if(busy)replyWaitTimer=setTimeout(()=>{const notice=document.getElementById('replyStatus');notice.textContent='Waiting for the AI service. You can stop this reply.';notice.hidden=false},8000);state.sending=busy;el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=busy||Boolean(state.loadingConversation||state.historyError);el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
+function setBusy(busy){clearReplyWait();if(busy)replyWaitTimer=setTimeout(()=>{const notice=document.getElementById('replyStatus');notice.textContent='Waiting for the AI service. You can stop this reply.';notice.hidden=false},8000);state.sending=busy;el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=Boolean(state.loadingConversation||state.historyError);el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
 function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop generating':'Send message');el.send.title=stopping?'Stop generating':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId||Boolean(state.loadingConversation||state.historyError);el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
 function readableSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return Math.ceil(bytes/1024)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
 function decodeLegacyText(value){const text=String(value??'');if(!/[ÃÂàð][\u0080-\u00bf]/.test(text))return text;try{const characters=Array.from(text);if(characters.some(character=>character.charCodeAt(0)>255))return text;return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(characters,character=>character.charCodeAt(0)))}catch(error){return text}}
@@ -612,7 +612,7 @@ async function streamChatRequest(url,body,onDelta){
 }
 
 function saveChatDraft(){
-  if(!state.activeId||state.sending)return;
+  if(!state.activeId||(state.sending&&!el.input.value))return;
   // Keep a failed request for recovery until the user edits or retries it.
   if(!el.input.value&&state.messages.some(message=>message.failed))return;
   const recovery=window.SaathiRecovery;
@@ -852,8 +852,21 @@ function renderMessages(showTyping=false){
   clearInterval(state.revealTimer);state.revealTimer=null;el.list.replaceChildren();
   if(!state.messages.length&&!showTyping){el.list.append(emptyView());return}
   if(state.hasMore&&!showTyping){const older=document.createElement('button');older.className='load-older';older.type='button';older.textContent='Load older messages';older.addEventListener('click',loadOlderMessages);el.list.append(older)}
-  state.messages.forEach((message,index)=>el.list.append(messageElement(message,index)));
+  const fragment=document.createDocumentFragment();state.messages.forEach((message,index)=>fragment.append(messageElement(message,index)));el.list.append(fragment);
   if(showTyping){const article=document.createElement('article');article.className='message assistant';article.id='typingMessage';article.innerHTML='<div class="message-avatar">S</div><div class="message-body"><p class="message-name">Saathi</p><div class="typing" aria-label="Saathi is preparing a reply"><i></i><i></i><i></i></div></div>';el.list.append(article)}
+}
+
+// Bound Markdown/layout work during streams; paint the first chunk immediately.
+function createStreamPainter(message){
+  const node=el.list.querySelector('[data-message-id="'+message.id+'"] .message-content');
+  let timer=null,lastPaint=-Infinity,closed=false;
+  function paint(){
+    timer=null;if(closed||!node?.isConnected)return;
+    const follow=el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight<180;
+    renderMarkdown(node,message.content);node.classList.add('has-text');lastPaint=performance.now();
+    if(follow)scrollToLatest(false);
+  }
+  return {update(){if(closed||timer!==null)return;const delay=80-(performance.now()-lastPaint);if(delay<=0)paint();else timer=setTimeout(paint,delay)},cancel(){closed=true;clearTimeout(timer);timer=null}};
 }
 
 function progressiveReveal(message){
@@ -888,17 +901,18 @@ async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverr
   const active=currentConversation(),firstUserMessage=!state.messages.some(message=>message.role==='user'),previousTitle=active?.title||null;let optimisticTitle=false;
   if(active&&firstUserMessage&&active.title==='New conversation'){active.title=content.trim()?conversationTitle(text):attachmentConversationTitle(mode,files);active.preview=text;active.updated_at=temporary.created_at;el.chatTitle.textContent=active.title;sortConversations();renderConversations();optimisticTitle=true}
   state.messages.push(temporary,streaming);el.input.value='';state.selectedFiles=[];renderSelectedFiles();setBusy(true);if(files.length)showRequestProgress('Preparing your upload…');else el.uploadStatus.hidden=true;renderMessages();scrollToLatest();
+  const painter=createStreamPainter(streaming);
   try{
     let body;if(files.length){body=new FormData();body.append('content',text);body.append('mode',mode);body.append('request_id',currentRequestId);body.append('file_only',String(fileOnly));files.forEach(file=>body.append('attachments',file,file.name))}else body=JSON.stringify({content:text,mode,request_id:currentRequestId,file_only:fileOnly});
-    let streamFrame=null,receivedFirstDelta=false;const data=await streamChatRequest(`/api/conversations/${state.activeId}/messages/stream`,body,chunk=>{streaming.content+=chunk;if(!receivedFirstDelta){receivedFirstDelta=true;el.uploadStatus.hidden=true}if(streamFrame)return;streamFrame=requestAnimationFrame(()=>{streamFrame=null;const article=el.list.querySelector('[data-message-id="'+streaming.id+'"]'),contentNode=article?.querySelector('.message-content');if(contentNode){renderMarkdown(contentNode,streaming.content);contentNode.classList.add('has-text')}if(el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight<180)scrollToLatest(false)})});
+    let receivedFirstDelta=false;const data=await streamChatRequest(`/api/conversations/${state.activeId}/messages/stream`,body,chunk=>{streaming.content+=chunk;if(!receivedFirstDelta){receivedFirstDelta=true;el.uploadStatus.hidden=true}painter.update()});
     releaseLocalPreviews(temporary);
-    window.SaathiRecovery?.removeDraft('chat',state.activeId);
+    if(!el.input.value.trim())window.SaathiRecovery?.removeDraft('chat',state.activeId);
     state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming&&message.id!==data.user_message.id&&message.id!==data.assistant_message.id);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
     return data;
   }catch(error){if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true});renderMessages();scrollToLatest();}
-  finally{setBusy(false);el.input.focus()}
+  finally{painter.cancel();setBusy(false);el.input.focus()}
 }
 
 let editingMessage=null,editController=null,editConversation=null;
@@ -929,12 +943,11 @@ async function regenerateReply(){
   const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;
   const streaming={id:'regenerating-'+Date.now(),role:'assistant',content:'',streaming:true};
   state.messages.push(streaming);setBusy(true);renderMessages();scrollToLatest(false);
+  const painter=createStreamPainter(streaming);
   try{
     const data=await streamChatRequest(`/api/conversations/${state.activeId}/regenerate`,'{}',chunk=>{
       streaming.content+=chunk;
-      const node=el.list.querySelector('[data-message-id="'+streaming.id+'"] .message-content');
-      if(node){renderMarkdown(node,streaming.content);node.classList.add('has-text')}
-      if(el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight<180)scrollToLatest(false);
+      painter.update();
     });
     state.messages=state.messages.filter(message=>message!==previous&&message!==streaming);
     state.messages.push(normaliseMessageDisplay(data.assistant_message));renderMessages();
@@ -944,7 +957,7 @@ async function regenerateReply(){
       const node=document.createElement('div');node.className='message-content';renderMarkdown(node,streaming.content);
       const notice=document.createElement('p');notice.textContent='Incomplete alternative · not saved';node.prepend(notice);renderMessages();el.list.append(node);
     }else{renderMessages();showToast(error.message,'warning')}
-  }finally{setBusy(false);el.input.focus()}
+  }finally{painter.cancel();setBusy(false);el.input.focus()}
 }
 
 function openConversationMenu(event,id){
@@ -979,7 +992,7 @@ el.mode.addEventListener('change',updateModeDescription);
 el.composer.addEventListener('dragleave',event=>{if(!el.composer.contains(event.relatedTarget))el.composer.classList.remove('dragging')});
 el.composer.addEventListener('drop',event=>{event.preventDefault();el.composer.classList.remove('dragging');if(!state.sending)chooseFiles(event.dataTransfer?.files)});
 el.input.addEventListener('paste',event=>{const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);if(files.length){event.preventDefault();chooseFiles(files)}});
-el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();el.composer.requestSubmit()}});
+el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
 el.search.addEventListener('input',()=>{el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
 document.getElementById('archiveToggle').addEventListener('click',()=>{if(state.sending)return;state.showArchived=!state.showArchived;state.activeId=null;state.messages=[];state.hasMore=false;updateComposer();document.getElementById('archiveToggle').classList.toggle('active',state.showArchived);document.getElementById('archiveLabel').textContent=state.showArchived?'Back to conversations':'Archived conversations';loadConversations()});
@@ -1261,3 +1274,4 @@ init();
 </script>
 </body>
 </html>
+
