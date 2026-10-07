@@ -659,11 +659,20 @@ function renderConversations(){
   });
 }
 
+let historyLoadSequence=0,olderMessagesRequest=null;
 async function loadConversations(search='',prefetched=null){
+  const sequence=++historyLoadSequence,archived=state.showArchived;
+  const isCurrent=()=>sequence===historyLoadSequence&&archived===state.showArchived;
   try{
-    const data=prefetched||await api('/api/conversations?archived='+state.showArchived+'&search='+encodeURIComponent(search));state.conversations=(data.conversations||[]).map(normaliseConversationDisplay);renderConversations();
+    const data=prefetched||await api('/api/conversations?archived='+state.showArchived+'&search='+encodeURIComponent(search));if(!isCurrent())return;state.conversations=(data.conversations||[]).map(normaliseConversationDisplay);renderConversations();
     if(!search&&!state.activeId){const requested=new URLSearchParams(location.search).get('conversation');if(requested&&/^\d+$/.test(requested)){history.replaceState(null,'','/chat');await selectConversation(Number(requested))}else if(state.conversations.length)await selectConversation(state.conversations[0].id);else if(!state.showArchived)await createConversation();else renderMessages()}
-  }catch(error){el.history.innerHTML='<div class="history-state">Your conversations could not load. Refresh to try again.</div>';showToast(error.message)}
+  }catch(error){
+    if(!isCurrent())return;
+    const notice=document.createElement('div'),retry=document.createElement('button');
+    notice.className='history-state';notice.textContent='Your conversations could not load.';notice.setAttribute('role','alert');
+    retry.type='button';retry.className='message-tool';retry.textContent='Retry';retry.addEventListener('click',()=>loadConversations(el.search.value.trim()));
+    notice.append(retry);el.history.replaceChildren(notice);showToast(error.message)
+  }
 }
 
 async function createConversation(){
@@ -672,7 +681,7 @@ async function createConversation(){
   if(!state.showArchived&&active?.title==='New conversation'&&!state.messages.length){closeSide();el.input.focus();return}
   try{
     state.showArchived=false;document.getElementById('archiveToggle').classList.remove('active');document.getElementById('archiveLabel').textContent='Archived conversations';
-    el.search.value='';el.searchWrap.classList.remove('has-value');
+    el.search.value='';el.searchWrap.classList.remove('has-value');clearTimeout(state.searchTimer);historyLoadSequence++;
     const data=await api('/api/conversations',{method:'POST',body:JSON.stringify({})});
     const conversation=normaliseConversationDisplay(data.conversation);state.conversations=[conversation,...state.conversations.filter(item=>item.id!==conversation.id)];saveChatDraft();state.messages.forEach(releaseLocalPreviews);clearSelectedFiles();state.loadingConversation=null;state.historyError=false;el.input.disabled=false;state.activeId=conversation.id;state.messages=[];state.hasMore=false;state.nextBeforeId=null;restoreChatDraft();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();updateComposer();closeSide();el.input.focus();
   }catch(error){showToast(error.message)}
@@ -876,8 +885,26 @@ function progressiveReveal(message){
 }
 
 async function loadOlderMessages(){
-  if(!state.hasMore||!state.nextBeforeId||state.sending)return;const previousHeight=el.messages.scrollHeight;
-  try{const data=await api(`/api/conversations/${state.activeId}/messages?limit=100&before_id=${state.nextBeforeId}`);state.messages=[...(data.messages||[]).map(normaliseMessageDisplay),...state.messages];state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;renderMessages();el.messages.scrollTop=el.messages.scrollHeight-previousHeight}catch(error){showToast(error.message)}
+  const id=state.activeId,sequence=conversationLoadSequence,before=state.nextBeforeId;
+  if(!id||!state.hasMore||!before||state.sending||state.loadingConversation||
+    (olderMessagesRequest?.id===id&&olderMessagesRequest.sequence===sequence))return;
+  const request={id,sequence};olderMessagesRequest=request;
+  const button=el.list.querySelector('.load-older');
+  if(button){button.disabled=true;button.textContent='Loading older messages…'}
+  const isCurrent=()=>state.activeId===id&&conversationLoadSequence===sequence;
+  try{
+    const data=await api(`/api/conversations/${id}/messages?limit=100&before_id=${before}`);
+    if(!isCurrent())return;
+    const previousHeight=el.messages.scrollHeight,previousTop=el.messages.scrollTop;
+    const existingIds=new Set(state.messages.map(message=>message.id));
+    const older=(data.messages||[]).filter(message=>!existingIds.has(message.id)).map(normaliseMessageDisplay);
+    state.messages=[...older,...state.messages];state.hasMore=Boolean(data.has_more);state.nextBeforeId=data.next_before_id;
+    renderMessages();el.messages.scrollTop=previousTop+el.messages.scrollHeight-previousHeight;
+  }catch(error){if(isCurrent())showToast(error.message)}
+  finally{
+    if(olderMessagesRequest===request)olderMessagesRequest=null;
+    if(isCurrent()&&button?.isConnected){button.disabled=false;button.textContent='Load older messages'}
+  }
 }
 
 async function copyMessage(text){try{await navigator.clipboard.writeText(text);showToast('Copied to clipboard.')}catch(error){showToast('Could not copy this message.') }}
@@ -993,7 +1020,7 @@ el.composer.addEventListener('dragleave',event=>{if(!el.composer.contains(event.
 el.composer.addEventListener('drop',event=>{event.preventDefault();el.composer.classList.remove('dragging');if(!state.sending)chooseFiles(event.dataTransfer?.files)});
 el.input.addEventListener('paste',event=>{const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);if(files.length){event.preventDefault();chooseFiles(files)}});
 el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
-el.search.addEventListener('input',()=>{el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
+el.search.addEventListener('input',()=>{historyLoadSequence++;el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
 document.getElementById('archiveToggle').addEventListener('click',()=>{if(state.sending)return;state.showArchived=!state.showArchived;state.activeId=null;state.messages=[];state.hasMore=false;updateComposer();document.getElementById('archiveToggle').classList.toggle('active',state.showArchived);document.getElementById('archiveLabel').textContent=state.showArchived?'Back to conversations':'Archived conversations';loadConversations()});
 document.getElementById('accountMenuButton').addEventListener('click',event=>{event.stopPropagation();el.accountMenu.classList.toggle('open')});document.getElementById('themeToggle').addEventListener('click',toggleTheme);document.getElementById('logoutButton').addEventListener('click',logout);
@@ -1274,4 +1301,5 @@ init();
 </script>
 </body>
 </html>
+
 
