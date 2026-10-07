@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false;
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0;
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -48,6 +48,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
+     else if(pathname==='/api/personal-context')data={fields:profileFields};
+     else if(pathname==='/api/personal-context/care/conditions'){
+      if(method==='PUT')profileFields=[{...body(),category:'care',field:'conditions',source:'user_reported',version:1,reviewed_at:new Date().toISOString()}];
+      else profileFields=[];data={ok:true};
+     }
+     else if(pathname==='/api/personal-context/revoke'){profileFields=profileFields.map(x=>({...x,use_in_ai:false,version:x.version+1}));data={ok:true}}
+     else if(pathname==='/api/exam-plans/preview')data={plan:{...body(),preview_token:'fixture-plan',coverage_limited:false,rest_date:'2026-12-31',items:[{date:'2026-12-20',phase:'recall',topic:'Algebra',minutes:25}]}};
+     else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:[]}}
+
      else {status=404;data={error:'Unmocked fixture endpoint: '+pathname}}
      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
     }
@@ -96,6 +105,43 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('account'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
+   // Actual forms: off-by-default health consent, revoke and preview-before-save.
+   await page.locator('#account [data-personal-context]').click();
+   let profile=page.locator('dialog[open]').last();
+   await profile.getByRole('button',{name:'Review',exact:true}).first().click();
+   let editor=page.locator('dialog[open]').last();
+   await editor.getByLabel('Conditions you report',{exact:true}).fill('User-provided detail');
+   assert.equal(await editor.getByLabel('Allow this field in relevant AI replies').isChecked(),false);
+   await editor.getByLabel('Allow this field in relevant AI replies').check();
+   await editor.getByLabel('I confirm this information and agree to store it in my account.').check();
+   await editor.getByRole('button',{name:'Save',exact:true}).click();
+   await page.locator('dialog[open]').getByText('User-provided detail',{exact:true}).waitFor();
+   assert.equal(profileFields[0].use_in_ai,true);
+   await page.locator('dialog[open]').getByRole('button',{name:'Stop all profile use in AI',exact:true}).click();
+   await page.locator('dialog[open]').getByText(/Stored privately; excluded from AI/).waitFor();
+   assert.equal(profileFields[0].use_in_ai,false);
+   await page.keyboard.press('Escape');
+   await page.evaluate(()=>openView('study'));
+   await page.locator('[data-exam-plans]').click();
+   const exam=page.locator('dialog[open]');
+   await exam.getByLabel('Exam name',{exact:true}).fill('Semester exam');
+   await exam.getByLabel('Confirmed exam date',{exact:true}).fill('2027-01-01');
+   await exam.getByLabel('Topics, one per line',{exact:true}).fill('Algebra');
+   await exam.getByLabel('I confirm the exam date and topics. These are not assignment deadlines.').check();
+   assert.equal(planSaves,0);
+   await exam.getByRole('button',{name:'Preview plan',exact:true}).click();
+   await exam.getByText('2026-12-20 · Recall: Algebra · 25 min',{exact:true}).waitFor();
+   assert.ok(await exam.evaluate(el=>el.getBoundingClientRect().width<=innerWidth),'New dialogs fit mobile');
+   await exam.getByRole('button',{name:'Add this plan to Planner',exact:true}).click();
+   await page.waitForFunction(()=>state.currentView==='tasks');assert.equal(planSaves,1);
+   // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
+   await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:'Overview',children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
+   assert.equal(await page.locator('.mm-node').count(),25);
+   await page.getByRole('button',{name:'Collapse Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),20);
+   await page.getByRole('button',{name:'Expand Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),25);
+   const download=page.waitForEvent('download');await page.evaluate(()=>exportMindmapPng());const png=await download;
+   const bytes=fs.readFileSync(await png.path());assert.equal(bytes.toString('ascii',1,4),'PNG');assert.ok(bytes.readUInt32BE(16)>1000&&bytes.readUInt32BE(20)>1000);
+
    await page.evaluate(()=>openView('overview'));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Dashboard must fit mobile width');
    await page.evaluate(()=>openView('tasks'));await page.waitForFunction(()=>state.loadedSections?.has('tasks'));
