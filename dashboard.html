@@ -749,8 +749,40 @@ async function installApp(){if(!state.deferredInstall)return toast('Install is n
 $('confirmCancel').onclick=()=>finishConfirm(false);$('confirmAccept').onclick=()=>finishConfirm(true);$('confirmDialog').addEventListener('cancel',event=>{event.preventDefault();finishConfirm(false)});$('confirmDialog').addEventListener('close',()=>{if(state.confirmResolver)finishConfirm(false)});
 $('habitEditForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter,habit=state.habits.find(item=>item.id===state.habitEditingId);if(!habit)return;button.disabled=true;try{await updateHabit(habit,{name:$('habitEditName').value.trim(),frequency:$('habitEditFrequency').value,active:$('habitEditActive').value==='active'});closeHabitEdit();toast('Habit updated.','success')}catch(error){}finally{button.disabled=false}});$('habitEditCancel').onclick=closeHabitEdit;$('habitDialog').addEventListener('close',()=>{if(!$('habitDialog').open)state.habitEditingId=null});
 document.querySelectorAll('.nav button[data-view],button[data-open]').forEach(button=>button.addEventListener('click',()=>openView(button.dataset.view||button.dataset.open)));$('menuButton').onclick=()=>setNavigation(true);$('scrim').onclick=()=>{setNavigation(false);$('menuButton').focus()};document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('sidebar').classList.contains('open')){setNavigation(false);$('menuButton').focus()}});$('themeButton').onclick=toggleTheme;$('accountThemeButton').onclick=toggleTheme;
-$('taskForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;const payload={title:$('taskTitle').value,details:$('taskDetails').value,due_at:localInputToIso($('taskDue').value),priority:$('taskPriority').value};try{if(state.taskEditingId){const data=await api('/api/tasks/'+state.taskEditingId,{method:'PATCH',body:JSON.stringify(payload)});state.tasks=state.tasks.map(item=>item.id===state.taskEditingId?data.task:item);toast('Task updated.')}else{const data=await api('/api/tasks',{method:'POST',body:JSON.stringify(payload)});state.tasks.unshift(data.task);toast('Task added.')}state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;cancelTaskEdit();renderTasks()}catch(error){toast(error.message)}finally{button.disabled=false}});$('taskCancel').onclick=cancelTaskEdit;$('taskFilters').addEventListener('click',event=>{const button=event.target.closest('[data-filter]');if(!button)return;state.taskFilter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-pressed',String(item===button))});renderTasks()});
-$('reminderForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;const payload={title:$('reminderTitle').value,note:$('reminderNote').value,next_run_at:localInputToIso($('reminderTime').value),recurrence:$('reminderRecurrence').value,email_enabled:$('reminderDelivery').value==='email'};try{if(state.reminderEditingId){const data=await api('/api/reminders/'+state.reminderEditingId,{method:'PATCH',body:JSON.stringify({...payload,action:'update'})});state.reminders=state.reminders.map(item=>item.id===state.reminderEditingId?data.reminder:item);toast('Reminder updated.')}else{const data=await api('/api/reminders',{method:'POST',body:JSON.stringify(payload)});state.reminders.push(data.reminder);toast('Reminder created.')}state.reminders.sort((a,b)=>new Date(a.next_run_at)-new Date(b.next_run_at));state.overview.active_reminders=state.reminders.filter(item=>item.active).length;state.overview.next_reminder=state.reminders.filter(item=>item.active)[0]||null;cancelReminderEdit();renderReminders()}catch(error){toast(error.message)}finally{button.disabled=false}});$('reminderCancel').onclick=cancelReminderEdit;$('notificationButton').onclick=requestNotifications;
+function readTaskDraft(){return {title:$('taskTitle').value,details:$('taskDetails').value,due_at:$('taskDue').value,priority:$('taskPriority').value}}
+$('taskForm').addEventListener('submit',async event=>{
+  event.preventDefault();if(state.taskSaving)return;
+  const form=$('taskForm'),button=$('taskSubmit'),id=state.taskEditingId,draft=readTaskDraft();
+  state.taskSaving=true;button.disabled=true;form.setAttribute('aria-busy','true');
+  try{
+    const payload={...draft,due_at:localInputToIso(draft.due_at)};
+    const data=await api('/api/tasks'+(id?'/'+id:''),{method:id?'PATCH':'POST',body:JSON.stringify(id?payload:payload)});
+    state.tasks=[data.task,...state.tasks.filter(item=>item.id!==data.task.id)];
+    state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;
+    if(state.taskEditingId===id){
+      if(JSON.stringify(readTaskDraft())===JSON.stringify(draft))cancelTaskEdit();
+      else if(!id){state.taskEditingId=data.task.id;button.textContent='Save changes';$('taskCancel').hidden=false}
+    }
+    renderTasks();toast(id?'Task updated.':'Task added.');
+  }catch(error){toast(error.message)}finally{state.taskSaving=false;button.disabled=false;form.removeAttribute('aria-busy')}
+});$('taskCancel').onclick=cancelTaskEdit;$('taskFilters').addEventListener('click',event=>{const button=event.target.closest('[data-filter]');if(!button)return;state.taskFilter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-pressed',String(item===button))});renderTasks()});
+function readReminderDraft(){return {title:$('reminderTitle').value,note:$('reminderNote').value,next_run_at:$('reminderTime').value,recurrence:$('reminderRecurrence').value,email_enabled:$('reminderDelivery').value}}
+$('reminderForm').addEventListener('submit',async event=>{
+  event.preventDefault();if(state.reminderSaving)return;
+  const form=$('reminderForm'),button=$('reminderSubmit'),id=state.reminderEditingId,draft=readReminderDraft();
+  state.reminderSaving=true;button.disabled=true;form.setAttribute('aria-busy','true');
+  try{
+    const payload={...draft,next_run_at:localInputToIso(draft.next_run_at),email_enabled:draft.email_enabled==='email'};
+    const data=await api('/api/reminders'+(id?'/'+id:''),{method:id?'PATCH':'POST',body:JSON.stringify(id?{...payload,action:'update'}:payload)});
+    state.reminders=[data.reminder,...state.reminders.filter(item=>item.id!==data.reminder.id)];
+    state.reminders.sort((a,b)=>new Date(a.next_run_at)-new Date(b.next_run_at));state.overview.active_reminders=state.reminders.filter(item=>item.active).length;state.overview.next_reminder=state.reminders.filter(item=>item.active)[0]||null;
+    if(state.reminderEditingId===id){
+      if(JSON.stringify(readReminderDraft())===JSON.stringify(draft))cancelReminderEdit();
+      else if(!id){state.reminderEditingId=data.reminder.id;button.textContent='Save changes';$('reminderCancel').hidden=false}
+    }
+    renderReminders();toast(id?'Reminder updated.':'Reminder created.');
+  }catch(error){toast(error.message)}finally{state.reminderSaving=false;button.disabled=false;form.removeAttribute('aria-busy')}
+});$('reminderCancel').onclick=cancelReminderEdit;$('notificationButton').onclick=requestNotifications;
 $('habitForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/habits',{method:'POST',body:JSON.stringify({name:$('habitName').value,frequency:$('habitFrequency').value})});state.habits.unshift(data.habit);event.target.reset();renderHabits();toast('Habit added.')}catch(error){toast(error.message)}finally{button.disabled=false}});
 $('journalForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;const id=$('journalId').value,payload={title:$('journalTitle').value,content:$('journalContent').value,entry_date:$('journalDate').value};try{const data=await api(id?'/api/journal/'+id:'/api/journal',{method:id?'PATCH':'POST',body:JSON.stringify(payload)});if(id)state.journal=state.journal.map(item=>String(item.id)===id?data.entry:item);else state.journal.unshift(data.entry);resetJournalForm();renderJournal();toast(id?'Journal entry updated.':'Journal entry saved.')}catch(error){toast(error.message)}finally{button.disabled=false}});$('journalCancel').onclick=resetJournalForm;let journalTimer;$('journalSearch').addEventListener('input',event=>{clearTimeout(journalTimer);journalTimer=setTimeout(()=>refreshJournal(event.target.value).catch(error=>toast(error.message)),350)});
 $('contactForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const data=await api('/api/trusted-contacts',{method:'POST',body:JSON.stringify({email:$('contactEmail').value})});event.target.reset();await refreshContacts();toast(data.message)}catch(error){toast(error.message)}finally{button.disabled=false}});
@@ -1012,6 +1044,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
