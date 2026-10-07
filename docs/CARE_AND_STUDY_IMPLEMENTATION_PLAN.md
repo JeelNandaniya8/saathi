@@ -32,9 +32,9 @@ Acceptance: one success and failure/recovery path for every flow; no fake succes
 ## 3. Personal context with permission
 - [ ] Optional care profile: name, language, timezone, accessibility preferences, user-reported conditions/allergies and clinician instructions.
 - [ ] Optional study profile: subjects, level, goals, confirmed exam dates and available study time.
-- [ ] Confirm before saving health information; retain source and last-reviewed date. Never infer a diagnosis from conversation.
-- [ ] Separate sensitive health fields from general memory. Send only necessary, permitted context to AI and explain external processing.
-- [ ] Show exactly what is stored/used/shared; field-level edit/delete and revocation.
+- [x] Confirm before saving health information; retain user-reported source and last-reviewed date. No inferred profile writes.
+- [x] Separate care fields from general memory. Explicit per-field AI permission defaults off; care only in Wellbeing, study only in supported study modes. Exclude fields after 90 days until reviewed; disclose external processing.
+- [x] Show saved fields, permission and review date; versioned edit/delete and revoke-all AI permission. Profiles are not shared with caregivers. Account export/deletion includes profile records.
 - [ ] Trusted caregiver access is explicit, limited and revocable; never automatic family access.
 Implementation: extend existing memory/preferences ownership patterns; add migrations and account export/delete coverage for new records.
 Acceptance: two-account isolation, consent withdrawal, stale/contradictory profile handling and export completeness.
@@ -78,11 +78,11 @@ Dependencies: Google Cloud API/OAuth configuration, authorized test student and 
 Acceptance: selected-course isolation, duplicates, edited/deleted assignments, missing deadlines, revoked tokens and admin-blocked authorization.
 
 ## 7. Exam preparation companion
-- [ ] User confirms exam date, syllabus and time budget; distinguish assignment deadlines from exams.
-- [ ] Build realistic backwards plans including recall, practice, revision and rest; label estimated workloads.
+- [x] User confirms exam date, topics, timezone and time budget; distinguish assignment deadlines from exams.
+- [x] Preview estimated recall/practice/revision blocks with breaks and a final light/rest day. Reject impossible minimum coverage and disclose partial coverage. Preview fingerprint prevents unnoticed changes before saving.
 - [ ] Ask progress, then re-plan missed days without shame or streak loss.
 - [ ] Gentle/direct tone choice; direct remains respectful.
-- [ ] Reuse planner, mock tests, notes and mindmaps rather than add another dashboard.
+- [x] Save reviewed study blocks into the existing Planner with duplicate-safe retry. Tasks can be manually adjusted there; removing a plan retains tasks explicitly.
 Example: “Exam ne 26 divas baki chhe. Aaje 20 minute chapter 1 thi sharu kariye?”
 Acceptance: changed dates, timezones, unrealistic workloads, overdue tasks and manual overrides.
 
@@ -97,9 +97,21 @@ Acceptance: changed dates, timezones, unrealistic workloads, overdue tasks and m
 - [ ] Measure AI first-text and full-response separately from app startup; preserve input on slow/offline failures.
 Gate: no known critical privacy/medical/data-loss defects; primary success and recovery flows pass; list untested device/production checks. Scores cannot be guaranteed.
 
-## Status of this commit
-Only the checked foundation items are implemented. Today now uses static, low-CPU skeletons for its primary data, guards against false zeroes, and offers direct actions in empty states. Care profiles, proactive clinical-context workflows, meal support, Classroom integration and adaptive exam plans remain planned.
-Syntax and focused behaviour checks accompany the initial changes; live/mobile verification remains outstanding.
+## Implementation checkpoint — 7 October 2026
+Implemented in this batch:
+- Account / Care / Study entry points for optional profiles with EN/GU/HI controls, confirmation, field-specific AI consent, review age, edit/delete and revoke-all. Existing account name/language/timezone controls remain authoritative.
+- Separate profile storage, account-scoped queries, non-reused field versions, export and cascading account deletion. User-entered clinician instructions are labelled unverified; no diagnosis inference or medical scheduling is added.
+- Exam date/topic/time-budget confirmation; deterministic preview, limited-coverage warnings, breaks/rest, preview fingerprint and duplicate-safe Planner creation. No model credits are spent generating these plans. New plan creation is not automatic replanning.
+- Mindmaps: subtree-sized layout to prevent overlap; collapse/expand, keyboard zoom, mouse drag/native touch scrolling, bounded full-hierarchy PNG with wrapped descriptions (including all descendants).
+- Mock tests: account-scoped browser answer/flag recovery within existing expiry, submit-once guard and failed-submit timer recovery. Existing server deadline/grading remain unchanged.
+- General memory: confirmed clear-all, owned by the signed-in account; profiles and conversations remain separate.
+- Earlier chat/history/notes/Planner race tests are now included in the JavaScript quality gate; stale fixture assumptions updated for parallel startup and stream painting.
+
+Verification: Python and JavaScript suites run locally; new database tests cover ownership, stale writes, consent/revocation, export, duplicate plan creation and account deletion. Database tests require the isolated PostgreSQL CI service. Browser executable download failed locally; real mobile and live production checks remain unverified.
+
+Still open (not represented as complete): full EN/GU/HI coverage of legacy screens and backend errors; pixel/contrast/device checks; landing length/entitlement reconciliation; PDF/OCR end-to-end verification; mock late/offline completion beyond existing deadline; timezone-aware medication occurrences and delivery tracking; opt-in clinical-context check-ins/food workflows; caregiver access; Google Classroom OAuth/import/sync; changed-exam-date/adaptive replanning. The profile's food-preference field stores user input only and does not implement diet planning.
+
+External gates: Classroom needs configured Google Cloud OAuth/API and a permitted test student; medication/clinical-context beta needs clinical review and verified scheduler delivery. Neither integration is claimed live. No deployment/domain changes or new AI vendor.
 
 ## Primary reference basis (reviewed 6 October 2026)
 - https://developers.google.com/workspace/classroom/guides/auth

@@ -59,7 +59,7 @@ vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSection
  assert.equal(requested.length,5);assert.ok(!requested.includes('/journal'));assert.ok(!requested.includes('/mocktests'));assert.ok(!requested.includes('/checkins'));
  releaseTasks();await Promise.all([firstLoad,repeated]);await ctx.loadViewSections('overview');assert.equal(requested.length,5,'Returning to a loaded view must not reload everything');
  // Initial connection failures must leave a usable Retry button.
- const initCtx={state:{user:null},$,SaathiTheme:{refresh(){}},localStorage:{getItem:()=>null},localDate:()=>'',syncWorkspaceHistory(){},api:async()=>{throw Error('Offline')},toast(){}};
+ const initCtx={state:{user:null},workspaceSections:[],$,SaathiTheme:{refresh(){}},localStorage:{getItem:()=>null},localDate:()=>'',syncWorkspaceHistory(){},api:async()=>{throw Error('Offline')},toast(){}};
  vm.createContext(initCtx);vm.runInContext(source.slice(source.indexOf('async function init(){'),source.indexOf("$('skipWorkspace').addEventListener")),initCtx);
  $('retryWorkspace').disabled=true;await initCtx.init();assert.equal($('retryWorkspace').disabled,false);assert.equal($('workspaceStatus').hidden,false);
  // Only a real 401 may redirect to login; network/server errors stay in place.

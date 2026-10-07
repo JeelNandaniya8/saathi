@@ -1,3 +1,14 @@
+function saveMockDraft(){
+  if(!state.activeTest||state.lastAttemptResult?.test?.id===state.activeTest.id)return;
+  window.SaathiRecovery?.saveDraft('mock',state.activeTest.id,{answers:state.activeTestAnswers,flags:[...state.activeTestFlags],index:state.activeTestIndex});
+}
+function restoreMockDraft(){
+  const draft=window.SaathiRecovery?.getDraft('mock',state.activeTest?.id);if(!draft)return;
+  const ids=new Set((state.activeTest.questions||[]).map((q,i)=>String(q.id||i+1)));
+  state.activeTestAnswers=Object.fromEntries(Object.entries(draft.answers||{}).filter(([id,answer])=>ids.has(id)&&['A','B','C','D'].includes(answer)));
+  state.activeTestFlags=new Set((Array.isArray(draft.flags)?draft.flags:[]).filter(id=>ids.has(String(id))));
+  state.activeTestIndex=Number.isInteger(draft.index)?Math.max(0,Math.min(draft.index,ids.size-1)):0;
+}
 function renderMockTestHistory(){
   const box=$('mockTestHistoryList');
   if(!box)return;
@@ -41,20 +52,22 @@ function renderMockTestHistory(){
 }
 
 async function quickStartFromHistory(test){
+  if(state.testSubmitting||state.testGenerating)return;const sequence=state.testLoadSequence=(state.testLoadSequence||0)+1;clearInterval(state.testTimerInterval);
   try{
-    const response=await api('/api/mock-tests/'+test.id);
+    const response=await api('/api/mock-tests/'+test.id);if(sequence!==state.testLoadSequence)return;
     state.activeTest=response.test;state.activeTestAnswers={};state.activeTestFlags=new Set();state.activeTestIndex=0;
-    if(response.result){state.lastAttemptResult=response.result;renderTestResults(response.result);return}
+    if(response.result){window.SaathiRecovery?.removeDraft('mock',test.id);state.lastAttemptResult=response.result;renderTestResults(response.result);return}
     const remaining=Math.ceil((new Date(response.test.expires_at).getTime()-Date.now())/1000);
     if(remaining<=0){$('testTopic').value=test.topic;toast('This test has ended. Generate a new practice test when ready.');return}
     state.testTotalSeconds=response.test.time_limit_minutes*60;state.testSecondsLeft=remaining;
     $('mockTestCreatorBox').style.display='none';$('mockTestResultsBox').style.display='none';$('mockTestRunnerBox').style.display='block';
-    $('runnerTopicTitle').textContent=test.topic;startTestTimer();renderQuestion(0);
-  }catch(error){toast(error.message,'error')}
+    $('runnerTopicTitle').textContent=test.topic;restoreMockDraft();startTestTimer();renderQuestion(state.activeTestIndex);
+  }catch(error){if(sequence===state.testLoadSequence)toast(error.message,'error')}
 }
 
 async function generateMockTest(event){
   if(event)event.preventDefault();
+  if(state.testSubmitting||state.testGenerating)return;state.testGenerating=true;state.testLoadSequence=(state.testLoadSequence||0)+1;
   const btn=$('testSubmitBtn');
   btn.disabled=true;
   const originalText=btn.textContent;
@@ -94,7 +107,7 @@ async function generateMockTest(event){
     }
     toast(error.message,'error');
   }finally{
-    btn.disabled=false;
+    state.testGenerating=false;btn.disabled=false;
     btn.textContent=originalText;
   }
 }
@@ -131,7 +144,7 @@ function renderQuestion(index){
   if(!questions.length)return;
   if(index<0)index=0;
   if(index>=questions.length)index=questions.length-1;
-  state.activeTestIndex=index;
+  state.activeTestIndex=index;saveMockDraft();
   const q=questions[index];
   const qId=q.id||(index+1);
   
@@ -171,11 +184,13 @@ function renderQuestion(index){
 }
 
 function selectOption(qId,letter){
+  if(state.testSubmitting||Date.now()>=new Date(state.activeTest.expires_at).getTime())return;
   state.activeTestAnswers[qId]=letter;
   renderQuestion(state.activeTestIndex);
 }
 
 function toggleFlagCurrentQuestion(){
+  if(state.testSubmitting)return;
   const q=state.activeTest?.questions?.[state.activeTestIndex];
   if(!q)return;
   const qId=q.id||(state.activeTestIndex+1);
@@ -246,9 +261,8 @@ async function confirmSubmitTest(){
 }
 
 async function submitMockTest(isTimeout=false){
-  clearInterval(state.testTimerInterval);
-  const testId=state.activeTest?.id;
-  if(!testId)return;
+  const testId=state.activeTest?.id;if(!testId||state.testSubmitting)return;
+  state.testSubmitting=true;saveMockDraft();clearInterval(state.testTimerInterval);
   
   const timeSpent=Math.max(1,state.testTotalSeconds-state.testSecondsLeft);
   const submitBtn=$('runnerSubmitBtn');
@@ -263,6 +277,7 @@ async function submitMockTest(isTimeout=false){
       })
     });
     
+    window.SaathiRecovery?.removeDraft('mock',testId);
     state.lastAttemptResult=res;
     renderTestResults(res);
     playChime();
@@ -276,7 +291,9 @@ async function submitMockTest(isTimeout=false){
     }).catch(()=>{});
   }catch(error){
     toast(error.message,'error');
+    if(Date.now()<new Date(state.activeTest.expires_at).getTime())startTestTimer();
   }finally{
+    state.testSubmitting=false;
     if(submitBtn)submitBtn.disabled=false;
   }
 }

@@ -5,6 +5,7 @@ let sent;
 const ctx={window:{SaathiRecovery:recovery},Date,FormData,requestId:()=> 'new-request',
   state:{activeId:1,sending:false,messages:[],selectedFiles:[],chatModes:[{id:'normal'}],conversations:[{id:1,title:'Existing'}]},
   el:{input:{value:'',focus(){}},mode:{value:'normal'},fileOnly:{checked:false},chatTitle:{},uploadStatus:{}},
+  createStreamPainter:()=>({update(){},cancel(){}}),
   updateComposer(){},updateModeDescription(){},showToast(){},renderMessages(){},renderSelectedFiles(){},renderConversations(){},sortConversations(){},showRequestProgress(){},scrollToLatest(){},releaseLocalPreviews(){},
   normaliseMessageDisplay:v=>v,normaliseConversationDisplay:v=>v,decodeLegacyText:v=>v,
   currentConversation:()=>ctx.state.conversations[0],setBusy:busy=>ctx.state.sending=busy,

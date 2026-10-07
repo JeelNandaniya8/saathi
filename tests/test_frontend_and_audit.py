@@ -115,7 +115,7 @@ def test_live_streaming_is_utf8_low_latency_and_uses_one_composer_control():
         "stopping?'■':'↑'",
         "state.activeRequest?.abort()",
         "thinking-dots",
-        "renderMarkdown(contentNode,streaming.content)",
+        "function createStreamPainter(message)",
         "function decodeLegacyText(value)",
         "new TextDecoder('utf-8',{fatal:true})",
     ):
