@@ -68,3 +68,15 @@ def test_caregiver_expired_and_foreign_schedule_denied(db_app,monkeypatch):
     with c.session_transaction() as s:s['user_id']=2
     assert c.post(f'/api/care/shares/{sid}/respond',json={'confirmed':True,'action':'accept','version':1}).status_code==400
     assert c.get(f'/api/care/shares/{sid}/records').status_code==404
+
+
+def test_new_care_data_cascades_on_account_deletion(db_app,monkeypatch):
+    _,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true');rid,_=create(c)
+    data=food();preview=c.post('/api/care/food-plans/preview',json=data).json['plan']
+    assert c.post('/api/care/food-plans',json={**data,'save_confirmed':True,'preview_token':preview['preview_token'],'client_id':str(uuid4())}).status_code==201
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO care_shares(owner_id,recipient_id,routine_ids,fields,expires_at) VALUES(1,2,%s,'[\"status\"]',NOW()+INTERVAL '1 day')",('[%s]'%rid,))
+            cur.execute('DELETE FROM users WHERE id=1')
+    for table in ('food_plans','care_shares','care_occurrences'):
+        assert one(db,'SELECT COUNT(*) n FROM '+table)['n']==0

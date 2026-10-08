@@ -73,9 +73,9 @@ def validate_schedules(data):
     return rows
 
 def ensure_occurrence(cur, reminder, scheduled):
-    cur.execute('''INSERT INTO care_occurrences(reminder_id,user_id,scheduled_for)
-        VALUES(%s,%s,%s) ON CONFLICT(reminder_id,scheduled_for) DO NOTHING''',
-        (reminder['id'],reminder['user_id'],scheduled))
+    cur.execute('''INSERT INTO care_occurrences(reminder_id,user_id,scheduled_for,title_snapshot,instructions_snapshot)
+        VALUES(%s,%s,%s,%s,%s) ON CONFLICT(reminder_id,scheduled_for) DO NOTHING''',
+        (reminder['id'],reminder['user_id'],scheduled,reminder['title'],reminder['note']))
 
 
 def sync_one(cur, reminder, now):
@@ -235,6 +235,16 @@ def register(app,b):
             if request.method=='DELETE':
                 if data.get('confirmed') is not True:raise ValueError('Confirm before deleting the schedule and its logs.')
                 cur.execute('DELETE FROM reminders WHERE id=%s AND user_id=%s',(reminder_id,uid))
+            elif data.get('action')=='edit_instructions':
+                if set(data)-{'action','title','instructions','version','confirmed'}:raise ValueError('Instruction editing cannot change schedule timing or status.')
+                version=row['care_schedule'].get('version',1)
+                if type(data.get('version')) is not int or data['version']!=version:return jsonify(error='Schedule changed. Review again.'),409
+                title,note,_,_=validate_schedule({**data,'starts_at':row['care_schedule']['anchor'],'timezone':row['care_schedule']['timezone'],'recurrence':row['recurrence']})
+                schedule={**row['care_schedule'],'version':version+1,'instructions_reviewed_at':datetime.now(timezone.utc).isoformat()}
+                cur.execute('UPDATE reminders SET title=%s,note=%s,care_schedule=%s WHERE id=%s',(title,note,Json(schedule),reminder_id))
+                # Never rewrite elapsed or user-reported history; future pending drafts can reflect a confirmed correction.
+                cur.execute("UPDATE care_occurrences SET title_snapshot=%s,instructions_snapshot=%s,version=version+1 WHERE reminder_id=%s AND scheduled_for>NOW() AND status='pending'",(title,note,reminder_id))
+                cur.execute("UPDATE care_shares SET status='pending',version=version+1 WHERE owner_id=%s AND status='accepted' AND routine_ids @> %s::jsonb",(uid,Json([reminder_id])))
             else:
                 if type(data.get('active')) is not bool:raise ValueError('Choose active or paused.')
                 cur.execute('UPDATE reminders SET active=%s WHERE id=%s',(data['active'],reminder_id))

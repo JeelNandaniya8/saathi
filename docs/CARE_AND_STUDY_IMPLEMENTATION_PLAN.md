@@ -14,74 +14,74 @@ Already shipped: simpler hero CTAs, waitlist, OG image/tags, illustrative demos,
 - [x] Replace competitive/viral exam copy with private revision language; retain voluntary sharing.
 - [x] Fix Hindi label, account grammar, password visibility controls and duplicate initial session check.
 - [x] Prioritize next task, next reminder and recent chat; collapse counters into an optional overview and suppress zero values only after overview loads.
-- [ ] Skeletons matching final dimensions; no greeting flash or layout jump; retry without losing drafts.
-- [ ] Condense repetitive landing stories; retain clear care/limits/privacy copy, visible mobile login/signup and one primary CTA.
-- [ ] Reconcile actual Plus entitlements and referral promises without removing earned benefits.
+- [x] Skeletons matching final dimensions; no greeting flash or layout jump; retry without losing drafts.
+- [x] Condense repetitive landing stories; retain clear care/limits/privacy copy, visible mobile login/signup and one primary CTA.
+- [x] Reconcile actual Plus entitlements and referral promises without removing earned benefits.
 Acceptance: all tools remain reachable by touch/keyboard; deep links, Back and notes keep working; no palette/sidebar relocation.
 
 ## 2. Existing feature reliability
-- [ ] Chat: first chunk, long replies, Stop/Retry/edit, rapid A→B→A navigation, pagination and next-message drafts.
-- [ ] Notes: create/edit/search/reopen/export; explicitly select context before AI use.
-- [ ] Reminders: create/edit/pause/resume/snooze/complete; timezone and permission states clearly shown.
-- [ ] Memory: review/edit/pause/delete/clear, and prove inactive memory is excluded from AI.
+- [x] Chat: first chunk, long replies, Stop/Retry/edit, rapid A→B→A navigation, pagination and next-message drafts.
+- [x] Notes: create/edit/search/reopen/export; explicitly select context before AI use.
+- [x] Reminders: create/edit/pause/resume/snooze/complete; timezone and permission states clearly shown.
+- [x] Memory: review/edit/pause/delete/clear, and prove inactive memory is excluded from AI.
 - [ ] PDF/image: size/type validation, cancellable progress, uncertain OCR disclosure, retry preserving input, source-grounded summary/formulas/flashcards/questions and save-to-notes.
 - [ ] Mock exam: server deadline, background tab, refresh recovery, unanswered palette, submit-once, results and private downloadable scorecard.
 - [ ] Mindmap: touch/keyboard pan/zoom/collapse, large-map readability, accurate PNG bounds and generation retry.
 Acceptance: one success and failure/recovery path for every flow; no fake success before persistence.
 
 ## 3. Personal context with permission
-- [ ] Optional care profile: name, language, timezone, accessibility preferences, user-reported conditions/allergies and clinician instructions.
-- [ ] Optional study profile: subjects, level, goals, confirmed exam dates and available study time.
+- [x] Optional care profile: name, language, timezone, accessibility preferences, user-reported conditions/allergies and clinician instructions.
+- [x] Optional study profile: subjects, level, goals, confirmed exam dates and available study time.
 - [x] Confirm before saving health information; retain user-reported source and last-reviewed date. No inferred profile writes.
 - [x] Separate care fields from general memory. Explicit per-field AI permission defaults off; care only in Wellbeing, study only in supported study modes. Exclude fields after 90 days until reviewed; disclose external processing.
 - [x] Show saved fields, permission and review date; versioned edit/delete and revoke-all AI permission. Profiles are not shared with caregivers. Account export/deletion includes profile records.
-- [ ] Trusted caregiver access is explicit, limited and revocable; never automatic family access.
+- [x] Trusted caregiver access is explicit, limited and revocable; never automatic family access.
 Implementation: extend existing memory/preferences ownership patterns; add migrations and account export/delete coverage for new records.
 Acceptance: two-account isolation, consent withdrawal, stale/contradictory profile handling and export completeness.
 
 ## 4. Proactive care and medication reminders
-- [ ] Extend the existing reminder scheduler, not a parallel scheduling system.
-- [ ] Save the exact user-confirmed prescribed instruction, schedule, timezone and recurrence. Prescription OCR creates a draft requiring confirmation.
-- [ ] Do not choose medicines, insulin doses, injection timing or catch-up doses. Meal timing is separately confirmed, not inferred from age/diabetes.
-- [ ] Separate recurring instructions, individual occurrences and notification delivery attempts.
-- [ ] Occurrence states: pending, user-reported taken, skipped, not confirmed. No response is not proof that medicine was missed.
-- [ ] Taken / Remind me later / Skip / Need help, with clear confirmation and correction. Notification snooze never rewrites prescribed timing.
-- [ ] Deterministic scheduling and translated templates; no model call needed to decide whether a reminder is due.
-- [ ] Unique occurrence IDs, bounded retries, duplicate prevention, stale-message expiry, timezone/DST tests and privacy-safe audit logs.
-- [ ] Opt-in follow-ups, quiet hours, frequency limits and sensitive lock-screen content hidden by default.
-- [ ] Honest states: in-app only, permission missing, server delivery unavailable, queued/sent/failed. No guaranteed delivery or emergency-monitoring claim.
+- [x] Extend the existing reminder scheduler, not a parallel scheduling system.
+- [x] Save the exact user-confirmed prescribed instruction, schedule, timezone and recurrence. Prescription OCR creates a draft requiring confirmation.
+- [x] Do not choose medicines, insulin doses, injection timing or catch-up doses. Meal timing is separately confirmed, not inferred from age/diabetes.
+- [x] Separate recurring instructions, individual occurrences and notification delivery attempts.
+- [x] Occurrence states: pending, user-reported taken, skipped, not confirmed. No response is not proof that medicine was missed.
+- [x] Taken / Remind me later / Skip / Need help, with clear confirmation and correction. Notification snooze never rewrites prescribed timing.
+- [x] Deterministic scheduling and translated templates; no model call needed to decide whether a reminder is due.
+- [x] Unique occurrence IDs, bounded retries, duplicate prevention, stale-message expiry, timezone/DST tests and privacy-safe audit logs.
+- [x] Opt-in follow-ups, quiet hours, frequency limits and sensitive lock-screen content hidden by default.
+- [x] Honest states: in-app only, permission missing, server delivery unavailable, queued/sent/failed. No guaranteed delivery or emergency-monitoring claim.
 - [ ] Caregiver follow-up only with both parties' consent and a chosen trigger; no silent escalation.
 Acceptance: restart/offline/retry/snooze/timezone/pause/revocation tests; clinical review before health-sensitive beta use.
 Example after schedule confirmation: “John bhai, tamara save karela schedule pramane dava nu reminder chhe. Lidhee chhe?”
 
 ## 5. Wellbeing and food support
-- [ ] Opt-in wellbeing check-ins with skip and adjustable frequency; show user-reported trends without diagnosis.
-- [ ] Optional clinician-shareable summary under user control.
+- [x] Opt-in wellbeing check-ins with skip and adjustable frequency; show user-reported trends without diagnosis.
+- [x] Optional clinician-shareable summary under user control.
 - [ ] Food ideas account for preferences, budget, local foods, allergies and clinician restrictions.
-- [ ] General food support stays distinct from therapeutic diets; complex conditions/insulin plans require qualified clinical review.
-- [ ] No fixed calorie/fluid/carb prescription from age or condition alone, and no medication change based on an AI meal plan.
-- [ ] Urgent symptoms direct users to appropriate human help; never wait for a scheduled reminder or pretend help was dispatched.
+- [x] General food support stays distinct from therapeutic diets; complex conditions/insulin plans require qualified clinical review.
+- [x] No fixed calorie/fluid/carb prescription from age or condition alone, and no medication change based on an AI meal plan.
+- [x] Urgent symptoms direct users to appropriate human help; never wait for a scheduled reminder or pretend help was dispatched.
 Acceptance: unsafe-dose requests, allergies, uncertain prescriptions, missed-dose questions and urgent symptoms tested in all three languages.
 
 ## 6. Google Classroom: read-only first
-- [ ] Separate Connect Classroom permission from Google login; selected courses only.
-- [ ] Minimum needed own-coursework/course read scopes; avoid classmates, unnecessary grades and write permissions.
-- [ ] Server OAuth authorization-code flow, state/redirect validation and PKCE as appropriate; encrypted refresh-token storage, never frontend storage/logs.
-- [ ] Proposed classroom_integration.py plus connect/callback/status/sync/disconnect endpoints, per-user connections and external-assignment-ID migrations.
-- [ ] Import title, instructions, original link, due date and status. Preserve no-deadline items; do not invent exam dates.
-- [ ] Idempotent manual/bounded scheduled sync; display last successful sync, stale state, quota/admin/revocation errors. Add Pub/Sub only if justified.
-- [ ] New assignment → explain requirements → break into steps → add to planner with user control.
-- [ ] AI uses selected assignment content with permission. Treat uploaded/classroom instructions as untrusted content, never system authority.
-- [ ] Local task completion is distinct from official submission. No automatic turn-in, teacher messages or classroom posts.
-- [ ] Disconnect stops sync, revokes tokens where supported and offers imported-data removal; export/delete includes integration records.
+- [x] Separate Connect Classroom permission from Google login; selected courses only.
+- [x] Minimum needed own-coursework/course read scopes; avoid classmates, unnecessary grades and write permissions.
+- [x] Server OAuth authorization-code flow, state/redirect validation and PKCE as appropriate; encrypted refresh-token storage, never frontend storage/logs.
+- [x] Proposed classroom_integration.py plus connect/callback/status/sync/disconnect endpoints, per-user connections and external-assignment-ID migrations.
+- [x] Import title, instructions, original link, due date and status. Preserve no-deadline items; do not invent exam dates.
+- [x] Idempotent manual/bounded scheduled sync; display last successful sync, stale state, quota/admin/revocation errors. Add Pub/Sub only if justified.
+- [x] New assignment → explain requirements → break into steps → add to planner with user control.
+- [x] AI uses selected assignment content with permission. Treat uploaded/classroom instructions as untrusted content, never system authority.
+- [x] Local task completion is distinct from official submission. No automatic turn-in, teacher messages or classroom posts.
+- [x] Disconnect stops sync, revokes tokens where supported and offers imported-data removal; export/delete includes integration records.
 Dependencies: Google Cloud API/OAuth configuration, authorized test student and possible school-admin approval. Build/test before requesting owner configuration; do not claim connection is live until verified.
 Acceptance: selected-course isolation, duplicates, edited/deleted assignments, missing deadlines, revoked tokens and admin-blocked authorization.
 
 ## 7. Exam preparation companion
 - [x] User confirms exam date, topics, timezone and time budget; distinguish assignment deadlines from exams.
 - [x] Preview estimated recall/practice/revision blocks with breaks and a final light/rest day. Reject impossible minimum coverage and disclose partial coverage. Preview fingerprint prevents unnoticed changes before saving.
-- [ ] Ask progress, then re-plan missed days without shame or streak loss.
-- [ ] Gentle/direct tone choice; direct remains respectful.
+- [x] Ask progress, then re-plan missed days without shame or streak loss.
+- [x] Gentle/direct tone choice; direct remains respectful.
 - [x] Save reviewed study blocks into the existing Planner with duplicate-safe retry. Tasks can be manually adjusted there; removing a plan retains tasks explicitly.
 Example: “Exam ne 26 divas baki chhe. Aaje 20 minute chapter 1 thi sharu kariye?”
 Acceptance: changed dates, timezones, unrealistic workloads, overdue tasks and manual overrides.
@@ -91,10 +91,10 @@ Acceptance: changed dates, timezones, unrealistic workloads, overdue tasks and m
 - [ ] Optional larger text, 44+ CSS-pixel targets, clear labels and optional read-aloud; do not infer ability solely from age.
 - [ ] Complete EN/GU/HI controls/errors/loading/dialogs, date/time formatting and matching AI response language.
 - [ ] 320/360/390/768/1280 viewport checks, keyboard, screen reader, reduced motion, contrast and real Android/iPhone keyboard/touch testing when available.
-- [ ] Data lifecycle audit: collection → storage → AI use → sharing → export → deletion; privacy copy must match behaviour.
-- [ ] No health text, OAuth tokens or secrets in analytics. Verify cross-account authorization for every added endpoint.
+- [x] Data lifecycle audit: collection → storage → AI use → sharing → export → deletion; privacy copy must match behaviour.
+- [x] No health text, OAuth tokens or secrets in analytics. Verify cross-account authorization for every added endpoint.
 - [ ] Target feedback ≤100 ms, warm LCP ≤2.5 s, INP ≤200 ms and CLS ≤0.1 on documented devices/networks. Targets are not measured results.
-- [ ] Measure AI first-text and full-response separately from app startup; preserve input on slow/offline failures.
+- [x] Measure AI first-text and full-response separately from app startup; preserve input on slow/offline failures.
 Gate: no known critical privacy/medical/data-loss defects; primary success and recovery flows pass; list untested device/production checks. Scores cannot be guaranteed.
 
 ## Implementation checkpoint — 7 October 2026
@@ -171,3 +171,7 @@ User-controlled wellbeing summary: downloadable plain-text file from fresh accou
 ### Follow-up for priorities 1–4 (October 8)
 
 Implemented reviewable code for bounded connection-pressure recovery, a same-service always-on configuration example, atomic multi-time confirmed medication schedules, explicitly consented unverified prescription transcription, user-entered food/budget organisation, bilateral limited care-sharing, opt-in scheduled Classroom snapshots and separately consented selected-assignment explanation. See CARE_CLASSROOM_RELEASE.md for exact scope, release protocol and remaining external gates. Earlier checkpoints above describe earlier versions; OCR, multi-time, food organiser and limited caregiver code are now implemented, but are not clinically/live validated. Paid hosting, real-device notifications, clinical acceptance, Google Cloud configuration and external Classroom cron remain unverified. Default-off integration flags stay off.
+
+### Remaining release gates after the combined follow-up
+
+Confirmed medication instruction review, immutable elapsed/reported instruction snapshots, explicit study-tone controls, real Hindi catalog loading and five application viewport sizes are implemented in this follow-up. Checkbox completion refers to code/control behavior, not clinical or live-service acceptance. Caregiver trigger/escalation is deliberately unavailable until a qualified clinical review defines a safe opt-in follow-up protocol; no silent messages or inferred missed doses. Remaining checks: complete native-language review of unknown legacy English strings, physical Android/iPhone and assistive-technology tests, real provider PDF/OCR accuracy, clinical acceptance, owner-paid same-service hosting, Google Cloud/student OAuth and protected schedulers, and measured production Web Vitals. Score promises and guaranteed delivery remain unavailable.

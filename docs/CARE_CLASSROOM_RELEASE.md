@@ -35,3 +35,9 @@ A separately consented single available selected assignment can be sent to exist
 ## Validation
 
 Local Python unit/security and JavaScript checks plus CI PostgreSQL and desktop/mobile Chromium are required for this batch. Mocked providers do not prove clinical correctness, device delivery, Google live access or production performance.
+
+## Instruction review and localisation follow-up
+
+Confirmed instruction review now keeps recurrence/timing unchanged, checks the saved version, preserves elapsed/reported instruction snapshots and updates only future pending snapshots. Accepted sharing returns to pending recipient review. Legacy snapshots capture the available text at migration time; unknown older edits cannot be reconstructed. No medicine or dose is inferred. Study tone has explicit Gentle / Direct and respectful options; existing custom text remains selectable. Tone never overrides the safety or consent boundaries.
+
+Hindi now uses an independently loaded interface catalog rather than silently falling back to the Gujarati/English-only loader. Gujarati and Hindi catalogs can load concurrently without changing the selected language; names, notes, assignments and AI answers remain excluded. Primary labels and common recovery/validation messages are translated. Unknown legacy strings still retain English; complete native-language copy review is not claimed. Browser CI covers 320/360/390/768/1280-pixel application flows and language round trips, in addition to landing sizes. Physical devices, assistive-technology readings and measured production Web Vitals remain unverified.

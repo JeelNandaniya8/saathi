@@ -106,3 +106,26 @@ def test_prescription_transcription_requires_external_consent_and_never_schedule
     assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==0
     assert one(db,'SELECT COUNT(*) n FROM chat_attachments')['n']==0
     assert one(db,'SELECT COUNT(*) n FROM ai_usage_events')['n']==1
+
+
+def test_confirmed_instruction_edit_preserves_history_timing_and_invalidates_sharing(db_app,monkeypatch):
+    b,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true');rid,_=create(c)
+    old=one(db,'SELECT * FROM reminders WHERE id=%s',(rid,))
+    with db() as conn:
+        with conn.cursor() as cur:
+            future=old['current_scheduled_for']+timedelta(days=1)
+            care.ensure_occurrence(cur,old,future)
+            cur.execute("INSERT INTO care_shares(owner_id,recipient_id,routine_ids,fields,status,expires_at) VALUES(1,2,%s,'[\"status\",\"instructions\"]','accepted',NOW()+INTERVAL '7 days')",('[%s]'%rid,))
+    url=f'/api/care/routines/{rid}';data={'action':'edit_instructions','title':'Reviewed name','instructions':'Exact new clinician text','confirmed':True,'version':1}
+    assert c.patch(url,json={**data,'confirmed':False}).status_code==400
+    assert c.patch(url,json={**data,'starts_at':'new'}).status_code==400
+    assert c.patch(url,json=data).status_code==200
+    updated=one(db,'SELECT * FROM reminders WHERE id=%s',(rid,))
+    assert updated['note']==data['instructions'] and updated['next_run_at']==old['next_run_at'] and updated['care_schedule']['anchor']==old['care_schedule']['anchor']
+    assert one(db,'SELECT instructions_snapshot FROM care_occurrences WHERE scheduled_for=%s',(old['current_scheduled_for'],))['instructions_snapshot']=='User-entered clinician text'
+    assert one(db,'SELECT instructions_snapshot FROM care_occurrences WHERE scheduled_for=%s',(future,))['instructions_snapshot']==data['instructions']
+    assert one(db,'SELECT status FROM care_shares')['status']=='pending'
+    assert c.patch(url,json=data).status_code==409
+    assert c.get('/api/export-data').json['care_occurrences'][0]['instructions_snapshot']=='User-entered clinician text'
+    with c.session_transaction() as s:s['user_id']=2
+    assert c.patch(url,json={**data,'version':2}).status_code==404

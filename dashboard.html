@@ -637,16 +637,16 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/i18n.js?v=20260919"></script>
+<script src="/i18n.js?v=20261008"></script>
 <script src="/lazy-tools.js?v=20260919"></script>
 <script src="/workspace-hub.js?v=20261007"></script>
 <script src="/recovery.js?v=20260919"></script>
 <script src="/workspace.js?v=20261007"></script>
 <script src="/daily-workspace.js?v=20260919"></script>
-<script src="/personal-context.js?v=20261008b"></script>
+<script src="/personal-context.js?v=20261008c"></script>
 <script src="/classroom.js?v=20261008b"></script>
 <script src="/care-support.js?v=20261008"></script>
-<script src="/care-routines.js?v=20261008b"></script>
+<script src="/care-routines.js?v=20261008c"></script>
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
@@ -662,7 +662,7 @@ async function api(url,options={}){
     const response=await fetch(url,{credentials:'include',cache:'no-store',...options,signal:controller.signal,headers:{...(options.body&&!(typeof FormData!=='undefined'&&options.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
     if(response.status===401){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));throw new Error('Please log in first.')}
     let data;try{data=await response.json()}catch(error){if(error.name==='AbortError')throw error;throw new Error('The server returned an unreadable response. Please retry.')}
-    if(!response.ok)throw new Error(data.error||'Something went wrong.');
+    if(!response.ok){const message=data.error||'Something went wrong.';throw new Error(typeof SaathiI18n!=='undefined'?SaathiI18n.t(message):message);}
     return data;
   }catch(error){if(error.name==='AbortError'){if(options.signal?.aborted)throw error;throw new Error('The request took too long. Please retry.')}if(error instanceof TypeError)throw new Error('Could not connect. Check your connection and retry.');throw error}
   finally{clearTimeout(timer);options.signal?.removeEventListener('abort',forwardAbort)}

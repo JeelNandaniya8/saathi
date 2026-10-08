@@ -34,3 +34,5 @@ node --check care-routines.js
 node --check classroom.js
 
 node --check care-support.js
+
+node --check locale-hi.js

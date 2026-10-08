@@ -8,9 +8,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
  try{
-  for(const width of [1280,390]){
+  for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -39,8 +39,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
      else if(pathname==='/api/care/routines'){
       if(method==='POST'){careSaves.push(body());if(careSaves.length===1){status=503;data={error:'Temporary save failure'}}else data={id:1}}
-      else data={routines:[],occurrences:[],deliveries:[]};
+      else data={routines:careSaves.length>=2?[{id:1,title:'Existing schedule',note:careEdits.length?'Reviewed instruction':'User confirmed clinician instructions',active:true,recurrence:'daily',care_schedule:{timezone:'UTC',version:careEdits.length+1},next_run_at:'2026-10-09T08:00:00Z',current_scheduled_for:'2026-10-09T08:00:00Z'}]:[],occurrences:[],deliveries:[]};
      }
+     else if(pathname==='/api/care/routines/1'){assert.equal(body().action,'edit_instructions');assert.equal(body().version,1);assert.equal(body().confirmed,true);careEdits.push(body());data={ok:true}}
      else if(pathname==='/api/habits')data={habits:[]};
      else if(pathname==='/api/push/config')data={enabled:false};
      else if(pathname==='/api/referrals')data={referral_code:'fixture',referral_url:base,invited:0,qualified:0,bonus_days:0};
@@ -134,6 +135,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('healer'));
    await page.waitForFunction(()=>typeof window.stopCare==='function');
    await page.evaluate(()=>openView('account'));
+   await page.locator('#languageSelect').selectOption('hi');
+   await page.waitForFunction(()=>SaathiI18n.t('Please log in first.')==='पहले लॉग इन करें।');
+   assert.ok(requests.includes('/locale-hi.js'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
    await page.evaluate(()=>openView('checkins'));
@@ -240,6 +244,13 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);
    assert.equal(careSaves.length,2);assert.equal(careSaves[0].client_id,careSaves[1].client_id);
    assert.equal(careSaves[1].confirmed,true);assert.equal(careSaves[1].starts_at.length,2);
+   const editInstructions=medication.locator('details').filter({has:medication.getByText('Review instructions',{exact:true})});
+   await editInstructions.locator('summary').click();
+   await editInstructions.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('Reviewed instruction');
+   await editInstructions.locator('button[type=submit]').click();assert.equal(careEdits.length,0);
+   await editInstructions.getByLabel('I confirm these existing instructions and schedule, and consent to save this private health information.',{exact:true}).check();
+   await editInstructions.locator('button[type=submit]').click();
+   await medication.getByText('Reviewed instruction',{exact:true}).first().waitFor();assert.equal(careEdits.length,1);
    assert.ok(await medication.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));
    await medication.getByRole('button',{name:'Close',exact:true}).click();
    await page.evaluate(()=>openView('healer'));await page.locator('[data-food-plan]').click();
