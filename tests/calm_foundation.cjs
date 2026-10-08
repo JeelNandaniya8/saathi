@@ -13,3 +13,10 @@ vm.createContext(authContext);const start=account.indexOf("document.querySelecto
 for(const input of passwords){const b=input.parentElement.button;assert.equal(b.type,'button');b.click();assert.equal(input.type,'text');assert.equal(b.attributes['aria-pressed'],'true');b.click();assert.equal(input.type,'password');assert.equal(b.attributes['aria-pressed'],'false')}
 assert.ok(account.includes("if(event.persisted)checkExistingSession()"));
 console.log('PASS deep-link navigation, retained tools, password toggle semantics and session-check guard');
+
+// Scheduling a check-in prepares a reviewable draft without a network write.
+const reminderNodes=new Map(),notices=[],opened=[];
+const checkinCtx={state:{user:{language:'en'},reminderEditingId:null},translations:{en:{checkinReminderTitle:'How are you?',checkinReminderNote:'Optional',checkinDraftKept:'Kept',checkinReview:'Review'}},$:id=>{if(!reminderNodes.has(id))reminderNodes.set(id,{value:'',focus(){this.focused=true}});return reminderNodes.get(id)},openView:id=>opened.push(id),toast:message=>notices.push(message)};
+vm.createContext(checkinCtx);const helper=page.slice(page.indexOf('function readReminderDraft()'),page.indexOf("$('reminderForm').addEventListener('submit'",page.indexOf('function readReminderDraft()')));vm.runInContext(helper,checkinCtx);
+checkinCtx.prepareCheckinReminder();assert.equal(reminderNodes.get('reminderTitle').value,'How are you?');assert.equal(reminderNodes.get('reminderTime').value,'');assert.equal(reminderNodes.get('reminderRecurrence').value,'once');assert.ok(reminderNodes.get('reminderTime').focused);
+reminderNodes.get('reminderTitle').value='My unsaved reminder';checkinCtx.prepareCheckinReminder();assert.equal(reminderNodes.get('reminderTitle').value,'My unsaved reminder');assert.equal(notices.at(-1),'Kept');

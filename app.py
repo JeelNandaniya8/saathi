@@ -16,6 +16,7 @@ must be a PostgreSQL connection string such as a Neon URL.
 """
 
 import os
+from uuid import UUID
 from html import escape
 import gzip
 import time
@@ -3442,6 +3443,14 @@ def reminders():
         return jsonify({"reminders": [reminder_to_dict(row) for row in rows]})
 
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify(error='Use a reminder object.'), 400
+    client_id = None
+    if 'client_id' in data:
+        try:
+            client_id = str(UUID(str(data['client_id'])))
+        except (ValueError, TypeError, AttributeError):
+            return jsonify(error='Use a valid reminder request ID.'), 400
     title = (data.get("title") or "").strip()
     note = (data.get("note") or "").strip()
     recurrence = data.get("recurrence") or "once"
@@ -3468,11 +3477,13 @@ def reminders():
     cur.execute(
         """
         INSERT INTO reminders
-            (user_id, title, note, next_run_at, recurrence, active, email_enabled, created_at)
-        VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
+            (user_id, title, note, next_run_at, recurrence, active, email_enabled, created_at, client_id)
+        VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, %s)
+        ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL
+        DO UPDATE SET client_id=EXCLUDED.client_id
         RETURNING *
         """,
-        (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc)),
+        (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc), client_id),
     )
     row = cur.fetchone()
     conn.commit()
@@ -4754,7 +4765,7 @@ def export_data():
         for key, value in dict(row).items():
             if key in excluded:
                 continue
-            result[key] = value.isoformat() if isinstance(value, (date, datetime)) else float(value) if isinstance(value, Decimal) else value
+            result[key] = value.isoformat() if isinstance(value, (date, datetime)) else float(value) if isinstance(value, Decimal) else str(value) if isinstance(value, UUID) else value
         return result
 
     payload = {

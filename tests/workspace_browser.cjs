@@ -128,6 +128,16 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('account'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
+   await page.evaluate(()=>openView('checkins'));
+   await page.locator('#checkins [data-schedule-checkin]').click();
+   assert.equal(await page.locator('#reminderTitle').inputValue(),'How are you feeling today?');
+   assert.equal(await page.locator('#reminderTime').inputValue(),'','No timing is inferred');
+   assert.equal(await page.locator('#reminderRecurrence').inputValue(),'once');
+   await page.locator('#reminderTitle').fill('Keep my draft');
+   await page.evaluate(()=>openView('healer'));
+   await page.locator('#healer [data-schedule-checkin]').click();
+   assert.equal(await page.locator('#reminderTitle').inputValue(),'Keep my draft');
+   await page.evaluate(()=>{cancelReminderEdit();openView('account')});
    // Actual forms: off-by-default health consent, revoke and preview-before-save.
    await page.locator('#account [data-personal-context]').click();
    let profile=page.locator('dialog[open]').last();

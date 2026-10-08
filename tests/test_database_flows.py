@@ -196,3 +196,25 @@ def test_referral_reward_and_export_include_only_owned_data(db_app):
     assert 'mock_tests' in exported.json and 'payment_orders' in exported.json
     assert 'password_hash' not in exported.json['account']
     assert 'Private friend task' not in exported.get_data(as_text=True)
+
+
+def test_reminder_create_retry_does_not_duplicate_or_overwrite_and_is_owner_scoped(db_app):
+    from uuid import uuid4
+    _, c, db = db_app
+    payload = {'title': 'Optional check-in', 'next_run_at': '2027-01-01T18:00:00+00:00',
+               'recurrence': 'once', 'email_enabled': False, 'client_id': str(uuid4())}
+    first = c.post('/api/reminders', json=payload)
+    assert first.status_code == 201
+    retry = c.post('/api/reminders', json=payload)
+    assert retry.json['reminder']['id'] == first.json['reminder']['id']
+    assert one(db, 'SELECT COUNT(*) n FROM reminders')['n'] == 1
+    changed = c.post('/api/reminders', json={**payload, 'title': 'Do not overwrite'})
+    assert changed.json['reminder']['title'] == 'Optional check-in'
+    with c.session_transaction() as session:
+        session['user_id'] = 2
+    other = c.post('/api/reminders', json=payload)
+    assert other.json['reminder']['id'] != first.json['reminder']['id']
+    with c.session_transaction() as session:
+        session['user_id'] = 1
+    assert c.post('/api/reminders', json={**payload, 'client_id': 'invalid'}).status_code == 400
+    assert c.get('/api/export-data').status_code == 200
