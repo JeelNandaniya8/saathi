@@ -11,12 +11,15 @@ def serve(app, environment=None):
         app.run(host='0.0.0.0', port=port,
                 debug=environment.get('FLASK_DEBUG', 'false').lower() == 'true')
         return
+    signing_key = environment.get('FLASK_SECRET_KEY', '')
+    if not isinstance(signing_key, str) or len(signing_key.strip()) < 32:
+        raise RuntimeError('Set a persistent FLASK_SECRET_KEY of at least 32 characters before starting on Render.')
     # A legacy Render service can still be configured with `python app.py`.
     # Load the existing WSGI object; do not import it again or repeat migrations.
     from gunicorn.app.base import BaseApplication
     app.debug = False
     # Non-secret startup evidence: a restart must not silently change signatures.
-    print("Session signing configuration: " + ("persistent" if environment.get("FLASK_SECRET_KEY") else "ephemeral; set FLASK_SECRET_KEY before relying on login persistence"), flush=True)
+    print("Session signing configuration: persistent", flush=True)
 
     class RenderApplication(BaseApplication):
         def load_config(self):
