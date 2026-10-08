@@ -1,0 +1,27 @@
+name: Classroom background refresh
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: classroom-background-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.repository == 'JeelNandaniya8/saathi' && github.ref == 'refs/heads/main' && vars.CLASSROOM_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Refresh opted-in Classroom accounts
+        env:
+          CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
+        run: python3 scripts/sync_classroom.py

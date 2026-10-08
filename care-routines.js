@@ -44,6 +44,8 @@ async function open(){
  }
  try{await load()}catch(e){error.textContent=e.message;body.append(button(t('retry'),()=>load().catch(e=>error.textContent=e.message)))}
 }
-function connect(options){({api,notify}=options);document.querySelectorAll('[data-care-routines]').forEach(b=>{b.textContent=t('open');b.onclick=open})}
+function labels(){document.querySelectorAll('[data-care-routines]').forEach(b=>b.textContent=t('open'))}
+function connect(options){({api,notify}=options);document.querySelectorAll('[data-care-routines]').forEach(b=>b.onclick=open);labels()}
+new MutationObserver(labels).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
 window.SaathiCareRoutines={connect};
 })();
