@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0;
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -35,6 +35,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/care/food-plans'){if(method==='POST'){assert.equal(body().save_confirmed,true);assert.equal(body().preview_token,'fixture-preview');foodSaves++;data={id:1}}else data={plans:foodSaves?[{id:1,preview:foodPreview}]:[]}}
      else if(pathname==='/api/care/shares')data={enabled:false,user_id:2,contacts:[],shares:[{id:1,owner_id:1,recipient_id:2,owner_name:'Owner',recipient_name:'Receiver',fields:['status'],status:sharedStatus,version:1,expires_at:'2026-11-01T00:00:00Z'}]};
      else if(pathname==='/api/care/shares/1/respond'){assert.equal(body().confirmed,true);assert.equal(body().action,'revoke');assert.equal(body().version,1);sharedStatus='revoked';data={ok:true}}
+     else if(pathname==='/api/care/prescription-draft'){assert.match(route.request().headers()['content-type'],/^multipart\/form-data; boundary=/);assert.match(route.request().postData(),/ai_confirmed/);ocrReads++;data={draft:'Original prescription [unclear] <script>unsafe</script>',verified:false,saved:false}}
      else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
      else if(pathname==='/api/care/routines'){
       if(method==='POST'){careSaves.push(body());if(careSaves.length===1){status=503;data={error:'Temporary save failure'}}else data={id:1}}
@@ -217,6 +218,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('[data-care-routines]').click();
    const medication=page.locator('dialog[open]');
    await medication.getByText('In-app only: server delivery is not configured.',{exact:true}).waitFor();
+   await medication.locator('summary').filter({hasText:'Read prescription text'}).click();
+   await medication.getByLabel('Prescription image or PDF',{exact:true}).setInputFiles({name:'fixture.png',mimeType:'image/png',buffer:Buffer.from('local transcription fixture')});
+   await medication.getByRole('button',{name:'Read prescription text',exact:true}).click();assert.equal(ocrReads,0);
+   await medication.getByLabel('I permit this file to be sent to the configured AI provider for unverified transcription. No schedule will be saved.',{exact:true}).check();
+   await medication.getByRole('button',{name:'Read prescription text',exact:true}).click();
+   await medication.getByText(/Original prescription \[unclear\]/).waitFor();assert.equal(ocrReads,1);assert.equal(careSaves.length,0);assert.equal(await medication.locator('script').count(),0);
    await medication.locator('summary').filter({hasText:'Add confirmed schedule'}).click();
    await medication.getByLabel('Medicine / schedule name',{exact:true}).fill('Existing schedule');
    await medication.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('User confirmed clinician instructions');
