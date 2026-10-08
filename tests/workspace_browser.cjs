@@ -93,6 +93,17 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
    assert.equal(await page.evaluate(()=>scrollY),0,'Greeting stays visible on startup');
+   // Account text styles must never override the avatar's centering or typography.
+   for(const [name,initial] of [['Nihar Chocha','N'],['Jeel Nandaniya','J']]){
+    const avatar=await page.evaluate(name=>{
+     const node=document.querySelector('#sideAvatar');SaathiWorkspace.renderAvatar(node,{name});
+     const css=getComputedStyle(node),box=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);const letter=range.getBoundingClientRect();
+     return {text:node.textContent,display:css.display,align:css.alignItems,justify:css.justifyItems,font:css.fontSize,margin:css.marginTop,offset:Math.abs((letter.left+letter.right-box.left-box.right)/2)};
+    },name);
+    assert.equal(avatar.text,initial);assert.equal(avatar.display,'grid');assert.equal(avatar.align,'center');assert.equal(avatar.justify,'center');assert.equal(avatar.font,'14px');assert.equal(avatar.margin,'0px');assert.ok(avatar.offset<1,'Initial stays horizontally centered');
+   }
+   await page.evaluate(()=>SaathiWorkspace.renderAvatar(document.querySelector('#sideAvatar'),{name:'Search'}));
+
    assert.equal(await page.locator('.nav > button[data-view]').count(),1,'Today is the only top-level workspace view');
    assert.equal(await page.locator('.nav > [data-quick-notes]').count(),1);
    assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
@@ -352,7 +363,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
-   await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{"kind":"task"}</SAATHI_ACTION>';renderConversations()});
+   await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{\"kind\":\"task\"}</SAATHI_ACTION>';renderConversations()});
    assert.ok(!(await page.locator('#history').textContent()).includes('SAATHI_ACTION'),'Sidebar previews must hide action metadata');
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
    if(!await page.locator('#newChat').isVisible())await page.locator('#openSidebar').click();
