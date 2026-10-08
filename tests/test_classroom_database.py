@@ -10,7 +10,7 @@ pytestmark=pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'),reason='Re
 @pytest.fixture
 def configured(monkeypatch):
     for k,v in {'CLASSROOM_ENABLED':'true','CLASSROOM_CLIENT_ID':'fixture-client','CLASSROOM_CLIENT_SECRET':'fixture-secret',
-                'CLASSROOM_REDIRECT_URI':'https://example.test/api/classroom/callback','CLASSROOM_TOKEN_KEY':Fernet.generate_key().decode()}.items():monkeypatch.setenv(k,v)
+                'CLASSROOM_REDIRECT_URI':'https://example.test/api/classroom/callback','CLASSROOM_TOKEN_KEY':Fernet.generate_key().decode(),'CLASSROOM_SCHEDULER_READY':'true'}.items():monkeypatch.setenv(k,v)
     monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'private-refresh','access_token':'private-access','scope':' '.join(cc.SCOPES)})
 
 
@@ -26,9 +26,9 @@ def connect(c):
 def test_oauth_state_session_single_use_and_private_export(db_app,configured):
     _,c,db=db_app
     assert c.post('/api/classroom/connect',json={}).status_code==400
-    assert c.get('/api/classroom/callback?state=invalid').status_code==400
+    assert c.get('/api/classroom/callback?state=invalid').location=='/dashboard?classroom_result=expired#study'
     state=connect(c)
-    assert c.get('/api/classroom/callback',query_string={'code':'test-code','state':state}).status_code==400
+    assert c.get('/api/classroom/callback',query_string={'code':'test-code','state':state}).location=='/dashboard?classroom_result=expired#study'
     stored=one(db,'SELECT refresh_cipher FROM classroom_connections')['refresh_cipher']
     assert 'private-refresh' not in stored and cc.cipher().decrypt(stored.encode())==b'private-refresh'
     export=c.get('/api/export-data').get_data(as_text=True)
@@ -80,7 +80,7 @@ def test_sync_error_retains_snapshot_and_scope_denial_never_saves_token(db_app,c
     monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'secret','scope':cc.SCOPES[0]})
     r=c.post('/api/classroom/connect',json={'confirmed':True});state=parse_qs(urlparse(r.json['url']).query)['state'][0]
     result=c.get('/api/classroom/callback',query_string={'state':state,'code':'code'})
-    assert result.status_code==503 and result.json['error_code']=='missing_classroom_permissions'
+    assert result.status_code==302 and result.location=='/dashboard?classroom_result=missing_classroom_permissions#study'
     assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==0
 
 
@@ -97,7 +97,8 @@ def test_revoked_session_cannot_finish_oauth(db_app,configured):
     _,c,db=db_app
     r=c.post('/api/classroom/connect',json={'confirmed':True});state=parse_qs(urlparse(r.json['url']).query)['state'][0]
     with c.session_transaction() as s:s['session_version']=2
-    assert c.get('/api/classroom/callback',query_string={'state':state,'code':'code'}).status_code in (400,401)
+    result=c.get('/api/classroom/callback',query_string={'state':state,'code':'code'})
+    assert result.status_code in (302,401)
     assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==0
 
 
@@ -154,6 +155,34 @@ def test_course_changes_cancel_auto_and_require_fresh_opt_in(db_app,configured,m
     v=c.get('/api/classroom/status').json['connection']['version']
     assert c.post('/api/classroom/select',json={'confirmed':True,'courses':[],'version':v}).status_code==200
     row=one(db,'SELECT auto_sync_enabled,next_sync_at FROM classroom_connections');assert not row['auto_sync_enabled'] and row['next_sync_at'] is None
+
+
+def test_scheduler_readiness_does_not_promise_unconfigured_delivery(db_app,configured,monkeypatch):
+    _,c,db=db_app;v=selected_setup(c,monkeypatch)
+    monkeypatch.delenv('CLASSROOM_SCHEDULER_READY')
+    assert c.get('/api/classroom/status').json['scheduler_ready'] is False
+    r=c.post('/api/classroom/schedule',json={'confirmed':True,'enabled':True,'version':v})
+    assert r.status_code==503 and r.json['error_code']=='scheduler_unavailable'
+    assert not one(db,'SELECT auto_sync_enabled FROM classroom_connections')['auto_sync_enabled']
+    assert c.post('/api/classroom/schedule',json={'confirmed':True,'enabled':False,'version':v}).status_code==200
+
+
+def test_separate_cron_secret_cannot_authorize_reminder_secret(db_app,configured,monkeypatch):
+    b,c,db=db_app;monkeypatch.setattr(b,'CRON_SECRET','reminder-secret')
+    monkeypatch.setenv('CLASSROOM_CRON_SECRET','classroom-only-secret')
+    assert c.post('/api/cron/classroom',headers={'X-Cron-Secret':'reminder-secret'}).status_code==401
+    assert c.post('/api/cron/classroom',headers={'X-Cron-Secret':'classroom-only-secret'}).json['processed']==0
+
+
+def test_callback_provider_error_is_safe_recovery_without_token_or_details(db_app,configured,monkeypatch):
+    _,c,db=db_app
+    r=c.post('/api/classroom/connect',json={'confirmed':True});state=parse_qs(urlparse(r.json['url']).query)['state'][0]
+    def denied(*a,**kw):raise cc.ProviderError('private-provider-message')
+    monkeypatch.setattr(cc,'provider_json',denied)
+    r=c.get('/api/classroom/callback',query_string={'state':state,'code':'private-code'})
+    assert r.status_code==302 and r.location=='/dashboard?classroom_result=provider_unavailable#study'
+    assert 'private' not in r.get_data(as_text=True)
+    assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==0
 
 
 def test_selected_assignment_ai_consent_ownership_no_memory_and_revocation_race(db_app,configured,monkeypatch):

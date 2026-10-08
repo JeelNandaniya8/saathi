@@ -1,6 +1,6 @@
 # Read-only Classroom beta
 
-The integration is off until configured and tested with a permitted student account. Google login is a separate feature. No hosting/domain change is required by this code.
+The default integration is off until configured and tested with a permitted student account. The owner reported successful personal-account connection and assignment import on 8 October 2026. Google login is a separate feature. No hosting/domain change is required by this code.
 
 ## Owner configuration
 
@@ -16,7 +16,7 @@ Open Study → Google Classroom. Confirm separate storage permission, authorize 
 
 Check course deselection, a changed/deleted assignment, revoked access and school-admin denial. A failed or incomplete sync must retain previous records and show failure. Check disconnect with and without removing imports; Planner tasks stay. Google token revocation can fail; if so remove access manually in Google account settings. Account deletion removes stored connections/imports; remove remote Google access separately.
 
-Each course is capped at five pages of 100 assignments; larger imports fail explicitly without applying partial snapshots. Manual sync is limited to once per minute per connection. A separate opt-in enables six-hour refresh through protected POST /api/cron/classroom with X-Cron-Secret; the owner must configure an external scheduler. Changing course selections disables scheduled sync until reviewed again. Each available selected assignment can be explained by AI only after separate permission; it creates neither a submission nor a Planner task. Official submission-status retrieval is not provided; check the original Classroom link. Live Google verification remains required. See CARE_CLASSROOM_RELEASE.md for retry/backoff and acceptance checks. Tokens are encrypted server-side and excluded from exports. Imported instructions never become system instructions or automatic AI context.
+Each course is capped at five pages of 100 assignments; larger imports fail explicitly without applying partial snapshots. Manual sync is limited to once per minute per connection. A separate opt-in enables six-hour refresh through protected POST /api/cron/classroom with X-Cron-Secret; the owner must configure an external scheduler. The free beta GitHub Actions option and separate scheduler key are described in FREE_CLASSROOM_SCHEDULER.md; automatic refresh stays unavailable until CLASSROOM_SCHEDULER_READY=true after an observed real job. Changing course selections disables scheduled sync until reviewed again. Each available selected assignment can be explained by AI only after separate permission; it creates neither a submission nor a Planner task. Official submission-status retrieval is not provided; check the original Classroom link. Live Google verification remains required. See CARE_CLASSROOM_RELEASE.md for retry/backoff and acceptance checks. Tokens are encrypted server-side and excluded from exports. Imported instructions never become system instructions or automatic AI context.
 
 References reviewed 8 October 2026:
 - https://developers.google.com/workspace/classroom/guides/auth
@@ -24,3 +24,5 @@ References reviewed 8 October 2026:
 - https://developers.google.com/workspace/classroom/reference/rest/v1/courses.courseWork/list
 - https://developers.google.com/workspace/classroom/reference/rest/v1/courses.courseWork
 - https://developers.google.com/identity/protocols/oauth2/web-server
+
+Public verification preparation: GOOGLE_CLASSROOM_VERIFICATION.md. Testing-mode access is not Google public approval.

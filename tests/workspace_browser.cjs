@@ -60,7 +60,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
-     else if(pathname==='/api/classroom/status')data={configured:true,connected:classroomConnected,connection:{last_sync:null,last_error:null,version:1,auto_sync_enabled:!!classroomSchedules}};
+     else if(pathname==='/api/classroom/status')data={configured:true,scheduler_ready:true,connected:classroomConnected,connection:{last_sync:null,last_error:null,version:1,auto_sync_enabled:!!classroomSchedules}};
      else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
      else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
      else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
@@ -106,6 +106,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.evaluate(()=>localStorage.getItem('saathi-large-text')),'on');
    await page.locator('[data-large-text]').click();
    await page.locator('#languageSelect').selectOption('gu');
+   await page.waitForFunction(()=>document.querySelector('[data-care-routines]').textContent==='દવાની નોંધ ખોલો');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent.includes('ધ્યાન'));
    assert.equal(await page.locator('#profileDisplayName').textContent(),'Search','User names must remain unchanged');
    await page.evaluate(()=>openView('overview'));
@@ -136,9 +137,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>typeof window.stopCare==='function');
    await page.evaluate(()=>openView('account'));
    await page.locator('#languageSelect').selectOption('hi');
+   await page.waitForFunction(()=>document.querySelector('[data-care-routines]').textContent==='दवा का रिकॉर्ड खोलें');
    await page.waitForFunction(()=>SaathiI18n.t('Please log in first.')==='पहले लॉग इन करें।');
    assert.ok(requests.includes('/locale-hi.js'));
    await page.locator('#languageSelect').selectOption('en');
+   await page.waitForFunction(()=>document.querySelector('[data-care-routines]').textContent==='Open medication log');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
    await page.evaluate(()=>openView('checkins'));
    const [summaryFile]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
@@ -205,7 +208,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await classroom.getByLabel('Send only this assignment to the AI provider for an explanation. No profile, memory or other assignments.',{exact:true}).check();
    await classroom.getByRole('button',{name:'Explain requirements and steps',exact:true}).click();
    await classroom.getByText('Useful steps <script>unsafe</script>',{exact:true}).waitFor();assert.equal(classroomExplains,1);assert.equal(await classroom.locator('script').count(),0);
-   await classroom.getByLabel('Sync every six hours (requires protected server scheduler). Changing courses disables this; review and enable again.',{exact:true}).check();
+   await classroom.getByLabel('Refresh my selected courses about every six hours. Updates can be delayed. Changing courses turns this off.',{exact:true}).check();
    await classroom.getByRole('button',{name:'Save sync preference',exact:true}).click();
    await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);assert.equal(classroomSchedules,1);
    const addAssignment=classroom.getByRole('button',{name:'Add to Planner',exact:true});

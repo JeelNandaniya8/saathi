@@ -56,6 +56,10 @@ def cipher():
     return Fernet(config[3].encode())
 
 
+def scheduler_ready():
+    return os.environ.get('CLASSROOM_SCHEDULER_READY','').lower() == 'true'
+
+
 def provider_json(method,url,**kwargs):
     try:
         deadline=_provider_deadline.get()
@@ -160,8 +164,14 @@ def register(app,b):
                 limit=b['limited']('classroom_'+fn.__name__,str(uid),12,5)
                 if limit:return limit
             try:return fn(uid,*args,**kw)
-            except ProviderError as e:return jsonify(error_code=e.code,error='Classroom could not complete this action. Your imported work is retained.'),503
-            except ValueError as e:return jsonify(error=str(e)),400
+            except ProviderError as e:
+                if fn.__name__ == 'callback':
+                    allowed = {'missing_classroom_permissions','permission_or_admin_block','reconnect_required','not_configured'}
+                    return redirect('/dashboard?classroom_result='+(e.code if e.code in allowed else 'provider_unavailable')+'#study')
+                return jsonify(error_code=e.code,error='Classroom could not complete this action. Your imported work is retained.'),503
+            except ValueError as e:
+                if fn.__name__ == 'callback':return redirect('/dashboard?classroom_result=expired#study')
+                return jsonify(error=str(e)),400
         return wrapped
 
     def confirmed():
@@ -174,7 +184,7 @@ def register(app,b):
     def status(uid):
         with db() as (_,cur):
             cur.execute('SELECT selected_courses,last_sync,last_error,version,auto_sync_enabled,next_sync_at,last_attempt,sync_failures FROM classroom_connections WHERE user_id=%s',(uid,));row=cur.fetchone()
-        return jsonify(configured=bool(configuration()),connected=bool(row),connection=row)
+        return jsonify(configured=bool(configuration()),connected=bool(row),connection=row,scheduler_ready=scheduler_ready())
 
     @app.post('/api/classroom/connect')
     @private
@@ -208,7 +218,7 @@ def register(app,b):
             pending=cur.fetchone();conn.commit()
         if not pending or pending['expires_at']<datetime.now(timezone.utc) or pending['session_version']!=session.get('session_version'):
             raise ValueError('This connection request expired. Start again.')
-        if request.args.get('error'):return redirect('/dashboard#study')
+        if request.args.get('error'):return redirect('/dashboard?classroom_result=cancelled#study')
         code=request.args.get('code','')
         if not code or len(code)>4096:raise ValueError('Restart Classroom connection.')
         try:verifier=cipher().decrypt(pending['verifier_cipher'].encode()).decode()
@@ -275,6 +285,7 @@ def register(app,b):
         data=confirmed()
         if type(data.get('enabled')) is not bool:raise ValueError('Choose whether to enable scheduled sync.')
         if data['enabled'] and not configuration():raise ProviderError('not_configured')
+        if data['enabled'] and not scheduler_ready():return jsonify(error='Automatic refresh is not available yet. You can sync manually.',error_code='scheduler_unavailable'),503
         with db() as (conn,cur):
             cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s FOR UPDATE',(uid,));row=cur.fetchone()
             if not row:raise ValueError('Connect Classroom first.')
@@ -285,7 +296,7 @@ def register(app,b):
 
     @app.post('/api/cron/classroom')
     def scheduled_sync():
-        secret=b.get('CRON_SECRET');provided=request.headers.get('X-Cron-Secret','')
+        secret=os.environ.get('CLASSROOM_CRON_SECRET') or b.get('CRON_SECRET');provided=request.headers.get('X-Cron-Secret','')
         if not secret or not secrets.compare_digest(secret,provided):return jsonify(error='Unauthorized.'),401
         if not configuration():return jsonify(error_code='not_configured'),503
         with db() as (conn,cur):
