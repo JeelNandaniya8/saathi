@@ -143,7 +143,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>state.currentView==='tasks');assert.equal(planSaves,1);
    await page.evaluate(()=>openView('study'));await page.locator('[data-exam-plans]').click();
    await page.getByRole('button',{name:'Reschedule missed blocks',exact:true}).click();
-   const replan=page.locator('dialog[open]').last();
+   const replan=page.getByRole('dialog',{name:'Reschedule missed blocks',exact:true});
    await replan.getByLabel('I have reviewed completed work in Planner.',{exact:true}).check();
    await replan.getByRole('button',{name:'Preview plan',exact:true}).click();
    await replan.getByRole('button',{name:'Confirm new dates',exact:true}).waitFor();
