@@ -1,5 +1,6 @@
 /* Gujarati interface copy. Loaded only after Gujarati is selected. */
 window.SaathiI18n.register({
+  "Plus plans · Coming soon": "Plus યોજનાઓ · ટૂંક સમયમાં",
   "Your workspace · Saathi": "તમારી કાર્યજગ્યા · Saathi",
   "Skip to workspace": "કાર્યજગ્યા પર જાઓ",
   "Workspace navigation": "કાર્યજગ્યાનું નેવિગેશન",

@@ -23,3 +23,13 @@ body[data-page="landing"] .btn:focus-visible{outline:3px solid #0866c9;outline-o
 #waitlistPrivacy{color:var(--muted)}#waitlistStatus{min-height:1.5rem}#waitlistSubmit{width:100%}
 @media(max-width:420px){.hero-actions{flex-direction:column}.hero-actions .btn{width:100%;max-width:20rem}.nav-auth .nav-cta{display:none}.feature-demo{margin-top:.75rem}}
 @media(prefers-reduced-motion:reduce){.feature-demo *{animation:none!important}}
+
+/* Shorter proof sections; keep account access next to the primary action. */
+.hero-login{margin:18px 0 0;font-size:13px;color:var(--muted)}
+.hero-login a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline;text-underline-offset:4px}
+body[data-page="landing"] .section{padding-block:72px}
+body[data-page="landing"] .story{min-height:0;padding-block:44px}
+body[data-page="landing"] .how .section{padding-block:72px}
+body[data-page="landing"] .section-head{margin-bottom:40px}
+@media(max-width:700px){body[data-page="landing"] .section{padding-block:48px}body[data-page="landing"] .story{padding-block:36px}body[data-page="landing"] .how .section{padding-block:48px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}.btn,.nav-cta,.feature,.faq-a,.plus{transition:none!important}}

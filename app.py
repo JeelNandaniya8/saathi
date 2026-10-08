@@ -16,6 +16,7 @@ must be a PostgreSQL connection string such as a Neon URL.
 """
 
 import os
+from uuid import UUID
 from html import escape
 import gzip
 import time
@@ -1054,6 +1055,7 @@ def public_styles():
 @app.get("/daily-workspace.js")
 @app.get("/personal-context.js")
 @app.get("/care-routines.js")
+@app.get("/classroom.js")
 @app.get("/recovery.js")
 @app.get("/workspace-hub.js")
 @app.get("/lazy-tools.js")
@@ -3441,6 +3443,14 @@ def reminders():
         return jsonify({"reminders": [reminder_to_dict(row) for row in rows]})
 
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify(error='Use a reminder object.'), 400
+    client_id = None
+    if 'client_id' in data:
+        try:
+            client_id = str(UUID(str(data['client_id'])))
+        except (ValueError, TypeError, AttributeError):
+            return jsonify(error='Use a valid reminder request ID.'), 400
     title = (data.get("title") or "").strip()
     note = (data.get("note") or "").strip()
     recurrence = data.get("recurrence") or "once"
@@ -3467,11 +3477,13 @@ def reminders():
     cur.execute(
         """
         INSERT INTO reminders
-            (user_id, title, note, next_run_at, recurrence, active, email_enabled, created_at)
-        VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
+            (user_id, title, note, next_run_at, recurrence, active, email_enabled, created_at, client_id)
+        VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, %s)
+        ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL
+        DO UPDATE SET client_id=EXCLUDED.client_id
         RETURNING *
         """,
-        (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc)),
+        (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc), client_id),
     )
     row = cur.fetchone()
     conn.commit()
@@ -4726,6 +4738,8 @@ def export_data():
         ("care_occurrences", "SELECT * FROM care_occurrences WHERE user_id=%s ORDER BY scheduled_for"),
         ("care_push_deliveries", "SELECT d.care_occurrence_id,d.scheduled_for,d.status,d.attempt_count,d.updated_at,d.sent_at FROM push_deliveries d JOIN reminders r ON r.id=d.reminder_id WHERE r.user_id=%s AND d.care_occurrence_id IS NOT NULL"),
         ("personal_context_fields", "SELECT category,field,value,source,use_in_ai,version,reviewed_at FROM personal_context_fields WHERE user_id=%s ORDER BY category,field"),
+        ("classroom_connections", "SELECT selected_courses,last_sync,last_error,created_at FROM classroom_connections WHERE user_id=%s"),
+        ("classroom_assignments", "SELECT * FROM classroom_assignments WHERE user_id=%s ORDER BY id"),
         ("exam_plans", "SELECT id,client_id::text,title,exam_date::text,timezone,daily_minutes,topics,created_at FROM exam_plans WHERE user_id=%s ORDER BY id"),
         ("exam_plan_tasks", "SELECT ept.plan_id,ept.task_id FROM exam_plan_tasks ept JOIN exam_plans ep ON ep.id=ept.plan_id WHERE ep.user_id=%s"),
         ("workspace_preferences", "SELECT goal,onboarding_done,timezone,quiet_enabled,quiet_start::text,quiet_end::text,notification_mode,digest_time::text,celebrations FROM workspace_preferences WHERE user_id=%s"),
@@ -4751,7 +4765,7 @@ def export_data():
         for key, value in dict(row).items():
             if key in excluded:
                 continue
-            result[key] = value.isoformat() if isinstance(value, (date, datetime)) else float(value) if isinstance(value, Decimal) else value
+            result[key] = value.isoformat() if isinstance(value, (date, datetime)) else float(value) if isinstance(value, Decimal) else str(value) if isinstance(value, UUID) else value
         return result
 
     payload = {
@@ -5347,6 +5361,8 @@ study_tools.register(app, globals())
 care.register(app, globals())
 care_routines.register(app, globals())
 personal_context.register(app, globals())
+import classroom_integration
+classroom_integration.register(app, globals())
 workspace_extras.register(app, globals())
 push_notifications.register(app, globals())
 daily_workspace.register(app, globals())

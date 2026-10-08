@@ -131,3 +131,39 @@ Follow-up hardening: future occurrences cannot be snoozed into early notificatio
 - https://www.cdc.gov/diabetes/treatment/your-diabetes-care-schedule.html
 - https://www.cdc.gov/diabetes/healthy-eating/diabetes-meal-planning.html
 
+
+## Missed-study replanning checkpoint — 8 October 2026
+- Existing saved plans offer a progress-confirmed preview of new dates for untouched overdue blocks. No AI calls and no duplicate tasks.
+- Completed/manual edits stay unchanged; future blocks consume this plan's daily capacity. Preserves breaks and the pre-exam rest day; explicitly reports blocks without space. Other plans/commitments must still be checked in Planner.
+- Snapshot validation rejects intervening progress/edits; row locks make application atomic and retries reuse the saved result. Previously replanned blocks can move again unless manually edited.
+- EN/GU/HI controls, ownership, stale preview, budget, overdue, retry and desktop/mobile form checks added. Changed exam dates and cross-plan workload balancing remain open. PostgreSQL and browser CI passed.
+
+## Classroom import checkpoint — 8 October 2026
+- Implemented separate consent/code flow with single-use expiring server state, session binding, PKCE, fixed HTTPS redirect and encrypted server refresh-token storage. Default off; no credentials requested or configured by this change.
+- Own-student course list, explicit selection (up to three), bounded manual sync and idempotent assignment upsert. Titles, original instructions/links and UTC deadlines only; grades/rosters are not requested. Missing/invalid deadlines stay unset.
+- Stale/failure states preserve earlier imports; complete snapshots mark unavailable work without deleting local tasks. Adding to Planner needs confirmation and is retry-safe; imports never overwrite edited tasks or imply official submission.
+- Disconnect stops import, attempts remote revocation and optionally removes imported records. Existing Planner tasks remain; export excludes credentials, account deletion cascades through stored integration records.
+- EN/GU/HI controls and ownership/consent/sync/duplicate/deadline/state/export/revocation regression tests added. CI run 37757108837 passed all 306 Python tests, JavaScript checks and desktop/mobile browser flows. Live Google authorization, scheduled sync, selected-assignment AI explanations and official submission-status retrieval remain open. Owner setup is documented in CLASSROOM_SETUP.md.
+
+Copy/landing follow-up: removed the duplicate Today story below the hero to reduce repetition; retained reminder proof, study cards, pricing and care/privacy limits. Account upgrade actions now disclose Coming soon when checkout is disabled. Referral bonuses explicitly describe current higher study limits, without changing earned access. Replaced provider/database jargon in public privacy explanations. Full legacy-screen translations and physical-device visual review remain open.
+
+
+## Third-review follow-up — 8 October 2026
+- Default navigation now prioritizes Today, Chat and Notes. Study/Care and all deeper tools remain available through keyboard-accessible More, with automatic disclosure for active deep links.
+- Empty initial Planner/reminder/habit/journal/memory/check-in lists use fixed-space skeletons. Failed loads show retry guidance; refresh does not replace form inputs or discard drafts.
+- Login stays visible beside the hero signup/demo actions at mobile widths, with EN/GU/HI copy. Shorter section spacing reduces landing scroll while preserving privacy and care limits.
+- Reduced-motion visitors see content immediately without reveal movement. Browser regression covers essential navigation, five viewport widths, visible login and translated login labels.
+- Earlier batch CI passed at 7656c245. This follow-up needs its own CI confirmation. Render cold starts are not eliminated by these frontend changes; always-on service configuration requires owner access and may incur cost. No paid hosting, clinical activation or live OAuth changes were made.
+
+
+Accessibility follow-up: explicit Account text-size control with EN/GU/HI labels; device-only preference restores before account load, works when storage is blocked, and syncs across tabs. Larger reading text and 44px controls apply to workspace, chat and authentication screens. Age and health conditions never toggle it automatically. Third-review CI run 37758475733 passed; accessibility follow-up requires its own browser check.
+
+Cross-plan study follow-up: replanning now reserves estimated time from other saved exam plans in the target timezone, including work already completed that day. All linked study tasks lock in stable order; other-plan edits invalidate previews. No other plan is edited. Undated and general Planner tasks lack duration and still need manual review. Changed exam dates remain open.
+
+Changed-exam-date follow-up: users can change the confirmed date inside progress review. Preview shifts only untouched unfinished blocks, reserves other exam plans, reports shortfalls, keeps completed/manual work, and flags retained manual blocks on/after the rest day. Exam date and task moves commit together after confirmation; changed dates/tasks invalidate previews, retries remain duplicate-safe. The saved-plan list refreshes after applying.
+
+Opt-in wellbeing reminder follow-up: Care and Check-ins can prepare a translated, optional check-in draft in the existing Reminders form. The user supplies the first time and chooses once/daily/weekly before explicitly saving. Existing scheduler, pause/delete, quiet hours and delivery states remain authoritative; repeat clock-change limits are disclosed. Existing drafts/edits are retained. No medicine/meal timing, diagnosis or caregiver escalation is inferred; silence never becomes a health alert.
+
+Reminder retry hardening: create requests carry a draft-specific UUID reused after an uncertain response; database ownership-scoped uniqueness prevents double creation without overwriting an existing reminder. Editing the draft gets a fresh ID. Older clients without IDs remain compatible. Export includes the new request ID safely.
+
+User-controlled wellbeing summary: downloadable plain-text file from fresh account-owned check-in data, with self-reported 1–5 mood/energy ratings and explicit display timezone. Private notes are excluded unless the user checks Include notes. No model processing or automatic sharing; user decides whether to show the file to a clinician. Labels/disclosures are EN/GU/HI.

@@ -24,3 +24,9 @@
 [data-page="landing"] .faq-a p{padding:0 22px;margin-bottom:22px}
 [data-page="landing"] .faq-q:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
 @media(max-width:700px){[data-page="landing"] .hero{padding-top:40px}[data-page="landing"] .faq{padding-block:44px}[data-page="landing"] .faq-q{padding:17px}}
+
+/* Keep small-screen decoration and footer links inside their actual containers. */
+[data-page="landing"] .footer-links{flex-wrap:wrap;max-width:100%;row-gap:12px}
+[data-page="landing"] :is(.story-copy,.story-shot,.reminder-visual){min-width:0}
+[data-page="landing"] .reminder-visual::before{width:min(500px,100%);height:auto;aspect-ratio:1}
+@media(max-width:600px){[data-page="landing"] .large-phone{max-width:calc(100% - 20px)}}

@@ -82,11 +82,19 @@ function workspaceEnvironment(api,storage=null){
   // Appearance follows OS until an explicit preference, and works with blocked storage.
   const appearanceButton=new Element();appearanceButton.attrs['data-theme-label']='';let osChange,storageChange,ready,click;
   const media={matches:true,addEventListener:(name,fn)=>osChange=fn},root={dataset:{},style:{}};
-  const themeCtx={window:{matchMedia:()=>media,addEventListener:(name,fn)=>storageChange=fn},localStorage:{getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}},document:{documentElement:root,querySelector:()=>null,querySelectorAll:()=>[appearanceButton],addEventListener:(name,fn)=>ready=fn}};
+  const themeCtx={window:{matchMedia:()=>media,addEventListener:(name,fn)=>{if(!storageChange)storageChange=fn}},localStorage:{getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}},document:{documentElement:root,querySelector:()=>null,querySelectorAll:selector=>selector==='[data-large-text]'?[]:[appearanceButton],addEventListener:(name,fn)=>{if(!ready)ready=fn}}};
   vm.createContext(themeCtx);vm.runInContext(fs.readFileSync('theme.js','utf8'),themeCtx);
   assert.equal(root.dataset.theme,'dark');media.matches=false;osChange();assert.equal(root.dataset.theme,'light');
   ready();appearanceButton.events.click();assert.equal(root.dataset.theme,'dark');media.matches=false;osChange();assert.equal(root.dataset.theme,'dark');
   assert.equal(appearanceButton.attrs['aria-label'],'Switch to light mode');storageChange({key:'saathi-theme',newValue:'light'});assert.equal(root.dataset.theme,'light');
+
+  // Reading preference is restored before paint and shared across tabs.
+  const sizeRoot={dataset:{},lang:'gu'},sizeButton=new Element(),sizeEvents={};
+  const sizeCtx={window:{addEventListener:(name,fn)=>sizeEvents[name]=fn},localStorage:{getItem:()=> 'on',setItem(){throw Error('blocked')}},document:{documentElement:sizeRoot,querySelectorAll:()=>[sizeButton],addEventListener:(name,fn)=>sizeEvents[name]=fn}};
+  vm.createContext(sizeCtx);const sizeSource=fs.readFileSync('theme.js','utf8');vm.runInContext(sizeSource.slice(sizeSource.indexOf('/* A device preference')),sizeCtx);
+  assert.equal(sizeRoot.dataset.textSize,'large');assert.ok(sizeButton.textContent.includes('સામાન્ય'));
+  sizeEvents.DOMContentLoaded();sizeButton.events.click();assert.equal(sizeRoot.dataset.textSize,'normal','Blocked storage does not prevent the control from working');
+  sizeEvents.storage({key:'saathi-large-text',newValue:'on'});assert.equal(sizeRoot.dataset.textSize,'large');
 
   // Push payloads cannot inject private content or redirect the click off-site.
   const handlers={},notified=[],opened=[];let focused=0;let windows=[{url:'https://saathi.test/chat',focus(){throw Error('Must preserve unsaved chat')}}];

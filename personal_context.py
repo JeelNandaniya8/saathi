@@ -130,6 +130,9 @@ def register(app, b):
                 return jsonify(error=str(error)), 400
         return wrapped
 
+    from exam_replanning import register as register_replanning
+    register_replanning(app, db, private)
+
     @app.get('/api/personal-context')
     @private
     def get_context(uid):

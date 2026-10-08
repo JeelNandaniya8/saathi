@@ -23,3 +23,19 @@
   document.addEventListener('DOMContentLoaded',()=>{refresh();document.querySelectorAll('[data-theme-action]').forEach(button=>button.addEventListener('click',window.SaathiTheme.toggle))});
   refresh();
 })();
+
+/* A device preference, chosen explicitly and applied before account loading. */
+(function(){
+  let large=false;try{large=localStorage.getItem('saathi-large-text')==='on'}catch(_){}
+  function refresh(){
+    document.documentElement.dataset.textSize=large?'large':'normal';
+    const language=document.documentElement.lang||'en';
+    const copy={en:['Use larger text','Use standard text'],gu:['મોટા અક્ષરો રાખો','સામાન્ય અક્ષરો રાખો'],hi:['बड़े अक्षर रखें','सामान्य अक्षर रखें']}[language]||['Use larger text','Use standard text'];
+    document.querySelectorAll('[data-large-text]').forEach(button=>{button.textContent=copy[large?1:0];button.setAttribute('aria-pressed',String(large))});
+  }
+  function apply(enabled){large=Boolean(enabled);try{localStorage.setItem('saathi-large-text',large?'on':'off')}catch(_){}refresh()}
+  window.SaathiTextSize={refresh,apply};
+  window.addEventListener('storage',event=>{if(event.key==='saathi-large-text'){large=event.newValue==='on';refresh()}});
+  document.addEventListener('DOMContentLoaded',()=>{refresh();document.querySelectorAll('[data-large-text]').forEach(button=>button.addEventListener('click',()=>apply(!large)))});
+  refresh();
+})();

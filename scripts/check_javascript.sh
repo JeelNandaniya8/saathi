@@ -30,3 +30,5 @@ for test in tests/chat_history_races.cjs tests/dashboard_save_races.cjs tests/no
 node tests/mock_recovery.cjs
 
 node --check care-routines.js
+
+node --check classroom.js

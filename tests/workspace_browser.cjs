@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,careSaves=[];
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[];
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -29,6 +29,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/overview')data={pending_tasks:1,conversations:1,active_reminders:0,active_memories:0};
      else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
+     else if(pathname==='/api/check-ins')data={check_ins:[{id:1,created_at:'2026-10-08T09:00:00Z',mood:3,energy:4,note:'Private summary fixture'}]};
      else if(pathname==='/api/reminders')data={reminders:[]};
      else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
      else if(pathname==='/api/care/routines'){
@@ -53,6 +54,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
+     else if(pathname==='/api/classroom/status')data={configured:true,connected:classroomConnected,connection:{last_sync:null,last_error:null}};
+     else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
+     else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
+     else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
+     else if(pathname==='/api/classroom/disconnect'){assert.equal(body().confirmed,true);assert.equal(body().remove_imports,true);classroomConnected=false;data={ok:true,revoked:true}}
      else if(pathname==='/api/personal-context')data={fields:profileFields};
      else if(pathname==='/api/personal-context/care/conditions'){
       if(method==='PUT')profileFields=[{...body(),category:'care',field:'conditions',source:'user_reported',version:1,reviewed_at:new Date().toISOString()}];
@@ -60,12 +66,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      }
      else if(pathname==='/api/personal-context/revoke'){profileFields=profileFields.map(x=>({...x,use_in_ai:false,version:x.version+1}));data={ok:true}}
      else if(pathname==='/api/exam-plans/preview')data={plan:{...body(),preview_token:'fixture-plan',coverage_limited:false,rest_date:'2026-12-31',items:[{date:'2026-12-20',phase:'recall',topic:'Algebra',minutes:25}]}};
-     else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:[]}}
+     else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:planSaves?[{id:1,title:'Semester exam',exam_date:'2027-01-01',timezone:'UTC'}]:[]}}
 
+     else if(pathname==='/api/exam-plans/1/replan/preview'){assert.equal(body().confirmed,true);data={plan:{items:[{id:1,title:'Recall: Algebra',from:'2026-10-01T18:00:00Z',due_at:'2026-10-10T18:00:00Z'}],unscheduled:0,preserved:[],exam_date:body().exam_date,rest_date:'2026-10-19',date_changed:true,outside_window:0,preview_token:'replan-fixture'}}}
+     else if(pathname==='/api/exam-plans/1/replan/apply'){assert.equal(body().preview_token,'replan-fixture');assert.equal(body().confirmed,true);assert.equal(body().exam_date,'2026-10-20');replanSaves++;data={ok:true,moved:1}}
      else {status=404;data={error:'Unmocked fixture endpoint: '+pathname}}
      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
     }
-    const filename=pathname==='/dashboard'?'dashboard.html':pathname==='/chat'?'chat.html':pathname.slice(1),local=path.resolve(root,filename);
+    const filename=pathname==='/'?'saathi.html':pathname==='/dashboard'?'dashboard.html':pathname==='/chat'?'chat.html':pathname.slice(1),local=path.resolve(root,filename);
     if(!local.startsWith(root+path.sep)||!fs.existsSync(local)||!fs.statSync(local).isFile())return route.fulfill({status:404,body:''});
     const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'};
     return route.fulfill({contentType:types[path.extname(local)]||'application/octet-stream',body:fs.readFileSync(local)});
@@ -74,10 +82,21 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
    assert.equal(await page.evaluate(()=>scrollY),0,'Greeting stays visible on startup');
+   assert.equal(await page.locator('.nav > button[data-view]').count(),1,'Today is the only top-level workspace view');
+   assert.equal(await page.locator('.nav > [data-quick-notes]').count(),1);
+   assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
+   assert.equal(await page.locator('#moreNavigation [data-view="study"],#moreNavigation [data-view="healer"]').count(),2,'Study and Care remain reachable');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
    await page.evaluate(()=>openView('account'));
+   await page.locator('[data-large-text]').click();
+   assert.equal(await page.locator('html').getAttribute('data-text-size'),'large');
+   assert.equal(await page.locator('[data-large-text]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.locator('#dailyPreferenceSummary').evaluate(el=>getComputedStyle(el).fontSize),'18px');
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Large text fits the workspace');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('saathi-large-text')),'on');
+   await page.locator('[data-large-text]').click();
    await page.locator('#languageSelect').selectOption('gu');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent.includes('ધ્યાન'));
    assert.equal(await page.locator('#profileDisplayName').textContent(),'Search','User names must remain unchanged');
@@ -110,6 +129,23 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('account'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
+   await page.evaluate(()=>openView('checkins'));
+   const [summaryFile]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
+   const summaryText=fs.readFileSync(await summaryFile.path(),'utf8');
+   assert.ok(summaryText.includes('Mood: 3/5'));assert.ok(!summaryText.includes('Private summary fixture'));
+   await page.locator('#checkinIncludeNotes').check();
+   const [withNotes]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
+   assert.ok(fs.readFileSync(await withNotes.path(),'utf8').includes('Private summary fixture'));
+   await page.locator('#checkinIncludeNotes').uncheck();
+   await page.locator('#checkins [data-schedule-checkin]').click();
+   assert.equal(await page.locator('#reminderTitle').inputValue(),'How are you feeling today?');
+   assert.equal(await page.locator('#reminderTime').inputValue(),'','No timing is inferred');
+   assert.equal(await page.locator('#reminderRecurrence').inputValue(),'once');
+   await page.locator('#reminderTitle').fill('Keep my draft');
+   await page.evaluate(()=>openView('healer'));
+   await page.locator('#healer [data-schedule-checkin]').click();
+   assert.equal(await page.locator('#reminderTitle').inputValue(),'Keep my draft');
+   await page.evaluate(()=>{cancelReminderEdit();openView('account')});
    // Actual forms: off-by-default health consent, revoke and preview-before-save.
    await page.locator('#account [data-personal-context]').click();
    let profile=page.locator('dialog[open]').last();
@@ -139,6 +175,30 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(await exam.evaluate(el=>el.getBoundingClientRect().width<=innerWidth),'New dialogs fit mobile');
    await exam.getByRole('button',{name:'Add this plan to Planner',exact:true}).click();
    await page.waitForFunction(()=>state.currentView==='tasks');assert.equal(planSaves,1);
+   await page.evaluate(()=>openView('study'));await page.locator('[data-exam-plans]').click();
+   await page.getByRole('button',{name:'Reschedule missed blocks',exact:true}).click();
+   const replan=page.getByRole('dialog',{name:'Reschedule missed blocks',exact:true});
+   await replan.getByLabel('I have reviewed completed work in Planner.',{exact:true}).check();
+   await replan.getByLabel('Confirmed exam date',{exact:true}).fill('2026-10-20');
+   await replan.getByRole('button',{name:'Preview plan',exact:true}).click();
+   await replan.getByRole('button',{name:'Confirm new dates',exact:true}).waitFor();
+   assert.equal(replanSaves,0);
+   await replan.getByRole('button',{name:'Confirm new dates',exact:true}).click();
+   await replan.waitFor({state:'detached'});assert.equal(replanSaves,1);
+   await page.locator('dialog[open]').getByRole('button',{name:'Close',exact:true}).click();
+   await page.locator('[data-classroom]').click();
+   const classroom=page.getByRole('dialog',{name:'Google Classroom',exact:true});
+   await classroom.getByText('No confirmed deadline',{exact:true}).waitFor();
+   assert.equal(await classroom.locator('script').count(),0);
+   const addAssignment=classroom.getByRole('button',{name:'Add to Planner',exact:true});
+   await addAssignment.click();assert.equal(classroomAdds,0);
+   await classroom.getByRole('button',{name:'Confirm: Add to Planner',exact:true}).click();
+   await classroom.getByText('Already in Planner',{exact:true}).waitFor();assert.equal(classroomAdds,1);
+   await classroom.getByLabel('Also remove imported assignments. Planner tasks stay.',{exact:true}).check();
+   await classroom.getByRole('button',{name:'Disconnect',exact:true}).click();
+   await classroom.getByRole('button',{name:'Confirm: Disconnect',exact:true}).click();
+   await classroom.getByRole('button',{name:'Connect Classroom',exact:true}).waitFor();
+   await classroom.getByRole('button',{name:'Close',exact:true}).click();
    // Explicit health consent, retained input and stable retry IDs on both viewports.
    await page.evaluate(()=>openView('reminders'));
    await page.locator('[data-care-routines]').click();
@@ -225,6 +285,22 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
    releaseReply();
    await page.locator('.message.failed').waitFor();
+   await page.goto(base+'/');
+   await page.locator('#heroCta').waitFor();
+   for(const screen of [320,360,390,768,1280]){
+    await page.setViewportSize({width:screen,height:900});
+    const fit=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,cls:el.className,rect:el.getBoundingClientRect()})).filter(x=>x.rect.width&&x.rect.height&&(x.rect.right>innerWidth+1||x.rect.left< -1)).slice(0,12).map(x=>({tag:x.tag,cls:x.cls,left:x.rect.left,right:x.rect.right}))}));
+    assert.ok(fit.scroll<=fit.width+1,'Landing must fit '+screen+'px: '+JSON.stringify(fit));
+    assert.ok(await page.locator('#heroCta').isVisible(),'Primary action remains visible');
+    assert.ok(await page.locator('#heroLogin').isVisible(),'Login is available without opening the mobile menu');
+    assert.equal(await page.locator('#heroLogin').getAttribute('href'),'/account?tab=login');
+   }
+   await page.locator('[data-lang="gu"]').click();
+   assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
+   await page.locator('[data-lang="hi"]').click();
+   assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.equal(await page.locator('.reveal').first().evaluate(el=>getComputedStyle(el).opacity),'1','Reduced motion keeps marketing content visible');
    assert.deepEqual(errors,[],'No uncaught errors in real pages');
    console.log('PASS: real Chromium '+width+'px, deferred tools/retry, English/Gujarati, private user text, focus reopen, search escaping and chat edit cancellation');
    await context.close();
