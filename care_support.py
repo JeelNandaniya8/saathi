@@ -190,7 +190,7 @@ def register(app,b):
         with db() as (_,cur):
             cur.execute("SELECT * FROM care_shares WHERE id=%s AND recipient_id=%s AND status='accepted' AND expires_at>NOW()",(sid,uid));share=cur.fetchone()
             if not share or not relationship(cur,share['owner_id'],uid):return jsonify(error='Accepted access not found.'),404
-            cur.execute("""SELECT r.id,r.title,r.note,r.current_scheduled_for,o.status FROM reminders r
+            cur.execute("""SELECT r.id,COALESCE(o.title_snapshot,r.title) title,COALESCE(o.instructions_snapshot,r.note) note,r.current_scheduled_for,o.status FROM reminders r
                 LEFT JOIN care_occurrences o ON o.reminder_id=r.id AND o.scheduled_for=r.current_scheduled_for
                 WHERE r.user_id=%s AND r.kind='medication' AND r.id=ANY(%s) ORDER BY r.id""",(share['owner_id'],share['routine_ids']))
             rows=[]

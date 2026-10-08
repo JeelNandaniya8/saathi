@@ -113,6 +113,7 @@ def test_confirmed_instruction_edit_preserves_history_timing_and_invalidates_sha
     old=one(db,'SELECT * FROM reminders WHERE id=%s',(rid,))
     with db() as conn:
         with conn.cursor() as cur:
+            cur.execute("INSERT INTO trusted_contacts(owner_user_id,invited_email,contact_user_id,status,created_at,updated_at) VALUES(1,'other@example.com',2,'accepted',NOW(),NOW())")
             future=old['current_scheduled_for']+timedelta(days=1)
             care.ensure_occurrence(cur,old,future)
             cur.execute("INSERT INTO care_shares(owner_id,recipient_id,routine_ids,fields,status,expires_at) VALUES(1,2,%s,'[\"status\",\"instructions\"]','accepted',NOW()+INTERVAL '7 days')",('[%s]'%rid,))
@@ -128,4 +129,8 @@ def test_confirmed_instruction_edit_preserves_history_timing_and_invalidates_sha
     assert c.patch(url,json=data).status_code==409
     assert c.get('/api/export-data').json['care_occurrences'][0]['instructions_snapshot']=='User-entered clinician text'
     with c.session_transaction() as s:s['user_id']=2
+    share=one(db,'SELECT id,version FROM care_shares')
+    assert c.post(f"/api/care/shares/{share['id']}/respond",json={'confirmed':True,'action':'accept','version':share['version']}).status_code==200
+    records=c.get(f"/api/care/shares/{share['id']}/records").json['records']
+    assert records[0]['instructions']=='User-entered clinician text','Caregiver sees the original instruction for this elapsed occurrence'
     assert c.patch(url,json={**data,'version':2}).status_code==404
