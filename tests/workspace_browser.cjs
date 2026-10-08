@@ -259,7 +259,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#heroCta').waitFor();
    for(const screen of [320,360,390,768,1280]){
     await page.setViewportSize({width:screen,height:900});
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Landing must fit '+screen+'px');
+    const fit=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,cls:el.className,rect:el.getBoundingClientRect()})).filter(x=>x.rect.width&&x.rect.height&&(x.rect.right>innerWidth+1||x.rect.left< -1)).slice(0,12).map(x=>({tag:x.tag,cls:x.cls,left:x.rect.left,right:x.rect.right}))}));
+    assert.ok(fit.scroll<=fit.width+1,'Landing must fit '+screen+'px: '+JSON.stringify(fit));
     assert.ok(await page.locator('#heroCta').isVisible(),'Primary action remains visible');
    }
    assert.deepEqual(errors,[],'No uncaught errors in real pages');
