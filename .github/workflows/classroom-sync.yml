@@ -25,3 +25,8 @@ jobs:
         env:
           CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
         run: python3 scripts/sync_classroom.py
+      - name: Deliver general background alerts (no medication schedules)
+        if: always()
+        env:
+          CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
+        run: python3 scripts/send_background_alerts.py

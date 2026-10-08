@@ -181,7 +181,7 @@ document.querySelectorAll('input[type="password"]').forEach(input=>{
  button.addEventListener('click',()=>{const show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'Hide':'Show';button.setAttribute('aria-label',show?'Hide password':'Show password');button.setAttribute('aria-pressed',String(show))});
  input.parentElement.append(button);
 });
-switchTab(params.get('mode')==='login'||params.get('tab')==='login'?'login':'signup');
+switchTab(params.get('mode')==='login'||params.get('tab')==='login'||(params.has('next')&&params.get('tab')!=='signup')?'login':'signup');
 checkExistingSession();
 window.addEventListener('pageshow',event=>{if(event.persisted)checkExistingSession()});
 </script>

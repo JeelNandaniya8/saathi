@@ -77,7 +77,7 @@ def test_pending_username_does_not_block_new_signup(db_app,monkeypatch):
 def test_mock_test_ownership_answers_expiry_and_retry(db_app,monkeypatch):
     b,client,connect=db_app
     monkeypatch.setattr(b,'generate_study_json',lambda *args:questions())
-    generated=client.post('/api/mock-tests/generate',json={'topic':'ગણિત','question_count':5,'time_limit_minutes':5})
+    generated=client.post('/api/mock-tests/generate',json={'topic':'ગણિત','question_count':5,'time_limit_minutes':5,'language':'hi'})
     assert generated.status_code==200,generated.json
     test=generated.json['test'];tid=test['id']
     assert 'correct_option' not in json.dumps(test)
@@ -85,6 +85,12 @@ def test_mock_test_ownership_answers_expiry_and_retry(db_app,monkeypatch):
     assert first.status_code==200 and first.json['attempt']['score']==1
     repeated=client.post(f'/api/mock-tests/{tid}/submit',json={'answers':{'1':'B'}})
     assert repeated.json==first.json
+    stored=client.get(f'/api/mock-tests/{tid}').json['result']
+    assert stored['attempt']['created_at']==first.json['attempt']['created_at']
+    history=client.get('/api/mock-tests/history').json['tests'][0]
+    assert history['language']=='hi'
+    assert history['score']==first.json['attempt']['score']
+    assert history['attempted_at']==first.json['attempt']['created_at']
     assert one(connect,'SELECT count(*) AS n FROM mock_test_attempts')['n']==1
     with client.session_transaction() as session:session['user_id']=2
     assert client.get(f'/api/mock-tests/{tid}').status_code==404

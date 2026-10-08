@@ -40,6 +40,7 @@ def test_push_rejects_non_browser_destinations(endpoint):assert not push.endpoin
 def test_push_keys_and_configuration_validation(monkeypatch):
     subscription=push_fixture(monkeypatch)
     assert push.configuration()['enabled']
+    monkeypatch.setenv('VAPID_SUBJECT','https://saathi.example.test/support');assert push.configuration()['enabled']
     assert push.validate_subscription({**subscription,'ignored':'value'})==subscription
     for host in ['updates.push.services.mozilla.com','web.push.apple.com','wns2-db5p.notify.windows.com']:
         assert push.endpoint_allowed('https://'+host+'/subscription')

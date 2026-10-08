@@ -33,23 +33,34 @@ function renderMockTestHistory(){
     diffBadge.textContent=test.difficulty;
     title.append(diffBadge);
     const sub=document.createElement('p');
-    const scoreStr=test.best_score!=null?`Best: ${test.best_score}/${test.question_count} (${test.best_accuracy}%)`:'Not attempted yet';
+    const scoreStr=test.score!=null?`Score: ${test.score}/${test.question_count} (${test.accuracy}%)`:'Not attempted yet';
     sub.textContent=`${test.question_count} Questions · ${test.time_limit_minutes} mins · ${scoreStr}`;
     const date=document.createElement('small');
-    date.textContent=`Created ${formatDate(test.created_at)}`;
+    date.textContent=test.attempted_at?`Completed ${formatDate(test.attempted_at)}`:`Created ${formatDate(test.created_at)}`;
     copy.append(title,sub,date);
     const actions=document.createElement('div');
     actions.className='item-actions';
     const launchBtn=document.createElement('button');
     launchBtn.className='mini-button';
     launchBtn.type='button';
-    launchBtn.textContent='Practice Again';
-    launchBtn.onclick=()=>quickStartFromHistory(test);
-    actions.append(launchBtn);
+    launchBtn.textContent=test.score!=null?'Review result':'Resume test';
+    const ended=test.score==null&&new Date(test.created_at).getTime()+test.time_limit_minutes*60000<=Date.now();if(ended){launchBtn.textContent='Timed test ended';launchBtn.disabled=true}else launchBtn.onclick=()=>quickStartFromHistory(test);
+    const fresh=document.createElement('button');fresh.type='button';fresh.className='mini-button';fresh.textContent='Practise again';fresh.onclick=()=>prepareFreshPractice(test);actions.append(launchBtn,fresh);
     card.append(icon,copy,actions);
     box.append(card);
   });
 }
+
+function prepareFreshPractice(test){
+  if(state.testSubmitting||state.testGenerating)return;
+  state.testLoadSequence=(state.testLoadSequence||0)+1;clearInterval(state.testTimerInterval);
+  state.activeTest=null;state.lastAttemptResult=null;
+  $('testTopic').value=test.topic;$('testCount').value=test.question_count;$('testDifficulty').value=test.difficulty;$('testTimeLimit').value=test.time_limit_minutes;$('testLanguage').value=test.language||state.user?.language||'en';
+  $('mockTestCreatorBox').style.display='block';$('mockTestResultsBox').style.display='none';$('mockTestRunnerBox').style.display='none';
+  $('testTopic').focus();$('mockTestCreatorBox').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Ready for a fresh test. Review the settings, then Generate.');
+}
+function attemptDate(attempt){return attempt?.created_at?new Date(attempt.created_at).toLocaleDateString():'Date unavailable'}
 
 async function quickStartFromHistory(test){
   if(state.testSubmitting||state.testGenerating)return;const sequence=state.testLoadSequence=(state.testLoadSequence||0)+1;clearInterval(state.testTimerInterval);
@@ -58,7 +69,7 @@ async function quickStartFromHistory(test){
     state.activeTest=response.test;state.activeTestAnswers={};state.activeTestFlags=new Set();state.activeTestIndex=0;
     if(response.result){window.SaathiRecovery?.removeDraft('mock',test.id);state.lastAttemptResult=response.result;renderTestResults(response.result);return}
     const remaining=Math.ceil((new Date(response.test.expires_at).getTime()-Date.now())/1000);
-    if(remaining<=0){$('testTopic').value=test.topic;toast('This test has ended. Generate a new practice test when ready.');return}
+    if(remaining<=0){prepareFreshPractice(test);toast('This timed test has ended. Generate a fresh test when ready.');return}
     state.testTotalSeconds=response.test.time_limit_minutes*60;state.testSecondsLeft=remaining;
     $('mockTestCreatorBox').style.display='none';$('mockTestResultsBox').style.display='none';$('mockTestRunnerBox').style.display='block';
     $('runnerTopicTitle').textContent=test.topic;restoreMockDraft();startTestTimer();renderQuestion(state.activeTestIndex);
@@ -327,7 +338,7 @@ function renderTestResults(data){
   $('previewTopicName').textContent=test?.topic||'Mock Test';
   $('previewScoreNum').textContent=`${attempt.score} / ${attempt.total_questions}`;
   $('previewScorePct').textContent=`(${attempt.accuracy_percentage}% Accuracy)`;
-  $('previewMetaRow').innerHTML=`<span>⏱️ Time: ${timeStr}</span><span>📅 ${new Date().toLocaleDateString()}</span><span>⚡ Level: ${escapeText(test?.difficulty||'Medium')}</span>`;
+  $('previewMetaRow').innerHTML=`<span>⏱️ Time: ${timeStr}</span><span>📅 ${attemptDate(attempt)}</span><span>⚡ Level: ${escapeText(test?.difficulty||'Medium')}</span>`;
   
   // Render review questions
   const list=$('reviewQuestionsList');
@@ -528,7 +539,7 @@ function generateScorecardCanvas(data){
   // 8. Footer Watermark
   ctx.fillStyle='rgba(255,255,255,0.4)';
   ctx.font='500 22px Inter, sans-serif';
-  ctx.fillText(`Saathi practice result · AI questions may contain errors · ${new Date().toLocaleDateString()}`,80,1230,920);
+  ctx.fillText(`Saathi practice result · AI questions may contain errors · ${attemptDate(state.lastAttemptResult?.attempt)}`,80,1230,920);
 }
 
 function downloadScorecardPng(){

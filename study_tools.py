@@ -40,7 +40,7 @@ def validate_questions(raw, expected=None):
 def public_test(row):
     questions = validate_questions(row['questions_json'])
     return {'id':row['id'],'topic':row['topic'],'difficulty':row['difficulty'],'question_count':len(questions),
-            'time_limit_minutes':row['time_limit_minutes'],
+            'time_limit_minutes':row['time_limit_minutes'],'language':row.get('language'),
             'expires_at':(row['created_at']+timedelta(minutes=row['time_limit_minutes'])).isoformat(),
             'questions':[{key:q[key] for key in ('id','question','options')} for q in questions]}
 
@@ -146,8 +146,8 @@ def register(app,b):
         now=datetime.now(timezone.utc)
         with db() as (conn,cur):
             allowance(cur,uid,'mock')
-            cur.execute('''INSERT INTO mock_tests (user_id,topic,difficulty,question_count,time_limit_minutes,questions_json,created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *''',(uid,topic,difficulty,count,minutes,json.dumps(questions,ensure_ascii=False),now))
+            cur.execute('''INSERT INTO mock_tests (user_id,topic,difficulty,question_count,time_limit_minutes,questions_json,created_at,language)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',(uid,topic,difficulty,count,minutes,json.dumps(questions,ensure_ascii=False),now,data.get("language","en")))
             row=cur.fetchone();conn.commit()
         return jsonify(ok=True,test=public_test(row))
 
@@ -160,6 +160,7 @@ def register(app,b):
             cur.execute('SELECT * FROM mock_test_attempts WHERE test_id=%s AND user_id=%s ORDER BY id LIMIT 1',(test_id,uid));attempt=cur.fetchone()
         if attempt:
             result=grade(validate_questions(row['questions_json']),attempt['answers_json'],attempt['time_taken_seconds'],attempt['id'])
+            result['attempt']['created_at']=attempt['created_at'].isoformat()
             return jsonify(test=public_test(row),result=result)
         return jsonify(test=public_test(row))
 
@@ -173,7 +174,10 @@ def register(app,b):
             if not row:return jsonify(error='Mock test not found.'),404
             questions=validate_questions(row['questions_json'])
             cur.execute('SELECT * FROM mock_test_attempts WHERE test_id=%s AND user_id=%s ORDER BY id LIMIT 1',(test_id,uid));previous=cur.fetchone()
-            if previous:return jsonify(grade(questions,previous['answers_json'],previous['time_taken_seconds'],previous['id']))
+            if previous:
+                result=grade(questions,previous['answers_json'],previous['time_taken_seconds'],previous['id'])
+                result['attempt']['created_at']=previous['created_at'].isoformat()
+                return jsonify(result)
             now=datetime.now(timezone.utc)
             end=row['created_at']+timedelta(minutes=row['time_limit_minutes'])
             if now>end+timedelta(seconds=45):return jsonify(error='This timed test has ended. Start a new practice test.'),410
@@ -184,6 +188,7 @@ def register(app,b):
             cur.execute('''INSERT INTO mock_test_attempts (test_id,user_id,score,total_questions,accuracy_percentage,time_taken_seconds,answers_json,created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id''',(test_id,uid,attempt['score'],len(questions),attempt['accuracy_percentage'],seconds,json.dumps(answers),now))
             attempt['id']=cur.fetchone()['id']
+            attempt['created_at']=now.isoformat()
             from daily_workspace import add_mock_revision
             add_mock_revision(cur,uid,test_id,row['topic'],result['review'])
             conn.commit()

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 from contextlib import contextmanager
 from datetime import datetime,timedelta,timezone
 from functools import wraps
@@ -48,7 +49,7 @@ def configuration():
     public=os.environ.get('VAPID_PUBLIC_KEY','').strip();private=os.environ.get('VAPID_PRIVATE_KEY','').strip()
     subject=os.environ.get('VAPID_SUBJECT','').strip()
     enabled=False
-    if public and private and len(private)<2048 and re.fullmatch(r'mailto:[^\s@]+@[^\s@]+\.[^\s@]+',subject):
+    if public and private and len(private)<2048 and (re.fullmatch(r'mailto:[^\s@]+@[^\s@]+\.[^\s@]+',subject) or re.fullmatch(r'https://[a-z0-9.-]+(?:/[^\s]*)?',subject)):
         try:
             key=serialization.load_der_private_key(decode_key(private),password=None)
             if isinstance(key,ec.EllipticCurvePrivateKey) and isinstance(key.curve,ec.SECP256R1):
@@ -88,7 +89,9 @@ def database(b):
     finally:cur.close();conn.close()
 
 
-def deliver_due(b):
+MEDICATION_WORDS = r'medic(ine|ation)|insulin|injection|dose|દવા|ઇન્સ્યુલિન|ઇન્જેક્શન|दवा|इंसुलिन|इंजेक्शन|खुराक'
+
+def deliver_due(b, general_only=False):
     config=configuration()
     if not config['enabled']:return {'configured':False,'sent':0,'failed':0,'skipped':0}
     now=datetime.now(timezone.utc)
@@ -98,10 +101,10 @@ def deliver_due(b):
             JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
             JOIN reminders r ON r.user_id=s.user_id
             LEFT JOIN push_deliveries d ON d.subscription_id=s.id AND d.reminder_id=r.id AND d.scheduled_for=r.next_run_at
-            WHERE r.active=TRUE AND (r.kind='general' OR %s) AND r.next_run_at<=%s AND r.next_run_at>=%s
+            WHERE r.active=TRUE AND (NOT %s OR concat_ws(' ',r.title,r.note) !~* %s) AND (r.kind='general' OR %s) AND r.next_run_at<=%s AND r.next_run_at>=%s
             AND (d.id IS NULL OR (d.status='failed' AND d.attempt_count<5 AND d.updated_at<%s)
                  OR (d.status='processing' AND d.attempt_count<5 AND d.updated_at<%s))
-            ORDER BY r.next_run_at,s.id LIMIT 10''',(care_routines.enabled(),now,now-timedelta(days=1),now-timedelta(minutes=2),now-timedelta(minutes=5)))
+            ORDER BY r.next_run_at,s.id LIMIT 10''',(general_only,MEDICATION_WORDS,care_routines.enabled() and not general_only,now,now-timedelta(days=1),now-timedelta(minutes=2),now-timedelta(minutes=5)))
         due=cur.fetchall()
     result={'configured':True,'sent':0,'failed':0,'skipped':0}
     for item in due:
@@ -111,12 +114,12 @@ def deliver_due(b):
                 JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
                 JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
                 JOIN reminders r ON r.user_id=s.user_id
-                WHERE s.id=%s AND r.id=%s AND r.active=TRUE AND (r.kind='general' OR %s) AND r.next_run_at=%s
+                WHERE s.id=%s AND r.id=%s AND r.active=TRUE AND (NOT %s OR concat_ws(' ',r.title,r.note) !~* %s) AND (r.kind='general' OR %s) AND r.next_run_at=%s
                 ON CONFLICT(subscription_id,reminder_id,scheduled_for) DO UPDATE SET status='processing',attempt_count=push_deliveries.attempt_count+1,updated_at=NOW()
                 WHERE push_deliveries.attempt_count<5 AND
                 ((push_deliveries.status='failed' AND push_deliveries.updated_at<%s)
                  OR (push_deliveries.status='processing' AND push_deliveries.updated_at<%s)) RETURNING id''',
-                (item['subscription_id'],item['reminder_id'],care_routines.enabled(),item['next_run_at'],now-timedelta(minutes=2),now-timedelta(minutes=5)))
+                (item['subscription_id'],item['reminder_id'],general_only,MEDICATION_WORDS,care_routines.enabled() and not general_only,item['next_run_at'],now-timedelta(minutes=2),now-timedelta(minutes=5)))
             claim=cur.fetchone();conn.commit()
         if not claim:result['skipped']+=1;continue
         tag='saathi-reminder-'+str(item['reminder_id'])+'-'+str(int(item['next_run_at'].timestamp()))
@@ -132,12 +135,12 @@ def deliver_due(b):
                 cur.execute("UPDATE push_deliveries SET status=%s,updated_at=NOW(),sent_at=CASE WHEN %s THEN NOW() ELSE sent_at END WHERE id=%s",('sent' if sent else 'failed',sent,claim['id']))
                 result['sent' if sent else 'failed']+=1
             conn.commit()
-    digest=deliver_digest(b,config,now,max(0,10-len(due)))
+    digest=deliver_digest(b,config,now,max(0,10-len(due)),general_only=general_only)
     for key in ('sent','failed','skipped'):result[key]+=digest[key]
     return result
 
 
-def deliver_digest(b,config,now,limit):
+def deliver_digest(b,config,now,limit,general_only=False):
     result={'sent':0,'failed':0,'skipped':0}
     if not limit:return result
     with database(b) as (_,cur):
@@ -145,10 +148,10 @@ def deliver_digest(b,config,now,limit):
             JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
             JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
             LEFT JOIN push_digest_deliveries d ON d.subscription_id=s.id AND d.local_date=w.local_date
-            WHERE EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
+            WHERE EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (NOT %s OR concat_ws(' ',r.title,r.note) !~* %s) AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
             AND (d.id IS NULL OR (d.attempt_count<5 AND
                 ((d.status='failed' AND d.updated_at<%s) OR (d.status='processing' AND d.updated_at<%s))))
-            ORDER BY s.id LIMIT %s''',(care_routines.enabled(),now,now-timedelta(minutes=2),now-timedelta(minutes=5),limit));due=cur.fetchall()
+            ORDER BY s.id LIMIT %s''',(general_only,MEDICATION_WORDS,care_routines.enabled() and not general_only,now,now-timedelta(minutes=2),now-timedelta(minutes=5),limit));due=cur.fetchall()
     for item in due:
         with database(b) as (conn,cur):
             cur.execute('''INSERT INTO push_digest_deliveries(subscription_id,local_date)
@@ -156,12 +159,12 @@ def deliver_digest(b,config,now,limit):
                 JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
                 JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
                 WHERE s.id=%s AND w.local_date=%s
-                AND EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
+                AND EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (NOT %s OR concat_ws(' ',r.title,r.note) !~* %s) AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
                 ON CONFLICT(subscription_id,local_date) DO UPDATE SET status='processing',attempt_count=push_digest_deliveries.attempt_count+1,updated_at=NOW()
                 WHERE push_digest_deliveries.attempt_count<5 AND
                     ((push_digest_deliveries.status='failed' AND push_digest_deliveries.updated_at<%s)
                     OR (push_digest_deliveries.status='processing' AND push_digest_deliveries.updated_at<%s)) RETURNING id''',
-                (item['id'],item['local_date'],care_routines.enabled(),now,now-timedelta(minutes=2),now-timedelta(minutes=5)))
+                (item['id'],item['local_date'],general_only,MEDICATION_WORDS,care_routines.enabled() and not general_only,now,now-timedelta(minutes=2),now-timedelta(minutes=5)))
             claim=cur.fetchone();conn.commit()
         if not claim:result['skipped']+=1;continue
         payload={'kind':'digest','title':'Your Saathi summary','body':'Your scheduled reminders are ready to review. Open Saathi when it suits you.',
@@ -195,13 +198,43 @@ def register(app,b):
             except ValueError as error:return jsonify(error=str(error)),400
         return wrapped
 
+    @app.post('/api/cron/background-alerts')
+    def background_alerts():
+        secret=os.environ.get('CLASSROOM_CRON_SECRET','').strip()
+        provided=request.headers.get('X-Cron-Secret','')
+        if os.environ.get('BACKGROUND_ALERTS_ENABLED','').lower()!='true' or not secret or not secrets.compare_digest(secret,provided):
+            return jsonify(error='Not authorised.'),401
+        result=deliver_due(b,general_only=True)
+        if not result['configured']:return jsonify(error='Background alerts are not configured.'),503
+        with database(b) as (conn,cur):
+            cur.execute('''INSERT INTO background_alert_runs(name,last_run,sent,failed) VALUES('general',NOW(),%s,%s) ON CONFLICT(name) DO UPDATE SET last_run=EXCLUDED.last_run,sent=EXCLUDED.sent,failed=EXCLUDED.failed''',(result['sent'],result['failed']));conn.commit()
+        return jsonify(ok=True,**result)
+
+    @app.post('/api/push/test')
+    @private
+    def push_test(uid):
+        limited=b['limited']('push_test',str(uid),3,5)
+        if limited:return limited
+        data=request.get_json(silent=True) or {}
+        if not isinstance(data,dict) or type(data.get('subscription_id')) is not int:return jsonify(error='Choose this device first.'),400
+        with database(b) as (_,cur):
+            cur.execute('SELECT subscription_json FROM push_subscriptions WHERE id=%s AND user_id=%s AND session_version=(SELECT session_version FROM users WHERE id=%s)',(data['subscription_id'],uid,uid));row=cur.fetchone()
+        if not row:return jsonify(error='Enable alerts on this device first.'),404
+        config=configuration()
+        if not config['enabled']:return jsonify(error='Background alerts are not configured.'),503
+        status=send_push(validate_subscription(row['subscription_json']),{'title':'Saathi test alert','body':'Open Saathi to review your reminders.','url':'/dashboard#reminders'},config)
+        if not 200<=status<300:return jsonify(error='The push provider did not accept the test. Enable alerts again and retry.'),502
+        return jsonify(accepted=True,message='Accepted by the push provider. Check this device; receipt is not confirmed.')
+
     @app.get('/api/push/config')
     @private
     def push_config(uid):
         config=configuration()
         with database(b) as (_,cur):
             cur.execute('SELECT id,endpoint_hash FROM push_subscriptions WHERE user_id=%s AND session_version=(SELECT session_version FROM users WHERE id=%s)',(uid,uid));rows=cur.fetchall()
-        return jsonify(enabled=config['enabled'],public_key=config['public_key'],subscriptions=rows)
+            cur.execute("SELECT last_run,sent,failed FROM background_alert_runs WHERE name='general'");run=cur.fetchone()
+            cur.execute("SELECT status,updated_at FROM (SELECT status,updated_at,subscription_id FROM push_deliveries UNION ALL SELECT status,updated_at,subscription_id FROM push_digest_deliveries) AS deliveries WHERE subscription_id IN (SELECT id FROM push_subscriptions WHERE user_id=%s) ORDER BY updated_at DESC LIMIT 1",(uid,));delivery=cur.fetchone()
+        return jsonify(enabled=config['enabled'],public_key=config['public_key'],subscriptions=rows,scheduler=run,last_delivery=delivery)
 
     @app.post('/api/push/subscriptions')
     @private
