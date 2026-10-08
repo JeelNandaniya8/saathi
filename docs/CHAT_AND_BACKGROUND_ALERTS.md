@@ -6,7 +6,7 @@ Chat context defaults off for Planner tasks, general reminders and selected Clas
 
 # Free general background alerts
 
-The existing public-repository Actions workflow has a final general-alert step using the already configured Classroom scheduler credential. Server-side `BACKGROUND_ALERTS_ENABLED=true` gates its separate endpoint. Both the initial query and atomic claim exclude medication schedules, including digests, regardless of the clinical beta flag. This endpoint never calls medication scheduling, sends emails, or uses AI.
+The existing public-repository Actions workflow has a final general-alert step using the already configured Classroom scheduler credential. Server-side `BACKGROUND_ALERTS_ENABLED=true` gates its separate endpoint. Both the initial query and atomic claim exclude medication schedules, including digests and legacy general reminders explicitly mentioning medicine/insulin/injections, regardless of the clinical beta flag. This endpoint never calls medication scheduling, sends emails, or uses AI.
 
 Configure matching VAPID public/private keys and an HTTPS or mailto contact subject on Render. Do not rotate a working pair casually: existing devices must resubscribe after key rotation. Users enable notifications individually in Account and can send a private test alert. Provider acceptance is not physical receipt. No reminder details are sent to the lock screen.
 

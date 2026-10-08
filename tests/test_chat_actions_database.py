@@ -99,6 +99,10 @@ def test_general_dispatch_excludes_medication_even_when_clinical_gate_enabled(db
     seen=[];monkeypatch.setattr(push,'send_push',lambda *args:seen.append(args) or 201)
     assert push.deliver_due(vars(b),general_only=True)['sent']==0
     assert not seen
+    legacy=reminder(connect)
+    with connect() as conn:
+        with conn.cursor() as cur:cur.execute("UPDATE reminders SET title='Evening medicine' WHERE id=%s",(legacy,))
+    assert push.deliver_due(vars(b),general_only=True)['sent']==0
     reminder(connect)
     assert push.deliver_due(vars(b),general_only=True)['sent']==1
     assert len(seen)==1
