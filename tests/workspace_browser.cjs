@@ -353,9 +353,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
-   await page.getByRole('button',{name:'New chat',exact:true}).click();
+   if(await page.locator('#openSidebar').isVisible())await page.locator('#openSidebar').click();
+   await page.locator('#newChat').click();
    assert.equal(await page.locator('#chatInput').isDisabled(),true);assert.equal(await page.locator('#sendButton').isDisabled(),true);
-   await page.getByRole('button',{name:'New chat',exact:true}).click();
+   await page.evaluate(()=>document.querySelector('#newChat').click());
    await page.waitForFunction(()=>state.creatingConversation===false&&state.activeId===8);
    assert.equal(requests.filter(p=>p==='/api/conversations').length-beforeCreate,1,'Double-click must create only one conversation');
    await page.goto(base+'/');
