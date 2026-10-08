@@ -132,13 +132,22 @@ def test_extended_context_defaults_ownership_revocation_and_old_clients(db_app):
     draft=c.get('/api/chat-actions/'+str(mid)).json['action']
     assert c.post('/api/chat-actions/'+str(mid),json=dict(action=draft,confirmed=True)).status_code==201
     assert 'Owner-only details' not in b.load_active_memory_bundle(1,include_workspace=True)[0]
-    prefs=dict.fromkeys(keys,False);prefs['notes']=True
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO habits(user_id,name,frequency,created_at,updated_at) VALUES(1,'Owner-only habit','daily',NOW(),NOW())")
+            cur.execute("INSERT INTO revision_items(user_id,message_id,item_index,topic,front,back) VALUES(1,%s,0,'Owner-only revision','Question','Answer')",(mid,))
+            cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,'Owner-only exam','2026-12-01','UTC',30,%s)",(__import__('uuid').uuid4().hex,json.dumps(['Topic '+str(i) for i in range(60)])))
+    prefs=dict.fromkeys(keys,True)
     assert c.patch('/api/chat-context',json=prefs).status_code==200
-    assert 'Owner-only details' in b.load_active_memory_bundle(1,include_workspace=True)[0]
+    shared=b.load_active_memory_bundle(1,include_workspace=True)[0]
+    for title in ('Owner-only details','Owner-only habit','Owner-only revision','Owner-only exam'):assert title in shared
+    assert 'Topic 11' in shared and 'Topic 12' not in shared
+    other=b.load_active_memory_bundle(2,include_workspace=True)[0]
+    for title in ('Owner-only details','Owner-only habit','Owner-only revision','Owner-only exam'):assert title not in other
     assert 'Owner-only details' not in b.load_active_memory_bundle(2,include_workspace=True)[0]
     c.patch('/api/chat-context',json=dict(tasks=False,reminders=False,classroom=False))
     assert c.get('/api/chat-context').json['permissions']['notes'] is True
-    prefs['notes']=False;c.patch('/api/chat-context',json=prefs)
+    prefs=dict.fromkeys(keys,False);c.patch('/api/chat-context',json=prefs)
     assert 'Owner-only details' not in b.load_active_memory_bundle(1,include_workspace=True)[0]
     assert c.patch('/api/chat-context',json={**prefs,'notes':'true'}).status_code==400
     assert c.patch('/api/chat-context',json={**prefs,'journal':True}).status_code==400

@@ -91,7 +91,7 @@ def workspace_context(cur, uid):
       'notes':"SELECT title,left(content,1000) AS content FROM quick_notes WHERE user_id=%s ORDER BY updated_at DESC LIMIT 20",
       'habits':"SELECT name,frequency FROM habits WHERE user_id=%s AND active=TRUE ORDER BY updated_at DESC LIMIT 20",
       'study':"SELECT topic,left(front,600) AS question,next_review_at FROM revision_items WHERE user_id=%s AND paused=FALSE ORDER BY next_review_at LIMIT 20",
-      'exams':"SELECT title,exam_date,timezone,daily_minutes,topics FROM exam_plans WHERE user_id=%s ORDER BY exam_date DESC LIMIT 20"
+      'exams':"SELECT title,exam_date,timezone,daily_minutes,jsonb_path_query_array(topics,'$[0 to 11]') AS topics,jsonb_array_length(topics) AS total_topics FROM exam_plans WHERE user_id=%s ORDER BY exam_date DESC LIMIT 20"
     }
     for key in SOURCES:
         if permission.get(key):
