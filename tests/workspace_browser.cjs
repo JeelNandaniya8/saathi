@@ -244,7 +244,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);
    assert.equal(careSaves.length,2);assert.equal(careSaves[0].client_id,careSaves[1].client_id);
    assert.equal(careSaves[1].confirmed,true);assert.equal(careSaves[1].starts_at.length,2);
-   const editInstructions=medication.locator('details').filter({has:medication.getByText('Review instructions',{exact:true})});
+   const editInstructions=medication.locator('details').filter({hasText:'Review instructions'});
    await editInstructions.locator('summary').click();
    await editInstructions.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('Reviewed instruction');
    await editInstructions.locator('button[type=submit]').click();assert.equal(careEdits.length,0);
