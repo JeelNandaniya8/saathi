@@ -364,6 +364,54 @@ body.chat-polish .main{display:flex;flex-direction:column;min-height:0}
 .chat-polish .chat-placeholder i:nth-child(2){width:45%}
 .chat-polish [hidden]{display:none!important}
 @media(max-width:900px){.chat-polish .app.sidebar-collapsed{display:block}.chat-polish .topbar{gap:6px;padding:8px 12px}.chat-polish .chat-heading p{display:none}.chat-polish .chat-heading h1{font-size:14px}.chat-polish .top-pill,.chat-polish .sound-disclosure summary{font-size:12px;padding:8px}.chat-polish .top-actions .top-pill{display:flex}.chat-polish .composer-zone{padding-inline:12px}.chat-polish .message-list{width:calc(100% - 28px)}.chat-polish #openSidebar{order:3}.chat-polish .composer-meta{font-size:11px}}
+
+/* Conversation-first: the warm Saathi palette, one compact composer and quiet history. */
+:root{--canvas:#f8f6f0;--paper:#fffdf8;--sidebar:#f0ede4;--ink:#292c25;--muted:#676c60;--soft:#74796d;--line:rgba(52,57,43,.12);--line-strong:rgba(52,57,43,.2);--strong:var(--line-strong);--accent:#6b7658;--accent-deep:#49583d;--accent-soft:#e9eddf;--gold:#896a2b;--gold-soft:#f1e8d0;--sidebar-width:280px}
+[data-theme="dark"]{--canvas:#191c17;--paper:#1d211a;--sidebar:#161a14;--ink:#edece3;--muted:#bdc2b3;--soft:#a4ab98;--line:rgba(223,232,207,.13);--line-strong:rgba(223,232,207,.23);--accent:#b7c69e;--accent-deep:#c8d5b3;--accent-soft:#303928;--gold:#dcc38b;--gold-soft:#393426}
+body.chat-polish{background:var(--paper)}
+.chat-polish .sidebar{background:var(--sidebar);padding:20px 14px 14px;box-shadow:none;backdrop-filter:none}
+.chat-polish .brand{font-size:22px;letter-spacing:-.5px}.chat-polish .brand-row{height:42px;margin-bottom:8px}
+.chat-polish .sidebar-tools{justify-content:flex-start;margin-bottom:14px;gap:7px}
+.chat-polish .sidebar-tools button:hover,.chat-polish .icon-btn:hover{background:var(--accent-soft)}
+.chat-polish .search{background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-bottom:8px}
+.chat-polish .archive-toggle,.chat-polish .new-chat[data-workspace-search]{font-size:12px;color:var(--muted);min-height:36px;height:36px;margin:0;padding-inline:12px;text-align:left}
+.chat-polish .history{padding-top:12px}.chat-polish .history-label{font-size:10px;letter-spacing:.08em;margin-top:18px;color:var(--muted)}
+.chat-polish .conversation{border-radius:12px;box-shadow:none}.chat-polish .conversation.active{background:var(--paper);border-color:var(--line);box-shadow:0 2px 6px rgba(40,45,30,.03)}
+.chat-polish .conversation-title{font-size:13px;font-weight:550}.chat-polish .conversation-preview{display:none}
+.chat-polish .quick-notes-trigger{background:transparent;border-color:var(--line);font-size:13px;min-height:44px}
+.chat-polish .account-card{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;padding:14px 4px 2px;box-shadow:none}
+.chat-polish .topbar{min-height:64px;padding:8px 24px;background:var(--paper);border-bottom:1px solid var(--line);backdrop-filter:none}
+.chat-polish .chat-heading h1{font-size:14px;font-weight:600}.chat-polish .chat-heading p{font-size:11px;color:var(--muted);margin-top:4px}
+.chat-polish .top-pill,.chat-polish .sound-disclosure summary{background:transparent;border-color:transparent;font-size:12px;color:var(--muted);padding:8px 10px}
+.chat-polish .top-pill:hover,.chat-polish .sound-disclosure summary:hover{background:var(--accent-soft);color:var(--ink)}
+.chat-polish .message-list{width:min(740px,calc(100% - 64px));padding:38px 0 30px}
+.chat-polish .message{margin-bottom:34px;gap:14px}.chat-polish .message-name{font-size:11px;font-weight:600;margin-bottom:8px;color:var(--muted)}
+.chat-polish .message-content{font-size:16px;line-height:1.8}.chat-polish .message.user .message-content{background:var(--accent-soft);color:var(--ink);border:1px solid var(--line);border-radius:20px 20px 5px 20px;padding:14px 18px;box-shadow:none}
+.chat-polish .message.user .message-avatar{background:var(--accent-deep);color:var(--paper)}
+.chat-polish .message.assistant .message-avatar{background:var(--gold-soft);color:var(--gold);border-radius:50%}
+.chat-polish .message-tools{opacity:1}.chat-polish .message-tool{color:var(--muted);font-size:11px}
+.chat-polish .quick-actions{margin-top:12px;display:block;color:var(--muted);font-size:12px}.chat-polish .quick-actions summary{cursor:pointer;min-height:32px;width:fit-content;padding:7px 0;list-style:none}.chat-polish .quick-actions summary::after{content:' +';color:var(--gold)}.chat-polish .quick-actions[open] summary::after{content:' −'}.chat-polish .quick-action{margin:4px 5px 0 0;background:transparent;box-shadow:none;border-color:var(--line);min-height:36px}
+.chat-polish .composer-zone{padding:12px 24px max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--paper) 16%)}
+.chat-polish .composer{width:min(740px,100%);gap:4px;padding:10px 12px;border-radius:24px;background:var(--paper);border:1px solid var(--line-strong);box-shadow:0 6px 28px rgba(49,54,34,.055)}
+.chat-polish .composer:focus-within{border-color:var(--accent);box-shadow:0 6px 28px rgba(49,54,34,.07),0 0 0 2px var(--accent-soft)}
+.chat-polish .composer textarea{min-height:44px;padding:9px 8px;line-height:1.6}
+.chat-polish .composer-actions{gap:4px;min-height:44px;flex-wrap:nowrap}
+.chat-polish .composer-toolbar{order:0;width:auto;margin-left:auto;flex-wrap:nowrap;gap:3px;min-width:0}
+.chat-polish .mode-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.chat-polish .mode-select{max-width:145px;height:36px;padding:0 22px 0 10px;border:0;background:var(--canvas);color:var(--muted);font-size:12px;border-radius:12px}
+.chat-polish .composer-toolbar>.message-tool{min-width:36px;min-height:44px;font-size:0;padding:0 8px}.chat-polish .composer-toolbar>.message-tool::after{content:'☷';font-size:22px}
+.chat-polish .voice-open-btn{background:transparent;color:var(--muted);border:0;padding:0 10px;font-size:12px}
+.chat-polish .voice-open-btn:hover,.chat-polish .attach:hover{background:var(--accent-soft)}
+.chat-polish .send{margin-left:4px;background:var(--accent-deep);color:var(--paper);border-radius:50%;box-shadow:none}.chat-polish .send.stopping{background:var(--ink);color:var(--paper)}
+.chat-polish .composer-meta{width:min(740px,100%);font-size:10px;line-height:1.5;margin-top:8px;color:var(--muted)}
+.chat-polish .scroll-bottom{bottom:170px;border-radius:50%;background:var(--paper);color:var(--ink)}
+.chat-polish .empty{min-height:0;padding:clamp(35px,8vh,85px) 0 25px}.chat-polish .empty h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(32px,4vw,46px);font-weight:400;letter-spacing:-1px;line-height:1.15}.chat-polish .empty h2 em{color:var(--gold);font-weight:400}
+.chat-polish .empty-inner>p{font-size:14px;line-height:1.7;max-width:440px;margin:18px auto 26px;color:var(--muted)}
+.chat-polish .empty-orb{margin-bottom:20px;box-shadow:none;background:var(--gold-soft)}
+.chat-polish .prompts{gap:10px}.chat-polish .prompt{background:transparent;border:1px solid var(--line);min-height:80px;border-radius:16px;box-shadow:none;padding:16px;text-align:left}.chat-polish .prompt:hover{background:var(--accent-soft);border-color:var(--accent)}.chat-polish .prompt b{font-size:13px}.chat-polish .prompt small{font-size:12px;color:var(--muted)}
+.chat-polish :is(button,a,summary,select,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:900px){.chat-polish .sidebar{width:min(300px,90vw)}.chat-polish .topbar{padding-inline:12px;gap:6px}.chat-polish .message-list{width:calc(100% - 32px);padding-top:24px}.chat-polish .composer-zone{padding-inline:12px}.chat-polish .chat-heading h1{font-size:13px}.chat-polish .top-pill,.chat-polish .sound-disclosure summary{padding:8px 6px;font-size:11px}}
+@media(max-width:520px){.chat-polish .message-content{font-size:15px}.chat-polish .message{gap:10px;margin-bottom:28px}.chat-polish .message.user{grid-template-columns:minmax(0,1fr) 29px}.chat-polish .composer{padding:8px;border-radius:21px}.chat-polish .composer-toolbar{gap:0}.chat-polish .mode-select{max-width:100px;font-size:11px;padding-left:8px}.chat-polish .voice-open-btn{width:44px;padding:0;justify-content:center}.chat-polish .voice-open-btn>span{display:none}.chat-polish .empty{padding-top:28px}.chat-polish .composer-meta{font-size:10px}.chat-polish .char-count{display:none}.chat-polish .top-actions{gap:0}.chat-polish .prompts{grid-template-columns:1fr}.chat-polish .prompt{min-height:70px}.chat-polish .empty-inner>p{margin-bottom:18px}}
 </style>
 </head>
 <body class="chat-polish">
@@ -413,13 +461,7 @@ body.chat-polish .main{display:flex;flex-direction:column;min-height:0}
 
     <div class="composer-zone">
       <form class="composer" id="composer">
-        <div class="composer-toolbar">
-          <label class="mode-label" for="chatMode">AI mode</label>
-          <select class="mode-select" id="chatMode" aria-describedby="modeDescription">
-            <option value="normal">Normal</option>
-          </select>
-          <span class="mode-description" id="modeDescription">A balanced everyday reply</span>
-        </div>
+
         <div class="attachment-tray" id="attachmentTray" hidden></div>
         <label class="file-only" id="fileOnlyWrap" hidden>
           <input id="fileOnly" type="checkbox">
@@ -443,6 +485,13 @@ body.chat-polish .main{display:flex;flex-direction:column;min-height:0}
     <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
   </svg>
 <span>Voice</span></button>
+        <div class="composer-toolbar">
+          <label class="mode-label" for="chatMode">AI mode</label>
+          <select class="mode-select" id="chatMode" aria-describedby="modeDescription">
+            <option value="normal">Normal</option>
+          </select>
+          <span class="mode-description" id="modeDescription">A balanced everyday reply</span>
+        </div>
         <span class="char-count" id="charCount">0 / 5000</span>
         <button class="send" id="sendButton" type="submit" aria-label="Send message" disabled>↑</button>
         </div>
@@ -854,7 +903,7 @@ function messageElement(message,index){
   if(assistant&&message.ai_mode&&message.ai_mode!=='normal'){const mode=state.chatModes.find(item=>item.id===message.ai_mode);const badge=document.createElement('span');badge.className='mode-badge';badge.textContent=mode?.label||message.ai_mode.replaceAll('_',' ');body.append(badge)}
   if(message.attachments?.length){const files=document.createElement('div');files.className='message-attachments';message.attachments.forEach(attachment=>{const link=document.createElement('a');link.className='message-attachment';link.href=attachment.url||'#';if(!attachment.local){link.target='_blank';link.rel='noopener'}else link.addEventListener('click',event=>event.preventDefault());if(attachment.mime_type?.startsWith('image/')){const preview=document.createElement('img');preview.src=attachment.url;preview.alt=attachment.name;preview.loading='lazy';link.append(preview)}else{const icon=document.createElement('span');icon.className='attachment-icon';icon.textContent='PDF';link.append(icon)}const copy=document.createElement('span');copy.className='attachment-copy';const title=document.createElement('b');title.textContent=attachment.name;const detail=document.createElement('small');const extracted=Number(attachment.extracted_page_count)||0;detail.textContent=readableSize(attachment.size_bytes)+(extracted?' · '+extracted+' searchable page'+(extracted===1?'':'s'):'');copy.append(title,detail);link.append(copy);files.append(link)});body.append(files)}
   const experience=assistant?visibleMessage(message):{text:message.content};const content=document.createElement('div');content.className='message-content';if(experience.text){if(assistant&&!message.streaming)renderMarkdown(content,experience.text);else{content.textContent=experience.text;content.classList.add('has-text')}}else if(message.streaming){const thinking=document.createElement('span');thinking.className='thinking-dots';thinking.setAttribute('aria-label','Saathi is thinking');thinking.append(document.createElement('i'),document.createElement('i'),document.createElement('i'));content.append(thinking)}else content.hidden=true;body.append(content);if(experience.quiz)body.append(quizCard(experience.quiz,message));if(experience.flash)body.append(flashcardPlayer(experience.flash.cards,message));if(assistant&&!message.streaming){addDisclosures(body,message,index);window.SaathiChatActions?.attach(body,message)};
-  if(assistant&&!message.failed&&!message.streaming&&index===state.messages.length-1){const actions=document.createElement('div');actions.className='quick-actions';[
+  if(assistant&&!message.failed&&!message.streaming&&index===state.messages.length-1){const actions=document.createElement('details');actions.className='quick-actions';const followupLabel=document.createElement('summary');followupLabel.textContent='Explore this answer';actions.append(followupLabel);[
     ['Simpler','Explain your previous answer more simply, with one easy example.','explain'],
     ['Deeper','Go deeper into your previous answer and include the reasoning and common mistakes.','deep_study'],
     ['Example','Give me a clear worked example based on your previous answer.','explain'],

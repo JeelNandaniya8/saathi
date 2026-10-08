@@ -305,6 +305,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.goto(base+'/chat?conversation=7');
    await page.locator('.message.user').waitFor();
    assert.equal(historyWhileProfilePending,true,'History should load concurrently with the profile');
+   assert.equal(await page.locator('#chatMode').evaluate(node=>Boolean(node.closest('.composer-actions'))),true,'Mode shares the compact composer action row');
+   const layout=await page.evaluate(()=>{const composer=document.querySelector('#composer').getBoundingClientRect(),toolbar=document.querySelector('.composer-toolbar').getBoundingClientRect(),send=document.querySelector('#sendButton').getBoundingClientRect();return {height:composer.height,toolbarBottom:toolbar.bottom,sendBottom:send.bottom,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+   assert.ok(layout.height<165,'Empty composer leaves room for the conversation');assert.ok(Math.abs(layout.toolbarBottom-layout.sendBottom)<8,'Mode and Send share one row');assert.equal(layout.overflow,false,'Chat fits every screen width');
+   await page.locator('.quick-actions summary').click();assert.equal(await page.locator('.quick-action').first().isVisible(),true,'Learning actions remain reachable');await page.locator('.quick-actions summary').click();
+
    assert.equal(requests.filter(p=>p==='/api/conversations/7/messages').length,1,'Startup history must not be fetched twice');
    assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
    if(width>900){assert.ok((await page.locator('#sidebar').boundingBox()).x>width/2);await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
