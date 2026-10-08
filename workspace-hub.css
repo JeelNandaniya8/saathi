@@ -71,3 +71,7 @@ body:is(.workspace-polish,.chat-polish){--canvas:#f6f5ef;--paper:#fffdf8;--side:
 @media(prefers-reduced-motion:no-preference){.workspace-polish .view.active{animation:workspace-reveal .18s ease-out}@keyframes workspace-reveal{from{opacity:.5;transform:translateY(4px)}to{opacity:1;transform:none}}}
 body:is(.workspace-polish,.chat-polish) .qn-actions .qn-save,body:is(.workspace-polish,.chat-polish) .hub-dialog button.primary{background:var(--accent-deep);border-color:var(--accent-deep);color:var(--action-ink)}
 body:is(.workspace-polish,.chat-polish) .hub-dialog :is(input,textarea,select),body:is(.workspace-polish,.chat-polish) .qn-editor :is(input,textarea){background:var(--canvas);border-color:var(--line);color:var(--ink)}
+.workspace-polish .panel>h2{font-size:19px;font-weight:600;line-height:1.4;letter-spacing:-.25px;margin:0 0 16px}
+.workspace-polish .hub-today>.grid2{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.workspace-polish #todayResume .secondary{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:12px;text-align:left;padding:12px;line-height:1.6}
+@media(max-width:780px){.workspace-polish .hub-today>.grid2{grid-template-columns:1fr}}
