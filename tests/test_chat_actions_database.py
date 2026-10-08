@@ -106,3 +106,19 @@ def test_general_dispatch_excludes_medication_even_when_clinical_gate_enabled(db
     reminder(connect)
     assert push.deliver_due(vars(b),general_only=True)['sent']==1
     assert len(seen)==1
+
+
+def test_local_preview_saves_exchange_and_action_without_ai_service(db_app,monkeypatch):
+    b,c,connect=db_app
+    monkeypatch.setattr(b,'provider_post',lambda *a,**kw:pytest.fail('Explicit commands must not contact AI'))
+    monkeypatch.setattr(b,'GEMINI_API_KEY','')
+    c.patch('/api/chat-context',json=dict(tasks=True,reminders=False,classroom=False))
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    reply=c.post(f'/api/conversations/{cid}/messages',json={'content':'Add a task: Revise fractions. No deadline. Show the save preview.'})
+    assert reply.status_code==200,reply.json
+    message=reply.json['assistant_message']
+    assert 'without AI' in message['content'] and message['memory_labels']==[]
+    assert one(connect,'SELECT COUNT(*) AS n FROM ai_usage_events')['n']==0
+    path='/api/chat-actions/'+str(message['id']);draft=c.get(path).json['action']
+    assert c.post(path,json=dict(action=draft,confirmed=True)).status_code==201
+    assert one(connect,'SELECT title FROM tasks')['title']=='Revise fractions'

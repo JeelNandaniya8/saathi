@@ -2274,6 +2274,8 @@ def attachment_usage_payload(cur, user_id, entitlement, now=None):
 def record_ai_usage(cur, user_id, conversation_id, mode, attachment_count, usage, now):
     """Store provider-reported counts only, never message or attachment content."""
     values = usage if isinstance(usage, dict) else {}
+    if values.get("local_action"):
+        return
     cur.execute(
         """
         INSERT INTO ai_usage_events (
@@ -2453,7 +2455,7 @@ def persist_streamed_exchange(
             """,
             (
                 user_id, conversation_id, reply, now, mode, request_id,
-                psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
+                psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
             ),
         )
         assistant_message = cur.fetchone()
@@ -2888,7 +2890,7 @@ def conversation_messages(conversation_id):
         """,
         (
             user_id, conversation_id, reply, now, mode, request_id,
-            psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
+            psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
         ),
     )
     assistant_message = cur.fetchone()
@@ -3174,7 +3176,7 @@ def regenerate_conversation_reply(conversation_id):
                 """,
                 (
                     user_id, conversation_id, reply, now, mode, last_request_id,
-                    psycopg2.extras.Json(memory_labels), psycopg2.extras.Json(source_pages),
+                    psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
                 ),
             )
             assistant_message = cur.fetchone()
@@ -5249,6 +5251,10 @@ def generate_gemini_reply(
     messages, memory_context="", language="en", mode="normal", include_usage=False,
     file_only=False,
 ):
+    local = chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None
+    if local:
+        usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
+        return (local, usage) if include_usage else local
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
 
     try:
@@ -5268,6 +5274,11 @@ def generate_gemini_reply(
 
 def stream_gemini_reply(messages, memory_context="", language="en", mode="normal", file_only=False):
     """Yield provider text deltas and return final token usage on completion."""
+    local = chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None
+    if local:
+        usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
+        yield local
+        return usage
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
     response = None
     usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}

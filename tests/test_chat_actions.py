@@ -32,3 +32,22 @@ def test_hindi_gujarati_names_and_no_symbols():
     import app
     for name in ['राहुल शर्मा','नील जोशी','જીલ નંદાણીયા']:assert app.validate_name(name) is None
     for name in ['J1','😀😀','\u0301\u0301','A\nB']:assert app.validate_name(name)
+
+
+def test_explicit_commands_work_without_provider_and_keep_ambiguity():
+    import app
+    context=actions.ACTION_INSTRUCTIONS
+    for text,kind,title in [('Add a task: Revise fractions. No deadline. Show the save preview.','task','Revise fractions'),('કામ ઉમેરો: ગણિતનો અભ્યાસ','task','ગણિતનો અભ્યાસ'),('नोट सेव करें: मेरा विचार','note','मेरा विचार'),('Add daily habit: Read ten pages','habit','Read ten pages')]:
+        messages=[dict(role='user',content=text)]
+        reply,usage=app.generate_gemini_reply(messages,context,include_usage=True)
+        assert usage['local_action'] and usage['total_tokens']==0
+        draft=actions.proposal(reply)
+        assert draft['kind']==kind and draft['title']==title
+        chunks=app.stream_gemini_reply(messages,context);assert next(chunks)==reply
+        with pytest.raises(StopIteration) as stopped:next(chunks)
+        assert stopped.value.value['local_action']
+    for text in ['Add task: Study tomorrow','Please explain how tasks work','Add daily habit: Take insulin','Add a task: Revise at 8:00']:
+        assert actions.local_reply([dict(role='user',content=text)],context) is None
+    assert actions.local_reply([dict(role='user',content='Add task: Read')],'') is None
+    assert actions.local_reply([dict(role='user',content='Add task: Read',attachments=[{}])],context) is None
+    assert actions.local_reply([dict(role='user',content='Add task: Read')],context,file_only=True) is None
