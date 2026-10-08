@@ -67,8 +67,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/exam-plans/preview')data={plan:{...body(),preview_token:'fixture-plan',coverage_limited:false,rest_date:'2026-12-31',items:[{date:'2026-12-20',phase:'recall',topic:'Algebra',minutes:25}]}};
      else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:planSaves?[{id:1,title:'Semester exam',exam_date:'2027-01-01',timezone:'UTC'}]:[]}}
 
-     else if(pathname==='/api/exam-plans/1/replan/preview'){assert.equal(body().confirmed,true);data={plan:{items:[{id:1,title:'Recall: Algebra',from:'2026-10-01T18:00:00Z',due_at:'2026-10-10T18:00:00Z'}],unscheduled:0,preserved:[],preview_token:'replan-fixture'}}}
-     else if(pathname==='/api/exam-plans/1/replan/apply'){assert.equal(body().preview_token,'replan-fixture');assert.equal(body().confirmed,true);replanSaves++;data={ok:true,moved:1}}
+     else if(pathname==='/api/exam-plans/1/replan/preview'){assert.equal(body().confirmed,true);data={plan:{items:[{id:1,title:'Recall: Algebra',from:'2026-10-01T18:00:00Z',due_at:'2026-10-10T18:00:00Z'}],unscheduled:0,preserved:[],exam_date:body().exam_date,rest_date:'2026-10-19',date_changed:true,outside_window:0,preview_token:'replan-fixture'}}}
+     else if(pathname==='/api/exam-plans/1/replan/apply'){assert.equal(body().preview_token,'replan-fixture');assert.equal(body().confirmed,true);assert.equal(body().exam_date,'2026-10-20');replanSaves++;data={ok:true,moved:1}}
      else {status=404;data={error:'Unmocked fixture endpoint: '+pathname}}
      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
     }
@@ -161,6 +161,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.getByRole('button',{name:'Reschedule missed blocks',exact:true}).click();
    const replan=page.getByRole('dialog',{name:'Reschedule missed blocks',exact:true});
    await replan.getByLabel('I have reviewed completed work in Planner.',{exact:true}).check();
+   await replan.getByLabel('Confirmed exam date',{exact:true}).fill('2026-10-20');
    await replan.getByRole('button',{name:'Preview plan',exact:true}).click();
    await replan.getByRole('button',{name:'Confirm new dates',exact:true}).waitFor();
    assert.equal(replanSaves,0);

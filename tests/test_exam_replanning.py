@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 import exam_replanning as er
+import pytest
 
 NOW = datetime(2026,10,8,8,tzinfo=timezone.utc)
 
@@ -57,3 +58,23 @@ def test_other_plans_can_exhaust_capacity_without_duplicate_or_overbudget_work()
     assert p['items'] == [] and p['unscheduled'] == 1
     others[0]['completed'] = True
     assert er.preview(plan(), [task(1)], NOW, other_tasks=others)['unscheduled'] == 1
+
+
+def test_changed_exam_date_reschedules_untouched_future_work_but_preserves_overrides():
+    original = plan()
+    rows = [task(1, due_at=NOW+timedelta(days=10)), task(2, completed=True),
+            task(3, due_at=NOW+timedelta(days=12), updated_at=NOW)]
+    p = er.preview(original, rows, NOW, new_exam_date=date(2026,10,11))
+    assert p['date_changed'] and p['exam_date'] == '2026-10-11'
+    assert [item['id'] for item in p['items']] == [1]
+    assert p['items'][0]['due_at'][:10] < p['rest_date']
+    assert p['preserved'] == [3] and p['outside_window'] == 1
+    assert original['exam_date'] == date(2026,10,12)
+    changed_original = {**original, 'exam_date': date(2026,10,13)}
+    assert er.preview(changed_original, rows, NOW, new_exam_date=date(2026,10,11))['preview_token'] != p['preview_token']
+
+
+@pytest.mark.parametrize('new_date', [date(2026,10,8), date(2026,10,9), date(2027,10,9)])
+def test_changed_exam_dates_must_leave_a_reviewable_preparation_window(new_date):
+    with pytest.raises(ValueError):
+        er.preview(plan(), [task(1)], NOW, new_exam_date=new_date)
