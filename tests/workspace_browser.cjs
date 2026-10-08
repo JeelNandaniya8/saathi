@@ -108,10 +108,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('.nav > [data-quick-notes]').count(),1);
    assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
    assert.equal(await page.locator('#moreNavigation [data-view="study"],#moreNavigation [data-view="healer"]').count(),2,'Study and Care remain reachable');
+   assert.equal(await page.locator('.nav-group').count(),3,'Secondary tools are grouped instead of one long list');
+   assert.ok(await page.locator('.hero-panel').evaluate(node=>node.getBoundingClientRect().height<190),'Today greeting leaves the next action in view');
+   assert.equal(await page.evaluate(()=>{const before=document.documentElement.dataset.theme;document.documentElement.dataset.theme='dark';const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim();if(before)document.documentElement.dataset.theme=before;else delete document.documentElement.dataset.theme;return paper}), '#20251d','Dark workspace uses the shared surface palette');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
    await page.evaluate(()=>openView('account'));
+   assert.equal(await page.evaluate(()=>{const active=document.querySelector('.nav button.active');return active.closest('.nav-group').open&&active.closest('.nav-more').open}),true,'Deep navigation reveals both parent groups');
    await page.locator('[data-large-text]').click();
    assert.equal(await page.locator('html').getAttribute('data-text-size'),'large');
    assert.equal(await page.locator('[data-large-text]').getAttribute('aria-pressed'),'true');
