@@ -136,13 +136,21 @@ Follow-up hardening: future occurrences cannot be snoozed into early notificatio
 - Existing saved plans offer a progress-confirmed preview of new dates for untouched overdue blocks. No AI calls and no duplicate tasks.
 - Completed/manual edits stay unchanged; future blocks consume this plan's daily capacity. Preserves breaks and the pre-exam rest day; explicitly reports blocks without space. Other plans/commitments must still be checked in Planner.
 - Snapshot validation rejects intervening progress/edits; row locks make application atomic and retries reuse the saved result. Previously replanned blocks can move again unless manually edited.
-- EN/GU/HI controls, ownership, stale preview, budget, overdue, retry and desktop/mobile form checks added. Changed exam dates and cross-plan workload balancing remain open. CI verification pending.
+- EN/GU/HI controls, ownership, stale preview, budget, overdue, retry and desktop/mobile form checks added. Changed exam dates and cross-plan workload balancing remain open. PostgreSQL and browser CI passed.
 
 ## Classroom import checkpoint — 8 October 2026
 - Implemented separate consent/code flow with single-use expiring server state, session binding, PKCE, fixed HTTPS redirect and encrypted server refresh-token storage. Default off; no credentials requested or configured by this change.
 - Own-student course list, explicit selection (up to three), bounded manual sync and idempotent assignment upsert. Titles, original instructions/links and UTC deadlines only; grades/rosters are not requested. Missing/invalid deadlines stay unset.
 - Stale/failure states preserve earlier imports; complete snapshots mark unavailable work without deleting local tasks. Adding to Planner needs confirmation and is retry-safe; imports never overwrite edited tasks or imply official submission.
 - Disconnect stops import, attempts remote revocation and optionally removes imported records. Existing Planner tasks remain; export excludes credentials, account deletion cascades through stored integration records.
-- EN/GU/HI controls and ownership/consent/sync/duplicate/deadline/state/export/revocation regression tests added. CI pending. Live Google authorization, scheduled sync, selected-assignment AI explanations and official submission-status retrieval remain open. Owner setup is documented in CLASSROOM_SETUP.md.
+- EN/GU/HI controls and ownership/consent/sync/duplicate/deadline/state/export/revocation regression tests added. CI run 37757108837 passed all 306 Python tests, JavaScript checks and desktop/mobile browser flows. Live Google authorization, scheduled sync, selected-assignment AI explanations and official submission-status retrieval remain open. Owner setup is documented in CLASSROOM_SETUP.md.
 
 Copy/landing follow-up: removed the duplicate Today story below the hero to reduce repetition; retained reminder proof, study cards, pricing and care/privacy limits. Account upgrade actions now disclose Coming soon when checkout is disabled. Referral bonuses explicitly describe current higher study limits, without changing earned access. Replaced provider/database jargon in public privacy explanations. Full legacy-screen translations and physical-device visual review remain open.
+
+
+## Third-review follow-up — 8 October 2026
+- Default navigation now prioritizes Today, Chat and Notes. Study/Care and all deeper tools remain available through keyboard-accessible More, with automatic disclosure for active deep links.
+- Empty initial Planner/reminder/habit/journal/memory/check-in lists use fixed-space skeletons. Failed loads show retry guidance; refresh does not replace form inputs or discard drafts.
+- Login stays visible beside the hero signup/demo actions at mobile widths, with EN/GU/HI copy. Shorter section spacing reduces landing scroll while preserving privacy and care limits.
+- Reduced-motion visitors see content immediately without reveal movement. Browser regression covers essential navigation, five viewport widths, visible login and translated login labels.
+- Earlier batch CI passed at 7656c245. This follow-up needs its own CI confirmation. Render cold starts are not eliminated by these frontend changes; always-on service configuration requires owner access and may incur cost. No paid hosting, clinical activation or live OAuth changes were made.

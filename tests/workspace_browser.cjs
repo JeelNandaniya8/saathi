@@ -81,6 +81,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
    assert.equal(await page.evaluate(()=>scrollY),0,'Greeting stays visible on startup');
+   assert.equal(await page.locator('.nav > button[data-view]').count(),1,'Today is the only top-level workspace view');
+   assert.equal(await page.locator('.nav > [data-quick-notes]').count(),1);
+   assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
+   assert.equal(await page.locator('#moreNavigation [data-view="study"],#moreNavigation [data-view="healer"]').count(),2,'Study and Care remain reachable');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
@@ -262,7 +266,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     const fit=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,cls:el.className,rect:el.getBoundingClientRect()})).filter(x=>x.rect.width&&x.rect.height&&(x.rect.right>innerWidth+1||x.rect.left< -1)).slice(0,12).map(x=>({tag:x.tag,cls:x.cls,left:x.rect.left,right:x.rect.right}))}));
     assert.ok(fit.scroll<=fit.width+1,'Landing must fit '+screen+'px: '+JSON.stringify(fit));
     assert.ok(await page.locator('#heroCta').isVisible(),'Primary action remains visible');
+    assert.ok(await page.locator('#heroLogin').isVisible(),'Login is available without opening the mobile menu');
+    assert.equal(await page.locator('#heroLogin').getAttribute('href'),'/account?tab=login');
    }
+   await page.locator('[data-lang="gu"]').click();
+   assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
+   await page.locator('[data-lang="hi"]').click();
+   assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.equal(await page.locator('.reveal').first().evaluate(el=>getComputedStyle(el).opacity),'1','Reduced motion keeps marketing content visible');
    assert.deepEqual(errors,[],'No uncaught errors in real pages');
    console.log('PASS: real Chromium '+width+'px, deferred tools/retry, English/Gujarati, private user text, focus reopen, search escaping and chat edit cancellation');
    await context.close();
