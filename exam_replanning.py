@@ -1,12 +1,14 @@
 """Preview-only until confirmed; reschedule existing overdue study blocks without AI."""
 import hashlib
 import json
+import math
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from flask import jsonify, request
 
 
-def preview(plan, tasks, now=None):
+def preview(plan, tasks, now=None, other_tasks=None):
+    other_tasks = other_tasks or []
     now = now or datetime.now(timezone.utc)
     zone = ZoneInfo(plan['timezone'])
     local = now.astimezone(zone)
@@ -30,6 +32,17 @@ def preview(plan, tasks, now=None):
                 preserved.append(task['id'])
         else:
             occupied[due] = occupied.get(due, 0)+1
+    # Reserve estimated study time from the user's other exam plans as well.
+    # General Planner tasks have no duration, so they still require manual review.
+    reserved = {}
+    for task in other_tasks:
+        if task['due_at']:
+            day = task['due_at'].astimezone(zone).date()
+            if day >= start:
+                minutes = min(25, task['plan_daily_minutes']) + 5
+                reserved[day] = reserved.get(day, 0) + minutes
+    for day, minutes in reserved.items():
+        occupied[day] = occupied.get(day, 0) + math.ceil(minutes / (block + 5))
     candidates.sort(key=lambda t: (t['due_at'], t['id']))
     slots = []
     for offset in range(max(0, min(365, (rest-start).days))):
@@ -43,7 +56,7 @@ def preview(plan, tasks, now=None):
     # Include every linked task, including completed/manual/future work: any change
     # between preview and apply must be reviewed again.
     snapshot = {'plan': {k: plan[k] for k in ('id','exam_date','timezone','daily_minutes')},
-                'tasks': tasks, 'result': result, 'start': start}
+                'tasks': tasks, 'other_tasks': other_tasks, 'result': result, 'start': start}
     result['preview_token'] = hashlib.sha256(json.dumps(snapshot, sort_keys=True, default=str).encode()).hexdigest()
     return result
 
@@ -65,10 +78,15 @@ def register(app, db, private):
             token = data.get('preview_token')
             if action == 'apply' and isinstance(token, str) and token == plan['last_replan_token']:
                 return jsonify(ok=True, replayed=True)
-            cur.execute('''SELECT t.id,t.title,t.details,t.due_at,t.completed,t.created_at,t.updated_at,e.last_replanned_at
+            # Lock study tasks in one stable order for simultaneous cross-plan replans.
+            cur.execute('''SELECT t.id,t.title,t.details,t.due_at,t.completed,t.created_at,t.updated_at,
+                e.last_replanned_at,e.plan_id,p.daily_minutes AS plan_daily_minutes
                 FROM exam_plan_tasks e JOIN tasks t ON t.id=e.task_id
-                WHERE e.plan_id=%s AND t.user_id=%s ORDER BY t.id FOR UPDATE OF t,e''', (plan_id, uid))
-            result = preview(plan, cur.fetchall())
+                JOIN exam_plans p ON p.id=e.plan_id
+                WHERE t.user_id=%s AND p.user_id=%s ORDER BY t.id FOR UPDATE OF t,e''', (uid, uid))
+            rows = cur.fetchall()
+            result = preview(plan, [t for t in rows if t['plan_id'] == plan_id],
+                             other_tasks=[t for t in rows if t['plan_id'] != plan_id])
             if action == 'preview':
                 return jsonify(plan=result)
             if token != result['preview_token']:

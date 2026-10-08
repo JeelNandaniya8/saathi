@@ -157,3 +157,5 @@ Copy/landing follow-up: removed the duplicate Today story below the hero to redu
 
 
 Accessibility follow-up: explicit Account text-size control with EN/GU/HI labels; device-only preference restores before account load, works when storage is blocked, and syncs across tabs. Larger reading text and 44px controls apply to workspace, chat and authentication screens. Age and health conditions never toggle it automatically. Third-review CI run 37758475733 passed; accessibility follow-up requires its own browser check.
+
+Cross-plan study follow-up: replanning now reserves estimated time from other saved exam plans in the target timezone, including work already completed that day. All linked study tasks lock in stable order; other-plan edits invalidate previews. No other plan is edited. Undated and general Planner tasks lack duration and still need manual review. Changed exam dates remain open.

@@ -40,3 +40,20 @@ def test_evening_and_expired_exam_never_create_past_or_exam_day_tasks():
 def test_previous_replan_can_move_again_but_later_manual_edits_cannot():
     assert len(er.preview(plan(),[task(1,updated_at=NOW,last_replanned_at=NOW)],NOW)['items'])==1
     assert not er.preview(plan(),[task(1,updated_at=NOW,last_replanned_at=NOW-timedelta(seconds=1))],NOW)['items']
+
+
+def test_other_plans_reserve_capacity_in_target_timezone():
+    other = [task(99, due_at=NOW.replace(hour=18), plan_daily_minutes=20)]
+    p = er.preview(plan(), [task(1)], NOW, other_tasks=other)
+    assert p['items'][0]['due_at'].startswith('2026-10-09')
+    assert other[0]['due_at'] == NOW.replace(hour=18)
+    changed = [{**other[0], 'due_at': NOW.replace(hour=18)+timedelta(days=1)}]
+    assert er.preview(plan(), [task(1)], NOW, other_tasks=changed)['preview_token'] != p['preview_token']
+
+
+def test_other_plans_can_exhaust_capacity_without_duplicate_or_overbudget_work():
+    others = [task(99+i, due_at=NOW.replace(hour=18)+timedelta(days=i), plan_daily_minutes=30) for i in range(3)]
+    p = er.preview(plan(), [task(1)], NOW, other_tasks=others)
+    assert p['items'] == [] and p['unscheduled'] == 1
+    others[0]['completed'] = True
+    assert er.preview(plan(), [task(1)], NOW, other_tasks=others)['unscheduled'] == 1
