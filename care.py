@@ -79,7 +79,7 @@ def register(app,b):
         with db() as (_,cur):
             cur.execute('SELECT language FROM users WHERE id=%s',(uid,));user=cur.fetchone()
             copy=COPY.get((user or {}).get('language'),COPY['en'])
-            cur.execute('''SELECT id,title,note,next_run_at FROM reminders WHERE user_id=%s AND active=TRUE
+            cur.execute('''SELECT id,title,note,next_run_at FROM reminders WHERE user_id=%s AND active=TRUE AND kind='general'
                 AND next_run_at<=%s ORDER BY next_run_at LIMIT 1''',(uid,now))
             reminder=cur.fetchone()
             if reminder:
@@ -104,6 +104,7 @@ def register(app,b):
         with db() as (conn,cur):
             cur.execute('SELECT * FROM reminders WHERE id=%s AND user_id=%s FOR UPDATE',(reminder_id,uid));reminder=cur.fetchone()
             if not reminder:return jsonify(error='Reminder not found.'),404
+            if reminder.get('kind')=='medication':return jsonify(error='Use the medication log to record this occurrence.'),409
             if not reminder['active'] or reminder['next_run_at'].isoformat()!=expected:
                 return jsonify(ok=True,already_completed=True,reminder=b['reminder_to_dict'](reminder))
             if reminder['next_run_at']>now:return jsonify(error='This reminder is not due yet.'),409

@@ -37,6 +37,7 @@ import requests
 import auth_google
 import billing
 import care
+import care_routines
 import personal_context
 import study_tools
 import workspace_extras
@@ -1052,6 +1053,7 @@ def public_styles():
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
 @app.get("/personal-context.js")
+@app.get("/care-routines.js")
 @app.get("/recovery.js")
 @app.get("/workspace-hub.js")
 @app.get("/lazy-tools.js")
@@ -3430,7 +3432,7 @@ def reminders():
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM reminders WHERE user_id = %s ORDER BY active DESC, next_run_at ASC",
+            "SELECT * FROM reminders WHERE user_id = %s AND kind='general' ORDER BY active DESC, next_run_at ASC",
             (user_id,),
         )
         rows = cur.fetchall()
@@ -3495,6 +3497,11 @@ def reminder_detail(reminder_id):
         cur.close()
         conn.close()
         return jsonify({"error": "Reminder not found."}), 404
+
+    if reminder.get("kind") == "medication":
+        cur.close()
+        conn.close()
+        return jsonify(error="Use the medication log to change this schedule or record an occurrence."), 409
 
     if request.method == "DELETE":
         cur.execute("DELETE FROM reminders WHERE id = %s AND user_id = %s", (reminder_id, user_id))
@@ -3580,6 +3587,7 @@ def deliver_due_reminders():
     provided = request.headers.get("X-Cron-Secret") or ""
     if not CRON_SECRET or not secrets.compare_digest(CRON_SECRET, provided):
         return jsonify({"error": "Not authorised."}), 401
+    care_routines.sync_due(globals())
     push_result = push_notifications.deliver_due(globals())
     if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
         if push_result["configured"]:
@@ -3593,7 +3601,7 @@ def deliver_due_reminders():
         SELECT reminder.*, users.email, users.name AS user_name
         FROM reminders AS reminder
         JOIN users ON users.id = reminder.user_id
-        WHERE reminder.active = TRUE AND reminder.email_enabled = TRUE
+        WHERE reminder.active = TRUE AND reminder.email_enabled = TRUE AND reminder.kind = 'general'
           AND reminder.next_run_at <= %s
           AND reminder.next_run_at >= %s
         ORDER BY reminder.next_run_at ASC LIMIT 100
@@ -4715,6 +4723,8 @@ def export_data():
     trusted_contact_rows = cur.fetchall()
     study_exports = {}
     for name, query in (
+        ("care_occurrences", "SELECT * FROM care_occurrences WHERE user_id=%s ORDER BY scheduled_for"),
+        ("care_push_deliveries", "SELECT d.care_occurrence_id,d.scheduled_for,d.status,d.attempt_count,d.updated_at,d.sent_at FROM push_deliveries d JOIN reminders r ON r.id=d.reminder_id WHERE r.user_id=%s AND d.care_occurrence_id IS NOT NULL"),
         ("personal_context_fields", "SELECT category,field,value,source,use_in_ai,version,reviewed_at FROM personal_context_fields WHERE user_id=%s ORDER BY category,field"),
         ("exam_plans", "SELECT id,client_id::text,title,exam_date::text,timezone,daily_minutes,topics,created_at FROM exam_plans WHERE user_id=%s ORDER BY id"),
         ("exam_plan_tasks", "SELECT ept.plan_id,ept.task_id FROM exam_plan_tasks ept JOIN exam_plans ep ON ep.id=ept.plan_id WHERE ep.user_id=%s"),
@@ -5335,6 +5345,7 @@ auth_google.register(app, globals())
 billing.register(app, globals())
 study_tools.register(app, globals())
 care.register(app, globals())
+care_routines.register(app, globals())
 personal_context.register(app, globals())
 workspace_extras.register(app, globals())
 push_notifications.register(app, globals())
