@@ -73,3 +73,64 @@ def test_future_record_cannot_be_snoozed_to_send_early(db_app,monkeypatch):
     create(c,starts_at=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat())
     row=c.get('/api/care/routines').json['occurrences'][0]
     assert c.patch('/api/care/occurrences/'+str(row['id']),json={'action':'snooze','version':row['version'],'confirmed':True}).status_code==400
+
+
+def test_multi_time_schedules_are_atomic_duplicate_safe_and_owned(db_app,monkeypatch):
+    _,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true')
+    now=datetime.now(timezone.utc)
+    first,payload=create(c,starts_at=[(now+timedelta(hours=1)).isoformat(),(now+timedelta(hours=9)).isoformat()])
+    assert one(db,"SELECT COUNT(*) n FROM reminders WHERE kind='medication'")['n']==2
+    assert one(db,'SELECT COUNT(*) n FROM care_occurrences')['n']==2
+    retry=c.post('/api/care/routines',json=payload)
+    assert retry.json['replayed'] and len(retry.json['ids'])==2
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==2
+    broken={**payload,'client_id':str(uuid4()),'starts_at':[payload['starts_at'][0],'bad']}
+    assert c.post('/api/care/routines',json=broken).status_code==400
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==2
+
+
+def test_prescription_transcription_requires_external_consent_and_never_schedules(db_app,monkeypatch):
+    import io
+    b,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true')
+    calls=[]
+    monkeypatch.setattr(b,'prepare_chat_attachments',lambda files,entitlement:[{'name':'rx.png','mime_type':'image/png','content':b'fixture'}])
+    def generate(messages,**options):
+        calls.append((messages,options));return 'Original text [unclear]',{'prompt_tokens':2,'output_tokens':3,'total_tokens':5}
+    monkeypatch.setattr(b,'generate_gemini_reply',generate)
+    assert c.post('/api/care/prescription-draft',data={'file':(io.BytesIO(b'fixture'),'rx.png')}).status_code==400
+    assert not calls
+    response=c.post('/api/care/prescription-draft',data={'ai_confirmed':'true','file':(io.BytesIO(b'fixture'),'rx.png')})
+    assert response.status_code==200 and response.json['verified'] is False and response.json['saved'] is False
+    assert calls[0][1]['memory_context']=='' and calls[0][1]['file_only'] is True
+    assert 'Never guess' in calls[0][0][0]['content']
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==0
+    assert one(db,'SELECT COUNT(*) n FROM chat_attachments')['n']==0
+    assert one(db,'SELECT COUNT(*) n FROM ai_usage_events')['n']==1
+
+
+def test_confirmed_instruction_edit_preserves_history_timing_and_invalidates_sharing(db_app,monkeypatch):
+    b,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true');rid,_=create(c)
+    old=one(db,'SELECT * FROM reminders WHERE id=%s',(rid,))
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO trusted_contacts(owner_user_id,invited_email,contact_user_id,status,created_at,updated_at) VALUES(1,'other@example.com',2,'accepted',NOW(),NOW())")
+            future=old['current_scheduled_for']+timedelta(days=1)
+            care.ensure_occurrence(cur,old,future)
+            cur.execute("INSERT INTO care_shares(owner_id,recipient_id,routine_ids,fields,status,expires_at) VALUES(1,2,%s,'[\"status\",\"instructions\"]','accepted',NOW()+INTERVAL '7 days')",('[%s]'%rid,))
+    url=f'/api/care/routines/{rid}';data={'action':'edit_instructions','title':'Reviewed name','instructions':'Exact new clinician text','confirmed':True,'version':1}
+    assert c.patch(url,json={**data,'confirmed':False}).status_code==400
+    assert c.patch(url,json={**data,'starts_at':'new'}).status_code==400
+    assert c.patch(url,json=data).status_code==200
+    updated=one(db,'SELECT * FROM reminders WHERE id=%s',(rid,))
+    assert updated['note']==data['instructions'] and updated['next_run_at']==old['next_run_at'] and updated['care_schedule']['anchor']==old['care_schedule']['anchor']
+    assert one(db,'SELECT instructions_snapshot FROM care_occurrences WHERE scheduled_for=%s',(old['current_scheduled_for'],))['instructions_snapshot']=='User-entered clinician text'
+    assert one(db,'SELECT instructions_snapshot FROM care_occurrences WHERE scheduled_for=%s',(future,))['instructions_snapshot']==data['instructions']
+    assert one(db,'SELECT status FROM care_shares')['status']=='pending'
+    assert c.patch(url,json=data).status_code==409
+    assert c.get('/api/export-data').json['care_occurrences'][0]['instructions_snapshot']=='User-entered clinician text'
+    with c.session_transaction() as s:s['user_id']=2
+    share=one(db,'SELECT id,version FROM care_shares')
+    assert c.post(f"/api/care/shares/{share['id']}/respond",json={'confirmed':True,'action':'accept','version':share['version']}).status_code==200
+    records=c.get(f"/api/care/shares/{share['id']}/records").json['records']
+    assert records[0]['instructions']=='User-entered clinician text','Caregiver sees the original instruction for this elapsed occurrence'
+    assert c.patch(url,json={**data,'version':2}).status_code==404

@@ -52,3 +52,39 @@ def test_user_context_is_reused_only_in_same_authenticated_request(backend, monk
         backend.session.update(user_id=7, session_version=2)
         assert backend.require_user_id() is None
         assert len(cur.calls) == 2
+
+
+def test_pool_pressure_waits_for_returned_lease_and_times_out_without_secret_details():
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    import db_pool
+    from psycopg2.pool import PoolError
+    busy=threading.Event()
+    class Pool:
+        def __init__(self):self.available=False
+        def getconn(self):
+            if not self.available:busy.set();raise PoolError('sensitive pool information')
+            self.available=False;return 'connection'
+        def putconn(self,conn,close=False):self.available=True
+    pool=Pool()
+    class Connection:
+        closed=False
+        def rollback(self):pass
+    lease=db_pool.Lease(pool,Connection())
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future=executor.submit(db_pool.checkout,pool)
+        assert busy.wait(1);lease.close();assert future.result(timeout=2)=='connection'
+    try:db_pool.checkout(pool,timeout=0)
+    except db_pool.DatabaseBusy as error:assert 'sensitive' not in str(error)
+    else:raise AssertionError('Exhausted pool should have bounded waiting')
+
+
+def test_database_busy_is_a_recoverable_http_status(backend,monkeypatch):
+    import db_pool
+    client=backend.app.test_client()
+    def fail():raise db_pool.DatabaseBusy('sensitive')
+    monkeypatch.setattr(backend,'get_db',fail)
+    with client.session_transaction() as session:session.update(user_id=1,session_version=1)
+    response=client.get('/api/me')
+    assert response.status_code==503 and response.headers['Retry-After']=='3'
+    assert 'sensitive' not in str(response.json)

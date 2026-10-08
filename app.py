@@ -39,6 +39,7 @@ import auth_google
 import billing
 import care
 import care_routines
+import care_support
 import personal_context
 import study_tools
 import workspace_extras
@@ -95,7 +96,7 @@ GEMINI_CONTEXT_CHARACTER_LIMIT = 24000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
-    "/api/cron/reminders", "/api/demo-chat", "/api/payment/webhook",
+    "/api/cron/reminders", "/api/cron/classroom", "/api/demo-chat", "/api/payment/webhook",
     "/api/google-auth",
 }
 
@@ -280,6 +281,14 @@ def verify_same_origin():
         if not expected or not secrets.compare_digest(expected, provided):
             return jsonify({"error": "Your security token expired. Refresh the page and try again."}), 403
     return None
+
+
+@app.errorhandler(db_pool.DatabaseBusy)
+def database_busy(error):
+    response = jsonify(error='Saathi is handling several requests. Retry in a moment; your draft is kept.')
+    response.status_code = 503
+    response.headers['Retry-After'] = '3'
+    return response
 
 
 @app.after_request
@@ -1054,6 +1063,7 @@ def public_styles():
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
 @app.get("/personal-context.js")
+@app.get("/care-support.js")
 @app.get("/care-routines.js")
 @app.get("/classroom.js")
 @app.get("/recovery.js")
@@ -1061,6 +1071,7 @@ def public_styles():
 @app.get("/lazy-tools.js")
 @app.get("/workspace-hub.css")
 @app.get("/i18n.js")
+@app.get("/locale-hi.js")
 @app.get("/locale-gu.js")
 @app.get("/dashboard-study.js")
 @app.get("/dashboard-mindmaps.js")
@@ -4738,8 +4749,10 @@ def export_data():
         ("care_occurrences", "SELECT * FROM care_occurrences WHERE user_id=%s ORDER BY scheduled_for"),
         ("care_push_deliveries", "SELECT d.care_occurrence_id,d.scheduled_for,d.status,d.attempt_count,d.updated_at,d.sent_at FROM push_deliveries d JOIN reminders r ON r.id=d.reminder_id WHERE r.user_id=%s AND d.care_occurrence_id IS NOT NULL"),
         ("personal_context_fields", "SELECT category,field,value,source,use_in_ai,version,reviewed_at FROM personal_context_fields WHERE user_id=%s ORDER BY category,field"),
-        ("classroom_connections", "SELECT selected_courses,last_sync,last_error,created_at FROM classroom_connections WHERE user_id=%s"),
+        ("classroom_connections", "SELECT selected_courses,last_sync,last_error,created_at,auto_sync_enabled,next_sync_at,last_attempt,sync_failures FROM classroom_connections WHERE user_id=%s"),
         ("classroom_assignments", "SELECT * FROM classroom_assignments WHERE user_id=%s ORDER BY id"),
+        ("food_plans", "SELECT * FROM food_plans WHERE user_id=%s ORDER BY id"),
+        ("care_shares", "SELECT * FROM care_shares WHERE owner_id=%s OR recipient_id=%s ORDER BY id"),
         ("exam_plans", "SELECT id,client_id::text,title,exam_date::text,timezone,daily_minutes,topics,created_at FROM exam_plans WHERE user_id=%s ORDER BY id"),
         ("exam_plan_tasks", "SELECT ept.plan_id,ept.task_id FROM exam_plan_tasks ept JOIN exam_plans ep ON ep.id=ept.plan_id WHERE ep.user_id=%s"),
         ("workspace_preferences", "SELECT goal,onboarding_done,timezone,quiet_enabled,quiet_start::text,quiet_end::text,notification_mode,digest_time::text,celebrations FROM workspace_preferences WHERE user_id=%s"),
@@ -4755,7 +4768,7 @@ def export_data():
         ("payment_orders", "SELECT order_id,price_key,amount,currency,is_test,status,created_at,paid_at FROM payment_orders WHERE user_id=%s ORDER BY created_at"),
         ("access_grants", "SELECT plan,starts_at,ends_at,revoked_at FROM access_grants WHERE user_id=%s ORDER BY starts_at"),
     ):
-        cur.execute(query, (user_id,))
+        cur.execute(query, (user_id,user_id) if name == "care_shares" else (user_id,))
         study_exports[name] = cur.fetchall()
     cur.close()
     conn.close()
@@ -5360,6 +5373,7 @@ billing.register(app, globals())
 study_tools.register(app, globals())
 care.register(app, globals())
 care_routines.register(app, globals())
+care_support.register(app, globals())
 personal_context.register(app, globals())
 import classroom_integration
 classroom_integration.register(app, globals())
@@ -5371,6 +5385,5 @@ workspace_hub.register(app, globals())
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    from server_runtime import serve
+    serve(app)

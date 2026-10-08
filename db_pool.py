@@ -4,7 +4,7 @@ import threading
 import time
 from collections import OrderedDict
 import psycopg2
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import ThreadedConnectionPool, PoolError
 from psycopg2.extras import RealDictCursor
 
 _pool = None
@@ -12,6 +12,26 @@ _identity = None
 _lock = threading.Lock()
 _checked = OrderedDict()
 _check_lock = threading.Lock()
+_available = threading.Condition()
+
+
+class DatabaseBusy(psycopg2.OperationalError):
+    pass
+
+
+def checkout(pool, timeout=3):
+    """Wait briefly for a returned lease instead of failing a request immediately."""
+    deadline = time.monotonic()+timeout
+    with _available:
+        while True:
+            try:
+                return pool.getconn()
+            except PoolError:
+                remaining = deadline-time.monotonic()
+                if remaining <= 0:
+                    raise DatabaseBusy('Database connections are busy.') from None
+                _available.wait(min(remaining, .25))
+
 
 
 def recently_checked(conn):
@@ -66,7 +86,11 @@ class Lease:
             if broken:
                 with _check_lock:
                     _checked.pop(conn, None)
-            self._pool.putconn(conn, close=broken)
+            try:
+                self._pool.putconn(conn, close=broken)
+            finally:
+                with _available:
+                    _available.notify_all()
 
 
 def connect(dsn):
@@ -77,14 +101,14 @@ def connect(dsn):
             _pool = ThreadedConnectionPool(1, 8, dsn, connect_timeout=5, cursor_factory=RealDictCursor)
             _identity = identity
         pool = _pool
-    conn = pool.getconn()
+    conn = checkout(pool)
     try:
         # A small ping costs less than reconnecting over TLS. Replace stale
         # connections before application SQL; never replay a failed write.
         if conn.closed:
             pool.putconn(conn, close=True)
             conn = None
-            conn = pool.getconn()
+            conn = checkout(pool)
         # Keep the initial/stale-connection check, but avoid two extra database
         # round trips on every checkout during a burst of authenticated requests.
         # This caches only transport health, never user/session authorization.
@@ -99,5 +123,5 @@ def connect(dsn):
             with _check_lock:
                 _checked.pop(conn, None)
             pool.putconn(conn, close=True)
-        fresh = pool.getconn()
+        fresh = checkout(pool)
         return Lease(pool, fresh)

@@ -8,9 +8,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
  try{
-  for(const width of [1280,390]){
+  for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[];
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -31,11 +31,17 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
      else if(pathname==='/api/check-ins')data={check_ins:[{id:1,created_at:'2026-10-08T09:00:00Z',mood:3,energy:4,note:'Private summary fixture'}]};
      else if(pathname==='/api/reminders')data={reminders:[]};
+     else if(pathname==='/api/care/food-plans/preview'){assert.equal(body().confirmed,true);foodPreview={items:[{day:1,slot:0,name:body().options[0].name,estimated_cost:'20'}],unscheduled:2,blocked_options:[],needs_clinical_review:false,inputs:{currency:'INR'},preview_token:'fixture-preview'};data={plan:foodPreview}}
+     else if(pathname==='/api/care/food-plans'){if(method==='POST'){assert.equal(body().save_confirmed,true);assert.equal(body().preview_token,'fixture-preview');foodSaves++;data={id:1}}else data={plans:foodSaves?[{id:1,preview:foodPreview}]:[]}}
+     else if(pathname==='/api/care/shares')data={enabled:false,user_id:2,contacts:[],shares:[{id:1,owner_id:1,recipient_id:2,owner_name:'Owner',recipient_name:'Receiver',fields:['status'],status:sharedStatus,version:1,expires_at:'2026-11-01T00:00:00Z'}]};
+     else if(pathname==='/api/care/shares/1/respond'){assert.equal(body().confirmed,true);assert.equal(body().action,'revoke');assert.equal(body().version,1);sharedStatus='revoked';data={ok:true}}
+     else if(pathname==='/api/care/prescription-draft'){assert.match(route.request().headers()['content-type'],/^multipart\/form-data; boundary=/);assert.match(route.request().postData(),/ai_confirmed/);ocrReads++;data={draft:'Original prescription [unclear] <script>unsafe</script>',verified:false,saved:false}}
      else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
      else if(pathname==='/api/care/routines'){
       if(method==='POST'){careSaves.push(body());if(careSaves.length===1){status=503;data={error:'Temporary save failure'}}else data={id:1}}
-      else data={routines:[],occurrences:[],deliveries:[]};
+      else data={routines:careSaves.length>=2?[{id:1,title:'Existing schedule',note:careEdits.length?'Reviewed instruction':'User confirmed clinician instructions',active:true,recurrence:'daily',care_schedule:{timezone:'UTC',version:careEdits.length+1},next_run_at:'2026-10-09T08:00:00Z',current_scheduled_for:'2026-10-09T08:00:00Z'}]:[],occurrences:[],deliveries:[]};
      }
+     else if(pathname==='/api/care/routines/1'){assert.equal(body().action,'edit_instructions');assert.equal(body().version,1);assert.equal(body().confirmed,true);careEdits.push(body());data={ok:true}}
      else if(pathname==='/api/habits')data={habits:[]};
      else if(pathname==='/api/push/config')data={enabled:false};
      else if(pathname==='/api/referrals')data={referral_code:'fixture',referral_url:base,invited:0,qualified:0,bonus_days:0};
@@ -54,10 +60,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
-     else if(pathname==='/api/classroom/status')data={configured:true,connected:classroomConnected,connection:{last_sync:null,last_error:null}};
+     else if(pathname==='/api/classroom/status')data={configured:true,connected:classroomConnected,connection:{last_sync:null,last_error:null,version:1,auto_sync_enabled:!!classroomSchedules}};
      else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
      else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
      else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
+     else if(pathname==='/api/classroom/schedule'){assert.equal(body().confirmed,true);assert.equal(body().enabled,true);assert.equal(body().version,1);classroomSchedules++;data={ok:true}}
+     else if(pathname==='/api/classroom/assignments/1/explain'){assert.equal(body().ai_confirmed,true);classroomExplains++;data={explanation:'Useful steps <script>unsafe</script>',saved:false,verified:false}}
      else if(pathname==='/api/classroom/disconnect'){assert.equal(body().confirmed,true);assert.equal(body().remove_imports,true);classroomConnected=false;data={ok:true,revoked:true}}
      else if(pathname==='/api/personal-context')data={fields:profileFields};
      else if(pathname==='/api/personal-context/care/conditions'){
@@ -127,6 +135,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('healer'));
    await page.waitForFunction(()=>typeof window.stopCare==='function');
    await page.evaluate(()=>openView('account'));
+   await page.locator('#languageSelect').selectOption('hi');
+   await page.waitForFunction(()=>SaathiI18n.t('Please log in first.')==='पहले लॉग इन करें।');
+   assert.ok(requests.includes('/locale-hi.js'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
    await page.evaluate(()=>openView('checkins'));
@@ -190,6 +201,13 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    const classroom=page.getByRole('dialog',{name:'Google Classroom',exact:true});
    await classroom.getByText('No confirmed deadline',{exact:true}).waitFor();
    assert.equal(await classroom.locator('script').count(),0);
+   await classroom.getByRole('button',{name:'Explain requirements and steps',exact:true}).click();assert.equal(classroomExplains,0);
+   await classroom.getByLabel('Send only this assignment to the AI provider for an explanation. No profile, memory or other assignments.',{exact:true}).check();
+   await classroom.getByRole('button',{name:'Explain requirements and steps',exact:true}).click();
+   await classroom.getByText('Useful steps <script>unsafe</script>',{exact:true}).waitFor();assert.equal(classroomExplains,1);assert.equal(await classroom.locator('script').count(),0);
+   await classroom.getByLabel('Sync every six hours (requires protected server scheduler). Changing courses disables this; review and enable again.',{exact:true}).check();
+   await classroom.getByRole('button',{name:'Save sync preference',exact:true}).click();
+   await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);assert.equal(classroomSchedules,1);
    const addAssignment=classroom.getByRole('button',{name:'Add to Planner',exact:true});
    await addAssignment.click();assert.equal(classroomAdds,0);
    await classroom.getByRole('button',{name:'Confirm: Add to Planner',exact:true}).click();
@@ -204,22 +222,52 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('[data-care-routines]').click();
    const medication=page.locator('dialog[open]');
    await medication.getByText('In-app only: server delivery is not configured.',{exact:true}).waitFor();
+   await medication.locator('summary').filter({hasText:'Read prescription text'}).click();
+   await medication.getByLabel('Prescription image or PDF',{exact:true}).setInputFiles({name:'fixture.png',mimeType:'image/png',buffer:Buffer.from('local transcription fixture')});
+   await medication.getByRole('button',{name:'Read prescription text',exact:true}).click();assert.equal(ocrReads,0);
+   await medication.getByLabel('I permit this file to be sent to the configured AI provider for unverified transcription. No schedule will be saved.',{exact:true}).check();
+   await medication.getByRole('button',{name:'Read prescription text',exact:true}).click();
+   await medication.getByText(/Original prescription \[unclear\]/).waitFor();assert.equal(ocrReads,1);assert.equal(careSaves.length,0);assert.equal(await medication.locator('script').count(),0);
    await medication.locator('summary').filter({hasText:'Add confirmed schedule'}).click();
    await medication.getByLabel('Medicine / schedule name',{exact:true}).fill('Existing schedule');
    await medication.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('User confirmed clinician instructions');
    await medication.getByLabel('First date and time',{exact:true}).fill('2026-10-09T08:00');
-   await medication.locator('button[type=submit]').click();assert.equal(careSaves.length,0);
-   await medication.locator('input[type=checkbox]').check();
-   await medication.locator('button[type=submit]').click();
+   await medication.getByRole('button',{name:'Add another confirmed time',exact:true}).click();
+   await medication.getByLabel('First date and time',{exact:true}).nth(1).fill('2026-10-09T20:00');
+   await medication.locator('form').filter({has:page.getByLabel('Medicine / schedule name',{exact:true})}).locator('button[type=submit]').click();assert.equal(careSaves.length,0);
+   await medication.getByLabel('I confirm these existing instructions and schedule, and consent to save this private health information.',{exact:true}).check();
+   await medication.locator('form').filter({has:page.getByLabel('Medicine / schedule name',{exact:true})}).locator('button[type=submit]').click();
    await medication.getByText('Temporary save failure',{exact:true}).waitFor();
    assert.equal(await medication.getByLabel('Medicine / schedule name',{exact:true}).inputValue(),'Existing schedule');
-   await medication.locator('button[type=submit]').click();
+   await medication.locator('form').filter({has:page.getByLabel('Medicine / schedule name',{exact:true})}).locator('button[type=submit]').click();
    await medication.getByText('Temporary save failure',{exact:true}).waitFor({state:'hidden'});
    await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);
    assert.equal(careSaves.length,2);assert.equal(careSaves[0].client_id,careSaves[1].client_id);
-   assert.equal(careSaves[1].confirmed,true);
+   assert.equal(careSaves[1].confirmed,true);assert.equal(careSaves[1].starts_at.length,2);
+   const editInstructions=medication.locator('details').filter({hasText:'Review instructions'});
+   await editInstructions.locator('summary').click();
+   await editInstructions.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('Reviewed instruction');
+   await editInstructions.locator('button[type=submit]').click();assert.equal(careEdits.length,0);
+   await editInstructions.getByLabel('I confirm these existing instructions and schedule, and consent to save this private health information.',{exact:true}).check();
+   await editInstructions.locator('button[type=submit]').click();
+   await medication.getByText('Reviewed instruction',{exact:true}).first().waitFor();assert.equal(careEdits.length,1);
    assert.ok(await medication.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));
    await medication.getByRole('button',{name:'Close',exact:true}).click();
+   await page.evaluate(()=>openView('healer'));await page.locator('[data-food-plan]').click();
+   const food=page.getByRole('dialog',{name:'Food choices',exact:true});
+   await food.getByLabel('One option per line: name | known ingredients separated by commas | estimated cost (optional)',{exact:true}).fill('My choice <script>unsafe</script> | rice | 20');
+   await food.getByLabel('I checked the entered options and ingredients',{exact:true}).check();
+   await food.getByRole('button',{name:'Preview',exact:true}).click();
+   await food.getByRole('button',{name:'Save plan',exact:true}).click();assert.equal(foodSaves,0);
+   await food.getByLabel('Store this plan including any health restrictions I entered',{exact:true}).check();
+   await food.getByRole('button',{name:'Save plan',exact:true}).click();
+   await food.getByRole('button',{name:'Delete',exact:true}).waitFor();assert.equal(foodSaves,1);assert.equal(await food.locator('script').count(),0);
+   assert.ok(await food.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));
+   await food.getByRole('button',{name:'Close',exact:true}).click();await page.locator('[data-care-share]').click();
+   const share=page.getByRole('dialog',{name:'Care sharing',exact:true});await share.getByText('Clinical beta is off. Existing access can still be revoked.',{exact:true}).waitFor();
+   await share.getByRole('button',{name:'Revoke access',exact:true}).click();assert.equal(sharedStatus,'pending');
+   await share.getByRole('button',{name:'Confirm: Revoke access',exact:true}).click();await share.getByText(/Revoked/).waitFor();assert.equal(sharedStatus,'revoked');
+   await share.getByRole('button',{name:'Close',exact:true}).click();
    // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
    await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:'Overview',children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
    assert.equal(await page.locator('.mm-node').count(),25);

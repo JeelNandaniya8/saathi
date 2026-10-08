@@ -487,7 +487,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <article id="subjectDetail" class="dw-panel dw-detail" hidden></article></section>
 <section class="view" id="healer">
 <div class="section-head"><span class="eyebrow">Care, at your pace</span><h1>What would help today?</h1><p>Choose a conversation, one manageable step, or a little breathing room in your plan.</p></div>
-<div class="dw-care"><button type="button" data-personal-context="care"><b data-personal-label="care">Care profile</b><span data-personal-label="optional">Optional, with your permission</span></button><a href="/chat?care=listen"><b>Just talk it through</b><span>Start with listening. Advice can wait.</span></a><button type="button" data-schedule-checkin><b data-i18n="scheduleCheckin">Schedule a check-in</b><span data-i18n="checkinScheduleHint">Choose the first time and frequency, then save.</span></button><button id="careSmallStep" type="button"><b>One small next step</b><span>Find a gentle place to begin.</span></button><button id="careLightenPlan" type="button"><b>Lighten today’s plan</b><span>Review a few tasks to move to tomorrow. You choose what changes.</span></button></div>
+<div class="dw-actions"><button class="dw-button" type="button" data-food-plan>Food choices</button><button class="dw-button" type="button" data-care-share>Care sharing</button></div><div class="dw-care"><button type="button" data-personal-context="care"><b data-personal-label="care">Care profile</b><span data-personal-label="optional">Optional, with your permission</span></button><a href="/chat?care=listen"><b>Just talk it through</b><span>Start with listening. Advice can wait.</span></a><button type="button" data-schedule-checkin><b data-i18n="scheduleCheckin">Schedule a check-in</b><span data-i18n="checkinScheduleHint">Choose the first time and frequency, then save.</span></button><button id="careSmallStep" type="button"><b>One small next step</b><span>Find a gentle place to begin.</span></button><button id="careLightenPlan" type="button"><b>Lighten today’s plan</b><span>Review a few tasks to move to tomorrow. You choose what changes.</span></button></div>
   <article class="healer-hero-card">
     <span class="eyebrow" style="color:var(--sage)">A moment to reset</span>
     <h2 style="font-size:24px;margin:6px 0 10px;color:var(--ink)">Take a short break.</h2>
@@ -637,15 +637,16 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/i18n.js?v=20260919"></script>
+<script src="/i18n.js?v=20261008b"></script>
 <script src="/lazy-tools.js?v=20260919"></script>
 <script src="/workspace-hub.js?v=20261007"></script>
 <script src="/recovery.js?v=20260919"></script>
 <script src="/workspace.js?v=20261007"></script>
 <script src="/daily-workspace.js?v=20260919"></script>
-<script src="/personal-context.js?v=20261008b"></script>
-<script src="/classroom.js?v=20261008"></script>
-<script src="/care-routines.js?v=20261008"></script>
+<script src="/personal-context.js?v=20261008c"></script>
+<script src="/classroom.js?v=20261008b"></script>
+<script src="/care-support.js?v=20261008"></script>
+<script src="/care-routines.js?v=20261008c"></script>
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
 const $=id=>document.getElementById(id);let toastTimer;
@@ -655,12 +656,13 @@ function applyLanguage(language){window.SaathiI18n?.setLanguage(language);const 
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method),controller=new AbortController();
   const forwardAbort=()=>controller.abort();if(options.signal?.aborted)controller.abort();else options.signal?.addEventListener('abort',forwardAbort,{once:true});
-  const timer=setTimeout(()=>controller.abort(),url.endsWith('/generate')?45000:25000);
+  const timeoutMs=url==='/api/care/prescription-draft'||/^\/api\/classroom\/assignments\/\d+\/explain$/.test(url)?105000:url==='/api/classroom/sync'||url==='/api/classroom/courses?refresh=1'?65000:url.endsWith('/generate')?45000:25000;
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{
-    const response=await fetch(url,{credentials:'include',cache:'no-store',...options,signal:controller.signal,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
+    const response=await fetch(url,{credentials:'include',cache:'no-store',...options,signal:controller.signal,headers:{...(options.body&&!(typeof FormData!=='undefined'&&options.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
     if(response.status===401){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));throw new Error('Please log in first.')}
     let data;try{data=await response.json()}catch(error){if(error.name==='AbortError')throw error;throw new Error('The server returned an unreadable response. Please retry.')}
-    if(!response.ok)throw new Error(data.error||'Something went wrong.');
+    if(!response.ok){const message=data.error||'Something went wrong.';throw new Error(typeof SaathiI18n!=='undefined'?SaathiI18n.t(message):message);}
     return data;
   }catch(error){if(error.name==='AbortError'){if(options.signal?.aborted)throw error;throw new Error('The request took too long. Please retry.')}if(error instanceof TypeError)throw new Error('Could not connect. Check your connection and retry.');throw error}
   finally{clearTimeout(timer);options.signal?.removeEventListener('abort',forwardAbort)}
@@ -1081,6 +1083,7 @@ async function init(){
     const selectedTask=Number(new URLSearchParams(location.search).get('task'));if(selectedTask>0){await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===selectedTask);if(task)editTask(task);history.replaceState(null,'','/dashboard#tasks')}
     state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
     SaathiCareRoutines.connect({api,notify:toast});
+    SaathiCareSupport.connect({api,notify:toast});
     SaathiClassroom.connect({api,notify:toast,refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     SaathiPersonal.connect({api,openView,notify:toast,refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     SaathiDaily.connect({api,notify:toast,openView,confirm:confirmAction,tasks:()=>state.tasks,openTest:quickStartFromHistory,openMindmap:loadSavedMindmap,setLanguage:language=>{state.user.language=language;$('languageSelect').value=language;applyLanguage(language)},refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
