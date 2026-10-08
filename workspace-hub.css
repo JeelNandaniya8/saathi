@@ -75,3 +75,5 @@ body:is(.workspace-polish,.chat-polish) .hub-dialog :is(input,textarea,select),b
 .workspace-polish .hub-today>.grid2{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .workspace-polish #todayResume .secondary{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:12px;text-align:left;padding:12px;line-height:1.6}
 @media(max-width:780px){.workspace-polish .hub-today>.grid2{grid-template-columns:1fr}}
+.workspace-polish .nav{overflow-x:hidden}
+.workspace-polish .nav :is(button,a,summary):focus-visible{outline-offset:-3px}
