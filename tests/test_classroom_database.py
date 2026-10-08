@@ -105,3 +105,64 @@ def test_failed_full_sync_keeps_previous_imports(db_app,configured,monkeypatch):
     assert one(db,'SELECT COUNT(*) n FROM classroom_assignments')['n']==1
     assert one(db,'SELECT available FROM classroom_assignments')['available']
     assert one(db,'SELECT last_error FROM classroom_connections')['last_error']=='quota'
+
+
+def selected_setup(c,monkeypatch):
+    connect(c)
+    def pages(token,path,key,params):
+        return [{'id':'course1','name':'English'}] if path=='courses' else [{'id':'work','title':'Essay','description':'Original instruction'}]
+    monkeypatch.setattr(cc,'list_pages',pages)
+    courses=c.get('/api/classroom/courses?refresh=1').json
+    assert c.post('/api/classroom/select',json={'confirmed':True,'courses':['course1'],'version':courses['version']}).status_code==200
+    return c.get('/api/classroom/status').json['connection']['version']
+
+
+def test_scheduler_opt_in_auth_backoff_and_disconnect(db_app,configured,monkeypatch):
+    b,c,db=db_app;version=selected_setup(c,monkeypatch);monkeypatch.setattr(b,'CRON_SECRET','test-cron')
+    headers={'X-Cron-Secret':'test-cron'}
+    assert c.post('/api/cron/classroom').status_code==401
+    assert c.post('/api/cron/classroom',headers=headers).json['processed']==0
+    assert c.post('/api/classroom/schedule',json={'confirmed':True,'enabled':True,'version':version-1}).status_code==409
+    assert c.post('/api/classroom/schedule',json={'confirmed':True,'enabled':True,'version':version}).status_code==200
+    assert c.post('/api/cron/classroom',headers=headers).json['imported']==1
+    row=one(db,'SELECT * FROM classroom_connections');assert row['auto_sync_enabled'] and row['next_sync_at']>row['last_sync'] and row['sync_failures']==0
+    assert c.post('/api/cron/classroom',headers=headers).json['processed']==0
+    with db() as conn:
+        with conn.cursor() as cur:cur.execute("UPDATE classroom_connections SET next_sync_at=NOW()-INTERVAL '1 minute'")
+    def failed(*a,**kw):raise cc.ProviderError('quota')
+    monkeypatch.setattr(cc,'list_pages',failed)
+    r=c.post('/api/cron/classroom',headers=headers);assert r.json['error_code']=='quota'
+    assert one(db,'SELECT sync_failures FROM classroom_connections')['sync_failures']==1
+    assert one(db,'SELECT COUNT(*) n FROM classroom_assignments WHERE available')['n']==1
+    assert c.post('/api/classroom/disconnect',json={'confirmed':True,'remove_imports':False}).status_code==200
+    assert c.post('/api/cron/classroom',headers=headers).json['processed']==0
+
+
+def test_course_changes_cancel_auto_and_require_fresh_opt_in(db_app,configured,monkeypatch):
+    _,c,db=db_app;v=selected_setup(c,monkeypatch)
+    assert c.post('/api/classroom/schedule',json={'confirmed':True,'enabled':True,'version':v}).status_code==200
+    v=c.get('/api/classroom/status').json['connection']['version']
+    assert c.post('/api/classroom/select',json={'confirmed':True,'courses':[],'version':v}).status_code==200
+    row=one(db,'SELECT auto_sync_enabled,next_sync_at FROM classroom_connections');assert not row['auto_sync_enabled'] and row['next_sync_at'] is None
+
+
+def test_selected_assignment_ai_consent_ownership_no_memory_and_revocation_race(db_app,configured,monkeypatch):
+    b,c,db=db_app;selected_setup(c,monkeypatch);c.post('/api/classroom/sync',json={'confirmed':True})
+    aid=one(db,'SELECT id FROM classroom_assignments')['id'];url=f'/api/classroom/assignments/{aid}/explain';calls=[]
+    def answer(messages,**kw):calls.append((messages,kw));return ('Small steps',{})
+    monkeypatch.setattr(b,'generate_gemini_reply',answer)
+    assert c.post(url,json={'confirmed':True}).status_code==400 and calls==[]
+    with c.session_transaction() as s:s['user_id']=2
+    assert c.post(url,json={'confirmed':True,'ai_confirmed':True}).status_code==404 and calls==[]
+    with c.session_transaction() as s:s['user_id']=1
+    r=c.post(url,json={'confirmed':True,'ai_confirmed':True,'language':'gu'});assert r.status_code==200,r.json
+    assert r.json['explanation']=='Small steps' and not r.json['saved'] and not r.json['verified']
+    assert calls[0][1]['memory_context']=='' and calls[0][1]['mode']=='explain' and calls[0][1]['language']=='gu'
+    assert 'Original instruction' in calls[0][0][0]['content'] and 'untrusted' in calls[0][0][0]['content']
+    assert one(db,'SELECT COUNT(*) n FROM tasks')['n']==0 and one(db,'SELECT COUNT(*) n FROM messages')['n']==0
+    def changed(messages,**kw):
+        with db() as conn:
+            with conn.cursor() as cur:cur.execute('DELETE FROM classroom_connections')
+        return ('Must not return',{})
+    monkeypatch.setattr(b,'generate_gemini_reply',changed)
+    assert c.post(url,json={'confirmed':True,'ai_confirmed':True}).status_code==409

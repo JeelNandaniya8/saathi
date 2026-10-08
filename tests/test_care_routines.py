@@ -51,3 +51,12 @@ def test_sync_batches_do_not_starve_schedules_after_first_hundred(monkeypatch):
     monkeypatch.setattr(care,'sync_one',lambda cur,row,now:visited.append(row['id']))
     care.sync_due({'get_db':Connection})
     assert visited==list(range(1,206))
+
+
+def test_multiple_confirmed_times_keep_exact_instructions_and_reject_duplicates():
+    first=data();second=(datetime.fromisoformat(first['starts_at'])+timedelta(hours=8)).isoformat()
+    rows=care.validate_schedules({**first,'starts_at':[first['starts_at'],second]})
+    assert len(rows)==2 and all(row[1]==first['instructions'] for row in rows)
+    assert rows[0][3]['anchor']!=rows[1][3]['anchor']
+    for starts in [[],[first['starts_at']]*2,[first['starts_at']]*7,[first['starts_at'],'bad']]:
+        with pytest.raises(ValueError):care.validate_schedules({**first,'starts_at':starts})

@@ -73,3 +73,36 @@ def test_future_record_cannot_be_snoozed_to_send_early(db_app,monkeypatch):
     create(c,starts_at=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat())
     row=c.get('/api/care/routines').json['occurrences'][0]
     assert c.patch('/api/care/occurrences/'+str(row['id']),json={'action':'snooze','version':row['version'],'confirmed':True}).status_code==400
+
+
+def test_multi_time_schedules_are_atomic_duplicate_safe_and_owned(db_app,monkeypatch):
+    _,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true')
+    now=datetime.now(timezone.utc)
+    first,payload=create(c,starts_at=[(now+timedelta(hours=1)).isoformat(),(now+timedelta(hours=9)).isoformat()])
+    assert one(db,"SELECT COUNT(*) n FROM reminders WHERE kind='medication'")['n']==2
+    assert one(db,'SELECT COUNT(*) n FROM care_occurrences')['n']==2
+    retry=c.post('/api/care/routines',json=payload)
+    assert retry.json['replayed'] and len(retry.json['ids'])==2
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==2
+    broken={**payload,'client_id':str(uuid4()),'starts_at':[payload['starts_at'][0],'bad']}
+    assert c.post('/api/care/routines',json=broken).status_code==400
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==2
+
+
+def test_prescription_transcription_requires_external_consent_and_never_schedules(db_app,monkeypatch):
+    import io
+    b,c,db=db_app;monkeypatch.setenv('CARE_ROUTINES_ENABLED','true')
+    calls=[]
+    monkeypatch.setattr(b,'prepare_chat_attachments',lambda files,entitlement:[{'name':'rx.png','mime_type':'image/png','content':b'fixture'}])
+    def generate(messages,**options):
+        calls.append((messages,options));return 'Original text [unclear]',{'prompt_tokens':2,'output_tokens':3,'total_tokens':5}
+    monkeypatch.setattr(b,'generate_gemini_reply',generate)
+    assert c.post('/api/care/prescription-draft',data={'file':(io.BytesIO(b'fixture'),'rx.png')}).status_code==400
+    assert not calls
+    response=c.post('/api/care/prescription-draft',data={'ai_confirmed':'true','file':(io.BytesIO(b'fixture'),'rx.png')})
+    assert response.status_code==200 and response.json['verified'] is False and response.json['saved'] is False
+    assert calls[0][1]['memory_context']=='' and calls[0][1]['file_only'] is True
+    assert 'Never guess' in calls[0][0][0]['content']
+    assert one(db,'SELECT COUNT(*) n FROM reminders')['n']==0
+    assert one(db,'SELECT COUNT(*) n FROM chat_attachments')['n']==0
+    assert one(db,'SELECT COUNT(*) n FROM ai_usage_events')['n']==1

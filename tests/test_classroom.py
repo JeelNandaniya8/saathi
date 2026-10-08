@@ -27,3 +27,18 @@ def test_partial_pagination_never_becomes_complete_snapshot(monkeypatch):
 def test_bad_encryption_configuration_is_disabled(monkeypatch):
     monkeypatch.setenv('CLASSROOM_ENABLED','true');monkeypatch.setenv('CLASSROOM_TOKEN_KEY','invalid')
     assert cc.configuration() is None
+
+
+def test_provider_budget_is_context_local_and_never_calls_after_deadline(monkeypatch):
+    called=[]
+    class Reply:
+        status_code=200
+        def json(self):return {}
+    def request(*a,**kw):called.append(kw['timeout']);return Reply()
+    monkeypatch.setattr(cc.requests,'request',request)
+    with cc.provider_budget(2):cc.provider_json('GET',cc.API+'courses')
+    assert 0<called[0][0]<=1 and 0<called[0][1]<=1
+    with cc.provider_budget(-1):
+        with pytest.raises(cc.ProviderError) as error:cc.provider_json('GET',cc.API+'courses')
+    assert error.value.code=='time_budget' and len(called)==1
+    cc.provider_json('GET',cc.API+'courses');assert called[-1]==(5,10)

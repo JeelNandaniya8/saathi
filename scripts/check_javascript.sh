@@ -32,3 +32,5 @@ node tests/mock_recovery.cjs
 node --check care-routines.js
 
 node --check classroom.js
+
+node --check care-support.js
