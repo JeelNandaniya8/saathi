@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0;
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,careSaves=[];
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -30,6 +30,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
      else if(pathname==='/api/reminders')data={reminders:[]};
+     else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
+     else if(pathname==='/api/care/routines'){
+      if(method==='POST'){careSaves.push(body());if(careSaves.length===1){status=503;data={error:'Temporary save failure'}}else data={id:1}}
+      else data={routines:[],occurrences:[],deliveries:[]};
+     }
      else if(pathname==='/api/habits')data={habits:[]};
      else if(pathname==='/api/push/config')data={enabled:false};
      else if(pathname==='/api/referrals')data={referral_code:'fixture',referral_url:base,invited:0,qualified:0,bonus_days:0};
@@ -134,6 +139,27 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(await exam.evaluate(el=>el.getBoundingClientRect().width<=innerWidth),'New dialogs fit mobile');
    await exam.getByRole('button',{name:'Add this plan to Planner',exact:true}).click();
    await page.waitForFunction(()=>state.currentView==='tasks');assert.equal(planSaves,1);
+   // Explicit health consent, retained input and stable retry IDs on both viewports.
+   await page.evaluate(()=>openView('reminders'));
+   await page.locator('[data-care-routines]').click();
+   const medication=page.locator('dialog[open]');
+   await medication.getByText('In-app only: server delivery is not configured.',{exact:true}).waitFor();
+   await medication.locator('summary').filter({hasText:'Add confirmed schedule'}).click();
+   await medication.getByLabel('Medicine / schedule name',{exact:true}).fill('Existing schedule');
+   await medication.getByLabel('Exact clinician-provided instructions',{exact:true}).fill('User confirmed clinician instructions');
+   await medication.getByLabel('First date and time',{exact:true}).fill('2026-10-09T08:00');
+   await medication.locator('button[type=submit]').click();assert.equal(careSaves.length,0);
+   await medication.locator('input[type=checkbox]').check();
+   await medication.locator('button[type=submit]').click();
+   await medication.getByText('Temporary save failure',{exact:true}).waitFor();
+   assert.equal(await medication.getByLabel('Medicine / schedule name',{exact:true}).inputValue(),'Existing schedule');
+   await medication.locator('button[type=submit]').click();
+   await medication.getByText('Temporary save failure',{exact:true}).waitFor({state:'hidden'});
+   await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);
+   assert.equal(careSaves.length,2);assert.equal(careSaves[0].client_id,careSaves[1].client_id);
+   assert.equal(careSaves[1].confirmed,true);
+   assert.ok(await medication.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));
+   await medication.getByRole('button',{name:'Close',exact:true}).click();
    // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
    await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:'Overview',children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
    assert.equal(await page.locator('.mm-node').count(),25);

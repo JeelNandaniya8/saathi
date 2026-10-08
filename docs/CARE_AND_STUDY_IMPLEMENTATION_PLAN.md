@@ -113,6 +113,18 @@ Still open (not represented as complete): full EN/GU/HI coverage of legacy scree
 
 External gates: Classroom needs configured Google Cloud OAuth/API and a permitted test student; medication/clinical-context beta needs clinical review and verified scheduler delivery. Neither integration is claimed live. No deployment/domain changes or new AI vendor.
 
+## Medication-log checkpoint — 8 October 2026
+Implemented behind `CARE_ROUTINES_ENABLED=false` (default):
+- User-confirmed existing clinician instructions, explicit storage consent, timezone and once/daily/weekly schedules, stored in the existing reminders table. No inferred prescription or AI dose/timing decisions.
+- Separate, uniquely identified occurrences, reported taken/skipped/not-confirmed states, versioned corrections and confirmation before changes.
+- Recurrence advances without interpreting silence as a missed dose. Bounded 30-day reconstruction after downtime, DST gap/overlap policy shown to the user, pause/resume and notification-only 30-minute snooze.
+- Existing cron/push scheduler reused. Generic lock-screen payloads, existing quiet-hour/permission gates, bounded push retries and linked delivery attempts. No medication email delivery or caregiver escalation.
+- Account-owned history/export/delete, duplicate-safe creation, general reminder endpoints cannot mutate medication records, EN/GU/HI controls and human-help guidance.
+
+Not enabled or claimed clinically validated. Clinical review, real-device notification testing and scheduler verification remain mandatory before enabling the environment flag. Prescription OCR, instruction editing without replacing the schedule, caregiver consent/escalation and flexible multi-time daily schedules remain open. Food support and Classroom are not implemented by this checkpoint.
+
+Follow-up hardening: future occurrences cannot be snoozed into early notifications; malformed actions return validation errors; recurrence advancement is independent of notification snooze, and keyset batches prevent schedules beyond the first 100 from being starved. Added DST, consent, isolation, duplicate-create, correction/version, export/delete, restart and pause/resume tests. Database and browser CI results must be checked before merging this checkpoint.
+
 ## Primary reference basis (reviewed 6 October 2026)
 - https://developers.google.com/workspace/classroom/guides/auth
 - https://developers.google.com/workspace/classroom/guides/push-notifications

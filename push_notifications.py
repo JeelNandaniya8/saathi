@@ -10,6 +10,7 @@ from functools import wraps
 from urllib.parse import urlsplit
 
 import requests
+import care_routines
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from flask import jsonify,request,session
@@ -97,25 +98,25 @@ def deliver_due(b):
             JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
             JOIN reminders r ON r.user_id=s.user_id
             LEFT JOIN push_deliveries d ON d.subscription_id=s.id AND d.reminder_id=r.id AND d.scheduled_for=r.next_run_at
-            WHERE r.active=TRUE AND r.next_run_at<=%s AND r.next_run_at>=%s
+            WHERE r.active=TRUE AND (r.kind='general' OR %s) AND r.next_run_at<=%s AND r.next_run_at>=%s
             AND (d.id IS NULL OR (d.status='failed' AND d.attempt_count<5 AND d.updated_at<%s)
                  OR (d.status='processing' AND d.attempt_count<5 AND d.updated_at<%s))
-            ORDER BY r.next_run_at,s.id LIMIT 10''',(now,now-timedelta(days=1),now-timedelta(minutes=2),now-timedelta(minutes=5)))
+            ORDER BY r.next_run_at,s.id LIMIT 10''',(care_routines.enabled(),now,now-timedelta(days=1),now-timedelta(minutes=2),now-timedelta(minutes=5)))
         due=cur.fetchall()
     result={'configured':True,'sent':0,'failed':0,'skipped':0}
     for item in due:
         with database(b) as (conn,cur):
-            cur.execute('''INSERT INTO push_deliveries(subscription_id,reminder_id,scheduled_for)
-                SELECT s.id,r.id,r.next_run_at FROM push_subscriptions s
+            cur.execute('''INSERT INTO push_deliveries(subscription_id,reminder_id,scheduled_for,care_occurrence_id)
+                SELECT s.id,r.id,r.next_run_at,(SELECT o.id FROM care_occurrences o WHERE o.reminder_id=r.id AND o.scheduled_for=r.current_scheduled_for) FROM push_subscriptions s
                 JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
                 JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='immediate'
                 JOIN reminders r ON r.user_id=s.user_id
-                WHERE s.id=%s AND r.id=%s AND r.active=TRUE AND r.next_run_at=%s
+                WHERE s.id=%s AND r.id=%s AND r.active=TRUE AND (r.kind='general' OR %s) AND r.next_run_at=%s
                 ON CONFLICT(subscription_id,reminder_id,scheduled_for) DO UPDATE SET status='processing',attempt_count=push_deliveries.attempt_count+1,updated_at=NOW()
                 WHERE push_deliveries.attempt_count<5 AND
                 ((push_deliveries.status='failed' AND push_deliveries.updated_at<%s)
                  OR (push_deliveries.status='processing' AND push_deliveries.updated_at<%s)) RETURNING id''',
-                (item['subscription_id'],item['reminder_id'],item['next_run_at'],now-timedelta(minutes=2),now-timedelta(minutes=5)))
+                (item['subscription_id'],item['reminder_id'],care_routines.enabled(),item['next_run_at'],now-timedelta(minutes=2),now-timedelta(minutes=5)))
             claim=cur.fetchone();conn.commit()
         if not claim:result['skipped']+=1;continue
         tag='saathi-reminder-'+str(item['reminder_id'])+'-'+str(int(item['next_run_at'].timestamp()))
@@ -144,10 +145,10 @@ def deliver_digest(b,config,now,limit):
             JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
             JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
             LEFT JOIN push_digest_deliveries d ON d.subscription_id=s.id AND d.local_date=w.local_date
-            WHERE EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND r.next_run_at<=%s)
+            WHERE EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
             AND (d.id IS NULL OR (d.attempt_count<5 AND
                 ((d.status='failed' AND d.updated_at<%s) OR (d.status='processing' AND d.updated_at<%s))))
-            ORDER BY s.id LIMIT %s''',(now,now-timedelta(minutes=2),now-timedelta(minutes=5),limit));due=cur.fetchall()
+            ORDER BY s.id LIMIT %s''',(care_routines.enabled(),now,now-timedelta(minutes=2),now-timedelta(minutes=5),limit));due=cur.fetchall()
     for item in due:
         with database(b) as (conn,cur):
             cur.execute('''INSERT INTO push_digest_deliveries(subscription_id,local_date)
@@ -155,12 +156,12 @@ def deliver_digest(b,config,now,limit):
                 JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version
                 JOIN workspace_alert_windows w ON w.user_id=s.user_id AND w.allowed AND w.notification_mode='digest' AND w.digest_due
                 WHERE s.id=%s AND w.local_date=%s
-                AND EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND r.next_run_at<=%s)
+                AND EXISTS(SELECT 1 FROM reminders r WHERE r.user_id=s.user_id AND r.active AND (r.kind='general' OR %s) AND r.next_run_at<=%s)
                 ON CONFLICT(subscription_id,local_date) DO UPDATE SET status='processing',attempt_count=push_digest_deliveries.attempt_count+1,updated_at=NOW()
                 WHERE push_digest_deliveries.attempt_count<5 AND
                     ((push_digest_deliveries.status='failed' AND push_digest_deliveries.updated_at<%s)
                     OR (push_digest_deliveries.status='processing' AND push_digest_deliveries.updated_at<%s)) RETURNING id''',
-                (item['id'],item['local_date'],now,now-timedelta(minutes=2),now-timedelta(minutes=5)))
+                (item['id'],item['local_date'],care_routines.enabled(),now,now-timedelta(minutes=2),now-timedelta(minutes=5)))
             claim=cur.fetchone();conn.commit()
         if not claim:result['skipped']+=1;continue
         payload={'kind':'digest','title':'Your Saathi summary','body':'Your scheduled reminders are ready to review. Open Saathi when it suits you.',
