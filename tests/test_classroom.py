@@ -18,6 +18,19 @@ def test_only_minimal_read_scopes_and_no_student_or_grade_payloads():
     assert all('students' not in s for s in cc.SCOPES)
 
 
+@pytest.mark.parametrize('coursework', [cc.SCOPES[1], 'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly'])
+def test_google_readonly_scope_names_are_accepted(coursework):
+    assert cc.has_required_scopes('  '+coursework+'\t'+cc.SCOPES[0]+'  ')
+
+
+@pytest.mark.parametrize('scope', [None, [], '', cc.SCOPES[0], cc.SCOPES[1],
+    cc.SCOPES[0]+' https://www.googleapis.com/auth/classroom.coursework.me',
+    cc.SCOPES[0]+' https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
+    cc.SCOPES[0]+' https://www.googleapis.com/auth/classroom.student-submissions.me.readonly.evil'])
+def test_missing_or_unrelated_permissions_are_rejected(scope):
+    assert not cc.has_required_scopes(scope)
+
+
 def test_partial_pagination_never_becomes_complete_snapshot(monkeypatch):
     monkeypatch.setattr(cc,'provider_json',lambda *a,**k:{'courseWork':[{'id':'1'}],'nextPageToken':'again'})
     with pytest.raises(cc.ProviderError) as err:cc.list_pages('fake','courses/1/courseWork','courseWork')

@@ -79,8 +79,18 @@ def test_sync_error_retains_snapshot_and_scope_denial_never_saves_token(db_app,c
     _,c,db=db_app
     monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'secret','scope':cc.SCOPES[0]})
     r=c.post('/api/classroom/connect',json={'confirmed':True});state=parse_qs(urlparse(r.json['url']).query)['state'][0]
-    assert c.get('/api/classroom/callback',query_string={'state':state,'code':'code'}).status_code==503
+    result=c.get('/api/classroom/callback',query_string={'state':state,'code':'code'})
+    assert result.status_code==503 and result.json['error_code']=='missing_classroom_permissions'
     assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==0
+
+
+def test_google_scope_alias_finishes_callback(db_app,configured,monkeypatch):
+    _,c,db=db_app
+    monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'private-refresh',
+        'scope':cc.SCOPES[0]+' https://www.googleapis.com/auth/classroom.student-submissions.me.readonly'})
+    connect(c)
+    assert c.get('/api/classroom/status').json['connected']
+    assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==1
 
 
 def test_revoked_session_cannot_finish_oauth(db_app,configured):

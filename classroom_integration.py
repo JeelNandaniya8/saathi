@@ -23,6 +23,14 @@ API = 'https://classroom.googleapis.com/v1/'
 TOKEN = 'https://oauth2.googleapis.com/token'
 _provider_deadline = ContextVar('classroom_deadline', default=None)
 
+def has_required_scopes(value):
+    """Accept Google's own-student read-only scope alias, never write access."""
+    if not isinstance(value, str):
+        return False
+    granted = set(value.split())
+    coursework = {SCOPES[1], 'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly'}
+    return SCOPES[0] in granted and bool(coursework & granted)
+
 @contextmanager
 def provider_budget(seconds=40):
     token=_provider_deadline.set(time.monotonic()+seconds)
@@ -207,7 +215,7 @@ def register(app,b):
         except InvalidToken:raise ProviderError('reconnect_required') from None
         tokens=provider_json('POST',TOKEN,data={'client_id':config[0],'client_secret':config[1],'redirect_uri':config[2],
             'code':code,'code_verifier':verifier,'grant_type':'authorization_code'})
-        if not set(SCOPES).issubset(set(str(tokens.get('scope','')).split())):raise ProviderError('permission_or_admin_block')
+        if not has_required_scopes(tokens.get('scope')):raise ProviderError('missing_classroom_permissions')
         refresh=tokens.get('refresh_token')
         if not isinstance(refresh,str) or not refresh:raise ProviderError('reconnect_required')
         with db() as (conn,cur):
