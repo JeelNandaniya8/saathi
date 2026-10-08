@@ -471,7 +471,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <section class="view" id="study" hidden>
 <div class="dw-head"><div><span class="eyebrow">A little progress, at your pace</span><h1>Your study space.</h1><p class="dw-muted">Bring related work together and revisit what needs another look.</p></div><button class="dw-button" id="newSubject" type="button">New subject</button></div>
 <div class="dw-shortcuts"><button class="dw-button" type="button" onclick="openView('mocktests')">Mock tests</button><button class="dw-button" type="button" onclick="openView('mindmaps')">Mindmaps</button><a class="dw-button" href="/chat?mode=flashcards">Make flashcards</a></div>
-<div class="dw-actions"><button type="button" class="dw-button" data-personal-context="study" data-personal-label="study">Study profile</button><button type="button" class="dw-button" data-exam-plans data-personal-label="exams">Plan for an exam</button></div><div class="dw-grid"><article class="dw-panel"><h2>Subjects</h2><p class="dw-muted">Your chats, notes, photos, PDFs and tests, organised by topic.</p><div id="subjectSpaces" class="dw-spaces" aria-live="polite"></div></article>
+<div class="dw-actions"><button type="button" class="dw-button" data-personal-context="study" data-personal-label="study">Study profile</button><button type="button" class="dw-button" data-exam-plans data-personal-label="exams">Plan for an exam</button><button type="button" class="dw-button" data-classroom>Google Classroom</button></div><div class="dw-grid"><article class="dw-panel"><h2>Subjects</h2><p class="dw-muted">Your chats, notes, photos, PDFs and tests, organised by topic.</p><div id="subjectSpaces" class="dw-spaces" aria-live="polite"></div></article>
 <article class="dw-panel"><h2>Ready for another look</h2><p id="revisionCount" class="dw-muted" role="status">Loading revision…</p><div id="revisionQueue" aria-live="polite"></div><div class="dw-actions"><button class="dw-button" id="refreshRevision" type="button">Refresh</button><button class="dw-button" id="importRevision" type="button">Include past work</button></div><p class="dw-muted">Past work checks your 100 most recent saved tests and flashcard sets. Nothing is sent to AI.</p></article></div>
 <article id="subjectDetail" class="dw-panel dw-detail" hidden></article></section>
 <section class="view" id="healer">
@@ -632,7 +632,8 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 <script src="/recovery.js?v=20260919"></script>
 <script src="/workspace.js?v=20261007"></script>
 <script src="/daily-workspace.js?v=20260919"></script>
-<script src="/personal-context.js?v=20261007"></script>
+<script src="/personal-context.js?v=20261008"></script>
+<script src="/classroom.js?v=20261008"></script>
 <script src="/care-routines.js?v=20261008"></script>
 <script>
 const state={user:null,csrf:'',overview:{},tasks:[],reminders:[],habits:[],journal:[],checkins:[],memories:[],contacts:{sent:[],incoming:[]},mockTests:[],activeTest:null,activeTestAnswers:{},activeTestFlags:new Set(),activeTestIndex:0,testTimerInterval:null,testSecondsLeft:0,testTotalSeconds:0,lastAttemptResult:null,mindmaps:[],activeMindmap:null,mmZoom:1,referrals:null,taskFilter:'open',taskEditingId:null,reminderEditingId:null,habitEditingId:null,memoryEditingId:null,confirmResolver:null,confirmReturnFocus:null,currentView:null,loadFailures:[],loadingSections:false,reminderTimer:null,mood:3,deferredInstall:null,notified:new Set()};
@@ -1037,6 +1038,7 @@ async function init(){
     const selectedTask=Number(new URLSearchParams(location.search).get('task'));if(selectedTask>0){await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===selectedTask);if(task)editTask(task);history.replaceState(null,'','/dashboard#tasks')}
     state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
     SaathiCareRoutines.connect({api,notify:toast});
+    SaathiClassroom.connect({api,notify:toast,refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     SaathiPersonal.connect({api,openView,notify:toast,refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     SaathiDaily.connect({api,notify:toast,openView,confirm:confirmAction,tasks:()=>state.tasks,openTest:quickStartFromHistory,openMindmap:loadSavedMindmap,setLanguage:language=>{state.user.language=language;$('languageSelect').value=language;applyLanguage(language)},refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js').catch(()=>{});

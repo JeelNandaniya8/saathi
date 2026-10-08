@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,careSaves=[];
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[];
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -53,6 +53,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
+     else if(pathname==='/api/classroom/status')data={configured:true,connected:classroomConnected,connection:{last_sync:null,last_error:null}};
+     else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
+     else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
+     else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
+     else if(pathname==='/api/classroom/disconnect'){assert.equal(body().confirmed,true);assert.equal(body().remove_imports,true);classroomConnected=false;data={ok:true,revoked:true}}
      else if(pathname==='/api/personal-context')data={fields:profileFields};
      else if(pathname==='/api/personal-context/care/conditions'){
       if(method==='PUT')profileFields=[{...body(),category:'care',field:'conditions',source:'user_reported',version:1,reviewed_at:new Date().toISOString()}];
@@ -151,6 +156,19 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await replan.getByRole('button',{name:'Confirm new dates',exact:true}).click();
    await replan.waitFor({state:'detached'});assert.equal(replanSaves,1);
    await page.locator('dialog[open]').getByRole('button',{name:'Close',exact:true}).click();
+   await page.locator('[data-classroom]').click();
+   const classroom=page.getByRole('dialog',{name:'Google Classroom',exact:true});
+   await classroom.getByText('No confirmed deadline',{exact:true}).waitFor();
+   assert.equal(await classroom.locator('script').count(),0);
+   const addAssignment=classroom.getByRole('button',{name:'Add to Planner',exact:true});
+   await addAssignment.click();assert.equal(classroomAdds,0);
+   await classroom.getByRole('button',{name:'Confirm: Add to Planner',exact:true}).click();
+   await classroom.getByText('Already in Planner',{exact:true}).waitFor();assert.equal(classroomAdds,1);
+   await classroom.getByLabel('Also remove imported assignments. Planner tasks stay.',{exact:true}).check();
+   await classroom.getByRole('button',{name:'Disconnect',exact:true}).click();
+   await classroom.getByRole('button',{name:'Confirm: Disconnect',exact:true}).click();
+   await classroom.getByRole('button',{name:'Connect Classroom',exact:true}).waitFor();
+   await classroom.getByRole('button',{name:'Close',exact:true}).click();
    // Explicit health consent, retained input and stable retry IDs on both viewports.
    await page.evaluate(()=>openView('reminders'));
    await page.locator('[data-care-routines]').click();

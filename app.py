@@ -1054,6 +1054,7 @@ def public_styles():
 @app.get("/daily-workspace.js")
 @app.get("/personal-context.js")
 @app.get("/care-routines.js")
+@app.get("/classroom.js")
 @app.get("/recovery.js")
 @app.get("/workspace-hub.js")
 @app.get("/lazy-tools.js")
@@ -4726,6 +4727,8 @@ def export_data():
         ("care_occurrences", "SELECT * FROM care_occurrences WHERE user_id=%s ORDER BY scheduled_for"),
         ("care_push_deliveries", "SELECT d.care_occurrence_id,d.scheduled_for,d.status,d.attempt_count,d.updated_at,d.sent_at FROM push_deliveries d JOIN reminders r ON r.id=d.reminder_id WHERE r.user_id=%s AND d.care_occurrence_id IS NOT NULL"),
         ("personal_context_fields", "SELECT category,field,value,source,use_in_ai,version,reviewed_at FROM personal_context_fields WHERE user_id=%s ORDER BY category,field"),
+        ("classroom_connections", "SELECT selected_courses,last_sync,last_error,created_at FROM classroom_connections WHERE user_id=%s"),
+        ("classroom_assignments", "SELECT * FROM classroom_assignments WHERE user_id=%s ORDER BY id"),
         ("exam_plans", "SELECT id,client_id::text,title,exam_date::text,timezone,daily_minutes,topics,created_at FROM exam_plans WHERE user_id=%s ORDER BY id"),
         ("exam_plan_tasks", "SELECT ept.plan_id,ept.task_id FROM exam_plan_tasks ept JOIN exam_plans ep ON ep.id=ept.plan_id WHERE ep.user_id=%s"),
         ("workspace_preferences", "SELECT goal,onboarding_done,timezone,quiet_enabled,quiet_start::text,quiet_end::text,notification_mode,digest_time::text,celebrations FROM workspace_preferences WHERE user_id=%s"),
@@ -5347,6 +5350,8 @@ study_tools.register(app, globals())
 care.register(app, globals())
 care_routines.register(app, globals())
 personal_context.register(app, globals())
+import classroom_integration
+classroom_integration.register(app, globals())
 workspace_extras.register(app, globals())
 push_notifications.register(app, globals())
 daily_workspace.register(app, globals())

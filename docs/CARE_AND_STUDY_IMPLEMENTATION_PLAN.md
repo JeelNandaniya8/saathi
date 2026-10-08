@@ -137,3 +137,10 @@ Follow-up hardening: future occurrences cannot be snoozed into early notificatio
 - Completed/manual edits stay unchanged; future blocks consume this plan's daily capacity. Preserves breaks and the pre-exam rest day; explicitly reports blocks without space. Other plans/commitments must still be checked in Planner.
 - Snapshot validation rejects intervening progress/edits; row locks make application atomic and retries reuse the saved result. Previously replanned blocks can move again unless manually edited.
 - EN/GU/HI controls, ownership, stale preview, budget, overdue, retry and desktop/mobile form checks added. Changed exam dates and cross-plan workload balancing remain open. CI verification pending.
+
+## Classroom import checkpoint — 8 October 2026
+- Implemented separate consent/code flow with single-use expiring server state, session binding, PKCE, fixed HTTPS redirect and encrypted server refresh-token storage. Default off; no credentials requested or configured by this change.
+- Own-student course list, explicit selection (up to three), bounded manual sync and idempotent assignment upsert. Titles, original instructions/links and UTC deadlines only; grades/rosters are not requested. Missing/invalid deadlines stay unset.
+- Stale/failure states preserve earlier imports; complete snapshots mark unavailable work without deleting local tasks. Adding to Planner needs confirmation and is retry-safe; imports never overwrite edited tasks or imply official submission.
+- Disconnect stops import, attempts remote revocation and optionally removes imported records. Existing Planner tasks remain; export excludes credentials, account deletion cascades through stored integration records.
+- EN/GU/HI controls and ownership/consent/sync/duplicate/deadline/state/export/revocation regression tests added. CI pending. Live Google authorization, scheduled sync, selected-assignment AI explanations and official submission-status retrieval remain open. Owner setup is documented in CLASSROOM_SETUP.md.
