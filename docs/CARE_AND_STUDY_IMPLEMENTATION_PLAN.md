@@ -131,3 +131,9 @@ Follow-up hardening: future occurrences cannot be snoozed into early notificatio
 - https://www.cdc.gov/diabetes/treatment/your-diabetes-care-schedule.html
 - https://www.cdc.gov/diabetes/healthy-eating/diabetes-meal-planning.html
 
+
+## Missed-study replanning checkpoint — 8 October 2026
+- Existing saved plans offer a progress-confirmed preview of new dates for untouched overdue blocks. No AI calls and no duplicate tasks.
+- Completed/manual edits stay unchanged; future blocks consume this plan's daily capacity. Preserves breaks and the pre-exam rest day; explicitly reports blocks without space. Other plans/commitments must still be checked in Planner.
+- Snapshot validation rejects intervening progress/edits; row locks make application atomic and retries reuse the saved result. Previously replanned blocks can move again unless manually edited.
+- EN/GU/HI controls, ownership, stale preview, budget, overdue, retry and desktop/mobile form checks added. Changed exam dates and cross-plan workload balancing remain open. CI verification pending.

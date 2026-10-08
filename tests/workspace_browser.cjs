@@ -10,7 +10,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  try{
   for(const width of [1280,390]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
-   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,careSaves=[];
+   let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,careSaves=[];
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -60,8 +60,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      }
      else if(pathname==='/api/personal-context/revoke'){profileFields=profileFields.map(x=>({...x,use_in_ai:false,version:x.version+1}));data={ok:true}}
      else if(pathname==='/api/exam-plans/preview')data={plan:{...body(),preview_token:'fixture-plan',coverage_limited:false,rest_date:'2026-12-31',items:[{date:'2026-12-20',phase:'recall',topic:'Algebra',minutes:25}]}};
-     else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:[]}}
+     else if(pathname==='/api/exam-plans'){if(method==='POST'){planSaves++;assert.equal(body().preview_token,'fixture-plan');data={id:1,created:1}}else data={plans:planSaves?[{id:1,title:'Semester exam',exam_date:'2027-01-01',timezone:'UTC'}]:[]}}
 
+     else if(pathname==='/api/exam-plans/1/replan/preview'){assert.equal(body().confirmed,true);data={plan:{items:[{id:1,title:'Recall: Algebra',from:'2026-10-01T18:00:00Z',due_at:'2026-10-10T18:00:00Z'}],unscheduled:0,preserved:[],preview_token:'replan-fixture'}}}
+     else if(pathname==='/api/exam-plans/1/replan/apply'){assert.equal(body().preview_token,'replan-fixture');assert.equal(body().confirmed,true);replanSaves++;data={ok:true,moved:1}}
      else {status=404;data={error:'Unmocked fixture endpoint: '+pathname}}
      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
     }
@@ -139,6 +141,16 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(await exam.evaluate(el=>el.getBoundingClientRect().width<=innerWidth),'New dialogs fit mobile');
    await exam.getByRole('button',{name:'Add this plan to Planner',exact:true}).click();
    await page.waitForFunction(()=>state.currentView==='tasks');assert.equal(planSaves,1);
+   await page.evaluate(()=>openView('study'));await page.locator('[data-exam-plans]').click();
+   await page.getByRole('button',{name:'Reschedule missed blocks',exact:true}).click();
+   const replan=page.locator('dialog[open]').last();
+   await replan.getByLabel('I have reviewed completed work in Planner.',{exact:true}).check();
+   await replan.getByRole('button',{name:'Preview plan',exact:true}).click();
+   await replan.getByRole('button',{name:'Confirm new dates',exact:true}).waitFor();
+   assert.equal(replanSaves,0);
+   await replan.getByRole('button',{name:'Confirm new dates',exact:true}).click();
+   await replan.waitFor({state:'detached'});assert.equal(replanSaves,1);
+   await page.locator('dialog[open]').getByRole('button',{name:'Close',exact:true}).click();
    // Explicit health consent, retained input and stable retry IDs on both viewports.
    await page.evaluate(()=>openView('reminders'));
    await page.locator('[data-care-routines]').click();
