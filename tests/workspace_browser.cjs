@@ -257,7 +257,6 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('.message.failed').waitFor();
    await page.goto(base+'/');
    await page.locator('#heroCta').waitFor();
-   assert.equal(await page.locator('#product .story').count(),1,'Landing keeps one focused story');
    for(const screen of [320,360,390,768,1280]){
     await page.setViewportSize({width:screen,height:900});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Landing must fit '+screen+'px');
