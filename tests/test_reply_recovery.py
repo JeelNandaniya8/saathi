@@ -29,7 +29,7 @@ def fresh_choices():
 
 @pytest.mark.parametrize('status,message,code', [
     (400, 'API key not valid', 'AI_ACCESS'), (403, 'secret-provider-body', 'AI_ACCESS'),
-    (429, 'secret-provider-body', 'AI_QUOTA'), (503, 'secret-provider-body', 'AI_BUSY'),
+    (429, 'secret-provider-body', 'AI_QUOTA'),
     (400, 'User location is not supported', 'AI_CONFIGURATION'),
     (400, 'secret-provider-body', 'AI_REQUEST'),
 ])
@@ -178,3 +178,22 @@ def test_pool_checks_transport_once_per_burst_but_rechecks_after_idle(monkeypatc
     db_pool.connect('fixture-dsn').close()
     assert conn.cursor.call_count == 2
     db_pool._checked.clear()
+
+
+def test_one_transient_retry_recovers_without_changing_payload(monkeypatch):
+    sleep = Mock(); monkeypatch.setattr(transport.time, 'sleep', sleep)
+    bad, good = response(503), response(200)
+    post = Mock(side_effect=[bad, good])
+    payload = {'contents': [{'role':'user','parts':[{'text':'short question'}]}]}
+    assert transport.send(post, 'fixture', 'gemini-3.5-flash-lite', payload, fast=True, stream=True) is good
+    assert post.call_count == 2
+    bad.close.assert_called_once(); sleep.assert_called_once_with(1)
+    assert post.call_args.kwargs['json'] == payload
+
+
+@pytest.mark.parametrize('status,headers,attempts', [(503,{},2),(503,{'Retry-After':'90'},1),(429,{},1),(403,{},1)])
+def test_recovery_is_bounded_and_honours_long_retry_after(monkeypatch,status,headers,attempts):
+    monkeypatch.setattr(transport.time,'sleep',Mock())
+    post=Mock(side_effect=lambda *a,**k:response(status,headers=headers))
+    with pytest.raises(transport.ProviderError):transport.send(post,'fixture','gemini-3.5-flash-lite',{},fast=True)
+    assert post.call_count==attempts

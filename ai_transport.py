@@ -105,12 +105,13 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
     body = copy.deepcopy(payload)
     if current != model or omit_thinking:
         body.get('generationConfig', {}).pop('thinkingConfig', None)
+    deadline = time.monotonic() + (40 if fast else 65)
     for attempt in range(2):
         url = 'https://generativelanguage.googleapis.com/v1beta/models/' + current
         url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
         response = None
         try:
-            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, 25 if fast else 45))
+            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, min(30 if fast else 45, max(1, deadline - time.monotonic() - 5))))
             if stream:
                 options['stream'] = True
             response = post_request(url, **options)
@@ -127,6 +128,15 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
                 detail = str(rejected.json().get('error', {}).get('message', '')).lower()
             except (ValueError, AttributeError, TypeError):
                 detail = ''
+            # A received 5xx rejection has no response output to replay. Recover once
+            # within the same time budget; never replay ambiguous timeouts or quota.
+            retry_value = getattr(rejected, 'headers', {}).get('Retry-After', '')
+            retry_delay = int(retry_value) if str(retry_value).isdigit() else 1
+            if attempt == 0 and rejected.status_code in (500, 502, 503, 504) and retry_delay <= 2 and deadline - time.monotonic() > retry_delay + 6:
+                rejected.close()
+                logging.getLogger(__name__).warning('Gemini transient rejection status=%s; one bounded retry', rejected.status_code)
+                time.sleep(retry_delay)
+                continue
             recover_model = rejected.status_code == 404
             recover_thinking = rejected.status_code == 400 and 'thinking' in detail and 'thinkingConfig' in body.get('generationConfig', {})
             if attempt == 0 and (recover_model or recover_thinking):

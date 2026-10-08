@@ -56,3 +56,14 @@ def test_failure_is_not_replayed():
 @pytest.mark.parametrize('secret', ['', None, 'value\nheader', 'value\rheader'])
 def test_invalid_secret_never_sends_request(secret):
     with pytest.raises(ValueError):run(secret)
+
+
+def test_scheduler_updates_trigger_only_main_and_keep_activation_gate():
+    from pathlib import Path
+    workflow=(Path(__file__).parents[1]/'.github/workflows/classroom-sync.yml').read_text()
+    assert 'push:\n    branches: [main]' in workflow
+    assert 'scripts/send_background_alerts.py' in workflow
+    assert "github.ref == 'refs/heads/main'" in workflow
+    assert "vars.CLASSROOM_SYNC_ENABLED == 'true'" in workflow
+    assert "secrets.CLASSROOM_SYNC_SECRET" in workflow
+    assert 'pull_request' not in workflow

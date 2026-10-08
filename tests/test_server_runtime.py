@@ -59,6 +59,7 @@ serve(app)
             assert next(chunks)==b'last'
     finally:
         process.terminate()
-        try:_,logs=process.communicate(timeout=8)
-        except subprocess.TimeoutExpired:process.kill();_,logs=process.communicate(timeout=3)
+        try:output,logs=process.communicate(timeout=8)
+        except subprocess.TimeoutExpired:process.kill();output,logs=process.communicate(timeout=3)
+    assert 'Session signing configuration:' in output
     assert 'Using worker: gthread' in logs and 'development server' not in logs

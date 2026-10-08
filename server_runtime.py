@@ -15,6 +15,8 @@ def serve(app, environment=None):
     # Load the existing WSGI object; do not import it again or repeat migrations.
     from gunicorn.app.base import BaseApplication
     app.debug = False
+    # Non-secret startup evidence: a restart must not silently change signatures.
+    print("Session signing configuration: " + ("persistent" if environment.get("FLASK_SECRET_KEY") else "ephemeral; set FLASK_SECRET_KEY before relying on login persistence"), flush=True)
 
     class RenderApplication(BaseApplication):
         def load_config(self):
