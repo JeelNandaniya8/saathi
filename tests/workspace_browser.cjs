@@ -362,6 +362,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>SaathiI18n.setLanguage('en'));
    await page.getByRole('button',{name:'Tools',exact:true}).click();
    let toolsDialog=page.getByRole('dialog',{name:'Tools',exact:true});
+   await toolsDialog.getByText('Open workspace · keeps chat open',{exact:true}).click();
    assert.equal(await toolsDialog.getByRole('link',{name:'Study & Classroom',exact:true}).getAttribute('href'),'/dashboard#study');
    assert.equal(await toolsDialog.getByRole('link',{name:'Mock tests',exact:true}).getAttribute('target'),'_blank');
    assert.equal(await toolsDialog.getByRole('button',{name:'Deep study',exact:true}).isDisabled(),true);
@@ -369,10 +370,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('#chatMode').inputValue(),'quiz');
    await page.locator('#chatInput').fill('Keep this draft');
    await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByText('Save with a preview',{exact:true}).click();
    await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Add a task',exact:true}).click();
    assert.equal(await page.locator('#chatInput').inputValue(),'Keep this draft');
    await page.locator('#chatInput').fill('');
    await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByText('Save with a preview',{exact:true}).click();
    await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Add a task',exact:true}).click();
    assert.match(await page.locator('#chatInput').inputValue(),/Help me add a Planner task/);
    assert.equal(await page.locator('#chatMode').inputValue(),'normal');
