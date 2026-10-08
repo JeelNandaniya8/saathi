@@ -659,7 +659,7 @@ function renderConversations(){
     conversations.forEach(conversation=>{
       const row=document.createElement('div');row.className='conversation'+(conversation.id===state.activeId?' active':'')+(conversation.is_pinned?' pinned':'');
       const main=document.createElement('button');main.className='conversation-main';main.type='button';main.title=conversation.title;
-      const mark=document.createElement('span');mark.className='conversation-mark';const copy=document.createElement('span');copy.className='conversation-copy';const text=document.createElement('span');text.className='conversation-title';text.textContent=conversation.title;const preview=document.createElement('span');preview.className='conversation-preview';preview.textContent=String(conversation.preview||'No messages yet').replace(/\s+/g,' ').trim();
+      const mark=document.createElement('span');mark.className='conversation-mark';const copy=document.createElement('span');copy.className='conversation-copy';const text=document.createElement('span');text.className='conversation-title';text.textContent=conversation.title;const preview=document.createElement('span');preview.className='conversation-preview';preview.textContent=String(window.SaathiChatActions?.clean(conversation.preview)||'No messages yet').replace(/\s+/g,' ').trim();
       copy.append(text,preview);main.append(mark,copy);main.addEventListener('click',()=>selectConversation(conversation.id));
       const menu=document.createElement('button');menu.className='conversation-menu';menu.type='button';menu.textContent='•••';menu.setAttribute('aria-label',`Options for ${conversation.title}`);menu.addEventListener('click',event=>openConversationMenu(event,conversation.id));
       row.append(main,menu);section.append(row);
