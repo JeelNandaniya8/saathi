@@ -11,3 +11,5 @@ CREATE TABLE IF NOT EXISTS chat_action_receipts (
 );
 
 CREATE TABLE IF NOT EXISTS background_alert_runs (name TEXT PRIMARY KEY,last_run TIMESTAMPTZ NOT NULL,sent INTEGER NOT NULL DEFAULT 0,failed INTEGER NOT NULL DEFAULT 0);
+
+ALTER TABLE mock_tests ADD COLUMN IF NOT EXISTS language TEXT CHECK(language IN ('en','gu','hi'));

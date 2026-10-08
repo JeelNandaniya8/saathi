@@ -40,7 +40,7 @@ def validate_questions(raw, expected=None):
 def public_test(row):
     questions = validate_questions(row['questions_json'])
     return {'id':row['id'],'topic':row['topic'],'difficulty':row['difficulty'],'question_count':len(questions),
-            'time_limit_minutes':row['time_limit_minutes'],
+            'time_limit_minutes':row['time_limit_minutes'],'language':row.get('language'),
             'expires_at':(row['created_at']+timedelta(minutes=row['time_limit_minutes'])).isoformat(),
             'questions':[{key:q[key] for key in ('id','question','options')} for q in questions]}
 
@@ -146,8 +146,8 @@ def register(app,b):
         now=datetime.now(timezone.utc)
         with db() as (conn,cur):
             allowance(cur,uid,'mock')
-            cur.execute('''INSERT INTO mock_tests (user_id,topic,difficulty,question_count,time_limit_minutes,questions_json,created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *''',(uid,topic,difficulty,count,minutes,json.dumps(questions,ensure_ascii=False),now))
+            cur.execute('''INSERT INTO mock_tests (user_id,topic,difficulty,question_count,time_limit_minutes,questions_json,created_at,language)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',(uid,topic,difficulty,count,minutes,json.dumps(questions,ensure_ascii=False),now,data.get("language","en")))
             row=cur.fetchone();conn.commit()
         return jsonify(ok=True,test=public_test(row))
 

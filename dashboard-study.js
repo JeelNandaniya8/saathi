@@ -55,7 +55,7 @@ function prepareFreshPractice(test){
   if(state.testSubmitting||state.testGenerating)return;
   state.testLoadSequence=(state.testLoadSequence||0)+1;clearInterval(state.testTimerInterval);
   state.activeTest=null;state.lastAttemptResult=null;
-  $('testTopic').value=test.topic;$('testCount').value=test.question_count;$('testDifficulty').value=test.difficulty;$('testTimeLimit').value=test.time_limit_minutes;$('testLanguage').value=test.language||'en';
+  $('testTopic').value=test.topic;$('testCount').value=test.question_count;$('testDifficulty').value=test.difficulty;$('testTimeLimit').value=test.time_limit_minutes;$('testLanguage').value=test.language||state.user?.language||'en';
   $('mockTestCreatorBox').style.display='block';$('mockTestResultsBox').style.display='none';$('mockTestRunnerBox').style.display='none';
   $('testTopic').focus();$('mockTestCreatorBox').scrollIntoView({behavior:'smooth',block:'start'});
   toast('Ready for a fresh test. Review the settings, then Generate.');
