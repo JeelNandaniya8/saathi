@@ -352,6 +352,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
+   await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{"kind":"task"}</SAATHI_ACTION>';renderConversations()});
+   assert.ok(!(await page.locator('#history').textContent()).includes('SAATHI_ACTION'),'Sidebar previews must hide action metadata');
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
    if(!await page.locator('#newChat').isVisible())await page.locator('#openSidebar').click();
    await page.locator('#newChat').click();
