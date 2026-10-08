@@ -698,5 +698,12 @@ window.SaathiI18n.register({
   "Upload": "અપલોડ કરો",
   "Clear": "સાફ કરો",
   "Saved": "સેવ થયું",
-  "No results": "પરિણામ નથી"
+  "No results": "પરિણામ નથી",
+"My routine": "મારી દિનચર્યા",
+"Review your reminders and scheduled care.": "તમારા reminders અને ગોઠવેલી કાળજી તપાસો.",
+"More support and care controls": "વધુ મદદ અને કાળજીનાં નિયંત્રણો",
+"Send test alert": "ટેસ્ટ સૂચના મોકલો",
+"Review result": "પરિણામ જુઓ",
+"Resume test": "પરીક્ષા આગળ વધારો",
+"Practise again": "ફરી અભ્યાસ કરો"
 });

@@ -109,6 +109,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Chat with Saathi"><div class="chat"><header class="chat-head"><span class="orb"></span><div class="who"><b>Saathi</b><small id="chatSub">AI companion · Interactive preview</small></div><button class="close" onclick="closeChat()" aria-label="Close chat">×</button></header><div class="prompt-chips" id="promptChips"></div><div class="chat-log" id="chatLog"><div class="bubble ai" id="demoGreeting">Hello, I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?</div></div><div class="composer"><label class="chat-disclaimer" for="chatInput">Message Saathi</label><textarea id="chatInput" rows="1" maxlength="5000" placeholder="Message Saathi"></textarea><button class="send" id="chatSend" aria-label="Send message">↑</button></div></div></div>
 
+<script src="/landing-locales.js?v=20261008"></script>
 <script>
 const overlay=document.getElementById('overlay'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput'),chatSend=document.getElementById('chatSend'),promptChips=document.getElementById('promptChips');
 let conversation=[],historyLoaded=false,currentUser=null,guestQuestionsCount=0;
@@ -183,6 +184,7 @@ function applyLang(lang){
   const seeWorks=document.getElementById('heroSeeWorks');if(seeWorks)seeWorks.textContent=data.seeWorks;
   const greeting=document.getElementById('demoGreeting');if(greeting&&!conversation.length)greeting.textContent=data.greeting;
   const subTitle=document.getElementById('chatSub');if(subTitle)subTitle.textContent=data.chatSub;
+  window.translateLanding?.(lang);
   window.updateLandingLanguage?.(lang);
   renderChips();
 }

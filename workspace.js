@@ -127,6 +127,8 @@
     else if(!state.pushConfig.enabled){label='Not set up yet';message='Background alerts are not set up on this server. Reminders remain available in Saathi.';disabled=true}
     else if(Notification.permission==='denied'){label='Permission blocked';message='Allow notifications in your browser’s site settings, then reload this page.';disabled=true}
     else if(state.pushId){label='Disable on this device';message='Background reminder alerts are enabled on this device. Private reminder details stay inside Saathi.'}
+    if(state.pushConfig?.enabled){const last=state.pushConfig.scheduler?.last_run;if(!last||Date.now()-new Date(last).getTime()>45*60000)message+=' Scheduled delivery is not recently verified; in-app reminders still work.';else message+=' Free background delivery runs about every 15 minutes and may be delayed.';if(state.pushConfig.last_delivery?.status==='failed')message+=' Your latest delivery failed. Re-enable alerts and send a test.';}
+    document.querySelectorAll('[data-push-test]').forEach(button=>{button.disabled=!state.pushId||state.pushBusy;button.onclick=async()=>{button.disabled=true;try{const result=await state.api('/api/push/test',{method:'POST',body:JSON.stringify({subscription_id:state.pushId})});state.notify(result.message)}catch(error){state.notify(error.message,'error')}finally{button.disabled=!state.pushId}}});
     document.querySelectorAll('[data-push-toggle]').forEach(button=>{button.textContent=state.pushBusy?'Please wait…':label;button.disabled=disabled||state.pushBusy;button.setAttribute('aria-pressed',String(Boolean(state.pushId)))});
     document.querySelectorAll('[data-push-status]').forEach(node=>{node.textContent=message});
   }

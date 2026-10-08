@@ -698,5 +698,12 @@ window.SaathiI18n.register({
   "Pause memory": "स्मृति का उपयोग रोकें",
   "Activate memory": "स्मृति का उपयोग चालू करें",
   "Allow tasks + reminders": "काम और रिमाइंडर की अनुमति दें",
-  "Decline": "अस्वीकार करें"
+  "Decline": "अस्वीकार करें",
+"My routine": "मेरी दिनचर्या",
+"Review your reminders and scheduled care.": "अपने reminders और तय देखभाल देखें।",
+"More support and care controls": "अधिक सहायता और देखभाल के नियंत्रण",
+"Send test alert": "टेस्ट सूचना भेजें",
+"Review result": "परिणाम देखें",
+"Resume test": "परीक्षा जारी रखें",
+"Practise again": "फिर अभ्यास करें"
 },'hi');

@@ -26,6 +26,7 @@ import secrets
 import hashlib
 import hmac
 import json
+import unicodedata
 import base64
 from decimal import Decimal
 from datetime import date, datetime, timedelta, timezone
@@ -40,6 +41,7 @@ import billing
 import care
 import care_routines
 import care_support
+import chat_actions
 import personal_context
 import study_tools
 import workspace_extras
@@ -96,7 +98,7 @@ GEMINI_CONTEXT_CHARACTER_LIMIT = 24000
 CSRF_EXEMPT_PATHS = {
     "/api/signup", "/api/verify-otp", "/api/resend-otp", "/api/login",
     "/api/forgot-password", "/api/reset-password", "/api/support",
-    "/api/cron/reminders", "/api/cron/classroom", "/api/demo-chat", "/api/payment/webhook",
+    "/api/cron/reminders", "/api/cron/classroom", "/api/cron/background-alerts", "/api/demo-chat", "/api/payment/webhook",
     "/api/google-auth",
 }
 
@@ -352,7 +354,7 @@ PASSWORD_HAS_DIGIT_RE = re.compile(r"[0-9]")
 
 
 def validate_name(name):
-    if not NAME_RE.match(name):
+    if not isinstance(name, str) or not 2 <= len(name.strip()) <= 50 or not any(unicodedata.category(c)[0] == "L" for c in name) or not all(c == " " or unicodedata.category(c)[0] in {"L", "M"} for c in name):
         return "Name should be 2 to 50 letters and spaces only, no numbers or symbols."
     return None
 
@@ -1060,6 +1062,8 @@ def public_styles():
 @app.get("/landing-meta.json")
 @app.get("/saathi-social.png")
 @app.get("/theme.js")
+@app.get("/chat-actions.js")
+@app.get("/landing-locales.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
 @app.get("/personal-context.js")
@@ -1585,7 +1589,7 @@ def mock_tests_history():
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT m.id, m.topic, m.difficulty, m.question_count, m.time_limit_minutes, m.created_at,
+        SELECT m.id, m.topic, m.difficulty, m.question_count, m.time_limit_minutes, m.language, m.created_at,
                a.score, a.accuracy_percentage, a.time_taken_seconds, a.created_at AS attempted_at
         FROM mock_tests m
         LEFT JOIN LATERAL (
@@ -1614,6 +1618,8 @@ def mock_tests_history():
             "time_limit_minutes": r["time_limit_minutes"],
             "score": r["score"],
             "accuracy": float(r["accuracy_percentage"]) if r["accuracy_percentage"] is not None else None,
+            "attempted_at": r["attempted_at"].isoformat() if r["attempted_at"] else None,
+            "language": r["language"],
             "created_at": r["created_at"].isoformat(),
         }
         for r in rows
@@ -2767,7 +2773,7 @@ def conversation_messages(conversation_id):
         "attachments": attachments,
     })
 
-    memory_context, memory_labels = load_active_memory_bundle(user_id, None, mode)
+    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True)
     try:
         reply, ai_usage = generate_gemini_reply(
             context, memory_context, load_user_language(user_id), mode,
@@ -3011,7 +3017,7 @@ def stream_conversation_message(conversation_id):
     recent = list(reversed(cur.fetchall()))
     # Reuse this connection for context, then release it before streaming.
     try:
-        memory_context, memory_labels = load_active_memory_bundle(user_id, cur, mode)
+        memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, cur, mode, True)
         language = load_user_language(user_id, cur)
     finally:
         cur.close()
@@ -3127,7 +3133,7 @@ def regenerate_conversation_reply(conversation_id):
     conn.close()
     if stored_attachments:
         context[-1]["attachments"] = stored_attachments
-    memory_context, memory_labels = load_active_memory_bundle(user_id, None, mode)
+    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True)
     def save_reply(reply, ai_usage):
         conn = get_db()
         cur = conn.cursor()
@@ -3932,7 +3938,7 @@ def memory_to_dict(row):
     }
 
 
-def load_active_memory_bundle(user_id, cur=None, mode="normal"):
+def load_active_memory_bundle(user_id, cur=None, mode="normal", include_workspace=False):
     conn = get_db() if cur is None else None
     if conn is not None:
         cur = conn.cursor()
@@ -3946,6 +3952,7 @@ def load_active_memory_bundle(user_id, cur=None, mode="normal"):
             (user_id,),
         )
         rows = cur.fetchall()
+        workspace_text, workspace_labels = chat_actions.workspace_context(cur, user_id) if include_workspace else ("", [])
         profile_text, profile_labels = "", []
         if mode in personal_context.PROFILE_MODES:
             cur.execute("SELECT category,field,value,source,use_in_ai,reviewed_at FROM personal_context_fields WHERE user_id=%s AND use_in_ai=TRUE AND reviewed_at>=NOW()-INTERVAL '90 days'", (user_id,))
@@ -3954,6 +3961,8 @@ def load_active_memory_bundle(user_id, cur=None, mode="normal"):
         if conn is not None:
             cur.close()
             conn.close()
+    profile_text = "\n\n".join(filter(None, [profile_text, workspace_text]))
+    profile_labels += workspace_labels
     if not rows:
         return profile_text, profile_labels
     lines = [f"- {row['label']}: {row['content']}" for row in rows]
@@ -4762,6 +4771,8 @@ def export_data():
         ("quick_notes", "SELECT id,client_id::text,title,content,version,created_at,updated_at FROM quick_notes WHERE user_id=%s ORDER BY updated_at"),
         ("focus_sessions", "SELECT id,task_id,client_id::text,duration_seconds,elapsed_seconds,status,created_at FROM focus_sessions WHERE user_id=%s ORDER BY id"),
         ("response_timings", "SELECT request_id::text,conversation_id,first_text_ms,total_ms,outcome,error_code,created_at FROM response_timings WHERE user_id=%s ORDER BY id"),
+        ("chat_context_permissions", "SELECT * FROM chat_context_permissions WHERE user_id=%s"),
+        ("chat_action_receipts", "SELECT * FROM chat_action_receipts WHERE user_id=%s"),
         ("mock_tests", "SELECT * FROM mock_tests WHERE user_id=%s ORDER BY id"),
         ("mock_test_attempts", "SELECT * FROM mock_test_attempts WHERE user_id=%s ORDER BY id"),
         ("mindmaps", "SELECT * FROM mindmaps WHERE user_id=%s ORDER BY id"),
@@ -5375,6 +5386,7 @@ care.register(app, globals())
 care_routines.register(app, globals())
 care_support.register(app, globals())
 personal_context.register(app, globals())
+chat_actions.register(app, globals())
 import classroom_integration
 classroom_integration.register(app, globals())
 workspace_extras.register(app, globals())

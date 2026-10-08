@@ -11,6 +11,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
   for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
+   let actionSaves=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -22,7 +23,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
      if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
-     if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
+     if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
+     else if(pathname==='/api/chat-actions/999'){if(method==='POST'){assert.equal(body().confirmed,true);assert.equal(body().action.title,'Edited chat task');actionSaves++;data={saved:true,receipt:{kind:'task',resource_id:9}}}else data=actionSaves?{saved:true,receipt:{kind:'task',resource_id:9}}:{saved:false,action:{kind:'task',title:'Chat task',text:'User requested details',at:null,priority:'medium',recurrence:'once'}}}
+     else if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
      else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'}};
@@ -256,9 +259,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await medication.getByText('Reviewed instruction',{exact:true}).first().waitFor();assert.equal(careEdits.length,1);
    assert.ok(await medication.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));
    await medication.getByRole('button',{name:'Close',exact:true}).click();
-   await page.evaluate(()=>openView('healer'));await page.locator('[data-food-plan]').click();
+   await page.evaluate(()=>openView('healer'));assert.equal(await page.locator('#healer .care-more').evaluate(e=>e.open),false);assert.equal(await page.locator('#healer > .dw-care > *').count(),3);await page.locator('#healer .care-more > summary').click();await page.locator('[data-food-plan]').click();
    const food=page.getByRole('dialog',{name:'Food choices',exact:true});
-   await food.getByLabel('One option per line: name | known ingredients separated by commas | estimated cost (optional)',{exact:true}).fill('My choice <script>unsafe</script> | rice | 20');
+   await food.getByLabel('Meal name',{exact:true}).fill('My choice <script>unsafe</script>');await food.getByLabel('Known ingredients (one per line)',{exact:true}).fill('rice');await food.getByLabel('Estimated cost (optional)',{exact:true}).fill('20');
    await food.getByLabel('I checked the entered options and ingredients',{exact:true}).check();
    await food.getByRole('button',{name:'Preview',exact:true}).click();
    await food.getByRole('button',{name:'Save plan',exact:true}).click();assert.equal(foodSaves,0);
@@ -336,6 +339,19 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
    releaseReply();
    await page.locator('.message.failed').waitFor();
+   await page.evaluate(()=>SaathiI18n.setLanguage('en'));
+   await page.getByRole('button',{name:'Chat context',exact:true}).click();
+   let chatContext=page.getByRole('dialog',{name:'Chat context',exact:true});
+   assert.equal(await chatContext.getByLabel('Planner tasks',{exact:true}).isChecked(),false);
+   await chatContext.getByLabel('Planner tasks',{exact:true}).check();await chatContext.getByRole('button',{name:'Save',exact:true}).click();
+   await chatContext.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(contextPrefs.tasks,true);assert.equal(contextPrefs.classroom,false);
+   await chatContext.getByRole('button',{name:'Close',exact:true}).click();
+   await page.evaluate(()=>{const box=document.createElement('div');document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:999,content:'Review this <SAATHI_ACTION>{"kind":"task"}</SAATHI_ACTION>'})});
+   await page.getByRole('button',{name:'Review save preview',exact:true}).click();
+   let actionDialog=page.getByRole('dialog',{name:'Review before saving',exact:true});
+   await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
+   await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
+   assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
    await page.goto(base+'/');
    await page.locator('#heroCta').waitFor();
    for(const screen of [320,360,390,768,1280]){
@@ -347,8 +363,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('#heroLogin').getAttribute('href'),'/account?tab=login');
    }
    await page.locator('[data-lang="gu"]').click();
+   assert.equal(await page.locator('#how h2').textContent(),'પહેલી મિનિટથી ઉપયોગી.');assert.equal(await page.locator('#pricing .section-head h2').textContent(),'મફતમાં શરૂ કરો. વધારાનાં સાધનો ઉપલબ્ધ થાય ત્યારે upgrade કરો.');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
    await page.locator('[data-lang="hi"]').click();
+   assert.equal(await page.locator('#how h2').textContent(),'पहले मिनट से उपयोगी।');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
    await page.emulateMedia({reducedMotion:'reduce'});
    assert.equal(await page.locator('.reveal').first().evaluate(el=>getComputedStyle(el).opacity),'1','Reduced motion keeps marketing content visible');

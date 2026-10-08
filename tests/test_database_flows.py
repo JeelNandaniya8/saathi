@@ -85,6 +85,11 @@ def test_mock_test_ownership_answers_expiry_and_retry(db_app,monkeypatch):
     assert first.status_code==200 and first.json['attempt']['score']==1
     repeated=client.post(f'/api/mock-tests/{tid}/submit',json={'answers':{'1':'B'}})
     assert repeated.json==first.json
+    stored=client.get(f'/api/mock-tests/{tid}').json['result']
+    assert stored['attempt']['created_at']==first.json['attempt']['created_at']
+    history=client.get('/api/mock-tests/history').json['tests'][0]
+    assert history['score']==first.json['attempt']['score']
+    assert history['attempted_at']==first.json['attempt']['created_at']
     assert one(connect,'SELECT count(*) AS n FROM mock_test_attempts')['n']==1
     with client.session_transaction() as session:session['user_id']=2
     assert client.get(f'/api/mock-tests/{tid}').status_code==404

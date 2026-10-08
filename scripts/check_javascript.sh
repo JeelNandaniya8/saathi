@@ -36,3 +36,7 @@ node --check classroom.js
 node --check care-support.js
 
 node --check locale-hi.js
+
+node --check chat-actions.js
+node --check landing-locales.js
+node tests/chat_actions.cjs

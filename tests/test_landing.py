@@ -48,3 +48,23 @@ def test_waitlist_csrf(client):
     with client.session_transaction() as session:
         session['user_id']=7
     assert client.post('/api/waitlist',json={'email':'a@b.co','plan':'plus'}).status_code==403
+
+
+def test_landing_static_translation_coverage():
+    from html.parser import HTMLParser
+    source=Path('landing-locales.js').read_text()
+    data=json.loads(source[source.index('{',source.index('const catalog=')):source.index(';const nodes=')])
+    assert data['gu'].keys()==data['hi'].keys()
+    class Text(HTMLParser):
+        def __init__(self):super().__init__();self.skip=0;self.body=False;self.rows=set()
+        def handle_starttag(self,tag,attrs):
+            if tag=='body':self.body=True
+            if tag in {'script','style'}:self.skip+=1
+        def handle_endtag(self,tag):
+            if tag in {'script','style'}:self.skip-=1
+        def handle_data(self,value):
+            value=value.strip()
+            if self.body and not self.skip and any(c.isalpha() for c in value):self.rows.add(value)
+    parser=Text();parser.feed(Path('saathi.html').read_text())
+    brand={'Saathi','SAATHI','S','EN','ગુજ','हिं'}
+    assert parser.rows-brand<=data['gu'].keys()
