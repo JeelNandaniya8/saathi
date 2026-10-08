@@ -29,6 +29,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/overview')data={pending_tasks:1,conversations:1,active_reminders:0,active_memories:0};
      else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
+     else if(pathname==='/api/check-ins')data={check_ins:[{id:1,created_at:'2026-10-08T09:00:00Z',mood:3,energy:4,note:'Private summary fixture'}]};
      else if(pathname==='/api/reminders')data={reminders:[]};
      else if(pathname==='/api/care/routines/status')data={enabled:true,delivery_configured:false};
      else if(pathname==='/api/care/routines'){
@@ -129,6 +130,13 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
    await page.evaluate(()=>openView('checkins'));
+   const [summaryFile]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
+   const summaryText=fs.readFileSync(await summaryFile.path(),'utf8');
+   assert.ok(summaryText.includes('Mood: 3/5'));assert.ok(!summaryText.includes('Private summary fixture'));
+   await page.locator('#checkinIncludeNotes').check();
+   const [withNotes]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
+   assert.ok(fs.readFileSync(await withNotes.path(),'utf8').includes('Private summary fixture'));
+   await page.locator('#checkinIncludeNotes').uncheck();
    await page.locator('#checkins [data-schedule-checkin]').click();
    assert.equal(await page.locator('#reminderTitle').inputValue(),'How are you feeling today?');
    assert.equal(await page.locator('#reminderTime').inputValue(),'','No timing is inferred');

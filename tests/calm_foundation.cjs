@@ -20,3 +20,9 @@ const checkinCtx={state:{user:{language:'en'},reminderEditingId:null},translatio
 vm.createContext(checkinCtx);const helper=page.slice(page.indexOf('function readReminderDraft()'),page.indexOf("$('reminderForm').addEventListener('submit'",page.indexOf('function readReminderDraft()')));vm.runInContext(helper,checkinCtx);
 checkinCtx.prepareCheckinReminder();assert.equal(reminderNodes.get('reminderTitle').value,'How are you?');assert.equal(reminderNodes.get('reminderTime').value,'');assert.equal(reminderNodes.get('reminderRecurrence').value,'once');assert.ok(reminderNodes.get('reminderTime').focused);
 reminderNodes.get('reminderTitle').value='My unsaved reminder';checkinCtx.prepareCheckinReminder();assert.equal(reminderNodes.get('reminderTitle').value,'My unsaved reminder');assert.equal(notices.at(-1),'Kept');
+
+// Sensitive free-text stays out of a clinician-shareable file unless opted in.
+const summaryCtx={Intl};vm.createContext(summaryCtx);vm.runInContext(page.slice(page.indexOf('function checkinSummaryText('),page.indexOf('async function downloadCheckinSummary(')),summaryCtx);
+const records=[{created_at:'2026-10-08T09:00:00Z',mood:3,energy:4,note:'Private health note'}],summaryWords={checkinSummaryTitle:'Summary',checkinSummaryNote:'Self-reported',checkinMood:'Mood',checkinEnergy:'Energy'};
+const privateSummary=summaryCtx.checkinSummaryText(records,summaryWords,'Asia/Kolkata',false);assert.ok(privateSummary.includes('Mood: 3/5'));assert.ok(privateSummary.includes('Asia/Kolkata'));assert.ok(!privateSummary.includes('Private health note'));
+assert.ok(summaryCtx.checkinSummaryText(records,summaryWords,'UTC',true).includes('Private health note'));
