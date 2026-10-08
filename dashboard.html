@@ -656,7 +656,8 @@ function applyLanguage(language){window.SaathiI18n?.setLanguage(language);const 
 async function api(url,options={}){
   const method=(options.method||'GET').toUpperCase(),changing=['POST','PUT','PATCH','DELETE'].includes(method),controller=new AbortController();
   const forwardAbort=()=>controller.abort();if(options.signal?.aborted)controller.abort();else options.signal?.addEventListener('abort',forwardAbort,{once:true});
-  const timer=setTimeout(()=>controller.abort(),url.endsWith('/generate')?45000:25000);
+  const timeoutMs=url==='/api/care/prescription-draft'||/^\/api\/classroom\/assignments\/\d+\/explain$/.test(url)?105000:url==='/api/classroom/sync'||url==='/api/classroom/courses?refresh=1'?65000:url.endsWith('/generate')?45000:25000;
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{
     const response=await fetch(url,{credentials:'include',cache:'no-store',...options,signal:controller.signal,headers:{...(options.body&&!(typeof FormData!=='undefined'&&options.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(changing&&state.csrf?{'X-CSRF-Token':state.csrf}:{}),...(options.headers||{})}});
     if(response.status===401){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));throw new Error('Please log in first.')}
