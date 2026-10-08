@@ -19,7 +19,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
 <title>{{TITLE}}</title>
-<script src="/theme.js?v=20260915"></script>
+<script src="/theme.js?v=20261008"></script>
 <style>
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 :root{--canvas:#fbfaf6;--paper:#fff;--ink:#191b18;--muted:#6c716a;--line:rgba(32,36,30,.1);--gold:#a77e25;--gold-soft:#eee3c4;--sage:#577566;--sage-soft:#e5eee8;--blue-soft:#e5ebee;--rose-soft:#efe4df;--danger:#a74339;--shadow:0 30px 80px rgba(35,39,33,.12);--sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -56,6 +56,14 @@
 @media(max-width:900px){.hero{min-height:930px}.hero-stage{height:420px}.hero-window{right:25px}.app-shot{height:350px;grid-template-columns:120px 1fr}.mini-lists{display:none}.story,.story:nth-of-type(odd){min-height:0;grid-template-columns:1fr;gap:45px}.story:nth-of-type(odd) .story-copy{order:0}.story-copy{max-width:650px}.story.reminder-story{grid-template-columns:.8fr 1.2fr}.care{grid-template-columns:1fr;padding:55px}.plans{grid-template-columns:1fr}.plan.featured{transform:none}}
 @media(max-width:700px){.nav-shell{top:9px;padding:0 10px}.nav{height:56px;border-radius:18px;padding-left:15px}.nav-links{display:none}.menu{display:block}.nav-cta{margin-left:8px}.mobile-menu.open{display:flex;position:fixed;z-index:49;top:71px;left:10px;right:10px;padding:16px;border:1px solid var(--line);border-radius:17px;background:rgba(251,250,246,.97);box-shadow:var(--shadow);flex-direction:column;gap:5px}.mobile-menu a{padding:11px;border-radius:10px;font-size:13px}.hero{min-height:800px;padding:122px 16px 40px}.hero h1{font-size:clamp(45px,13.5vw,66px)}.hero-sub{font-size:15px}.trust span{font-size:10px}.hero-stage{width:calc(100vw - 24px);height:330px;margin-top:55px}.hero-window{inset:0}.window-bar{height:29px}.secure{display:none}.app-shot{height:270px;grid-template-columns:76px 1fr}.shot-side{padding:12px 6px}.shot-brand{font-size:7px}.shot-nav span{font-size:5px;padding:6px 4px}.shot-profile{display:none}.shot-main{padding:16px 12px}.shot-title h3{font-size:14px}.metrics{margin-top:12px;gap:5px}.metric{min-height:90px;padding:8px}.metric strong{font-size:19px}.metric b{font-size:7px}.phone{display:none}.float-card{transform:scale(.8)}.float-card.study{left:-15px;top:225px}.float-card.memory{right:-15px;top:215px}.principles{gap:8px;justify-content:space-between}.principles p{max-width:95px;text-align:center;font-size:10px}.section{padding:90px 0}.section h2,.final h2{font-size:40px}.section-head{margin-bottom:40px}.story,.story:nth-of-type(odd){padding:65px 0}.story h3{font-size:36px}.story.reminder-story{grid-template-columns:1fr}.reminder-visual{min-height:590px}.reminder-visual::before{width:360px;height:360px}.schedule{right:-2%}.story-shot .app-shot{height:270px}.memory-grid{grid-template-columns:1fr}.memory-card:nth-child(3){display:none}.how-grid,.feature-grid{grid-template-columns:1fr}.how-card{min-height:270px}.how-card h3{margin-top:60px}.feature{min-height:285px}.feature h3{margin-top:65px}.care{width:calc(100% - 20px);padding:44px 24px;border-radius:29px}.footer{flex-direction:column}.overlay{padding:0}.chat{height:100vh;border-radius:0}.bubble{max-width:90%}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Explicit larger-text mode; no age or health information is inferred. */
+html[data-text-size="large"] body :is(p,li,label,input,textarea,select,.item-copy,.item-copy b,.message-content,.message-content p,.message-content li,.qn-editor,.qn-list){font-size:18px!important;line-height:1.6}
+html[data-text-size="large"] body :is(button,.primary,.secondary,.quiet,.nav a){min-height:44px;font-size:16px}
+html[data-text-size="large"] body :is(.setting-row,.item,.qn-toolbar){flex-wrap:wrap}
+html[data-text-size="large"] body :is(.item-copy,.setting-row>div){min-width:0;overflow-wrap:anywhere}
+html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
+
 </style>
 <link rel="stylesheet" href="/site-theme.css?v=20261008">
 <link rel="stylesheet" href="/landing.css?v=20261008">

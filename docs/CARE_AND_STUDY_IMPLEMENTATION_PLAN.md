@@ -154,3 +154,6 @@ Copy/landing follow-up: removed the duplicate Today story below the hero to redu
 - Login stays visible beside the hero signup/demo actions at mobile widths, with EN/GU/HI copy. Shorter section spacing reduces landing scroll while preserving privacy and care limits.
 - Reduced-motion visitors see content immediately without reveal movement. Browser regression covers essential navigation, five viewport widths, visible login and translated login labels.
 - Earlier batch CI passed at 7656c245. This follow-up needs its own CI confirmation. Render cold starts are not eliminated by these frontend changes; always-on service configuration requires owner access and may incur cost. No paid hosting, clinical activation or live OAuth changes were made.
+
+
+Accessibility follow-up: explicit Account text-size control with EN/GU/HI labels; device-only preference restores before account load, works when storage is blocked, and syncs across tabs. Larger reading text and 44px controls apply to workspace, chat and authentication screens. Age and health conditions never toggle it automatically. Third-review CI run 37758475733 passed; accessibility follow-up requires its own browser check.

@@ -7,7 +7,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
 <title>Chat · Saathi</title>
-<script src="/theme.js?v=20260915"></script>
+<script src="/theme.js?v=20261008"></script>
 <style>
 :root{
   color-scheme:light;
@@ -311,6 +311,14 @@ body{background:radial-gradient(circle at 15% 0%,color-mix(in srgb,var(--accent-
 /* Keep input and Send in stable columns even before voice detection finishes. */
 .composer>.attach{grid-column:1}.composer>.voice{grid-column:2}.composer>textarea{grid-column:3;min-width:0}.composer>.send{grid-column:4}.composer>.char-count{grid-column:3}
 .message{margin-bottom:20px}.message.streaming .message-tools:empty{display:none}
+
+/* Explicit larger-text mode; no age or health information is inferred. */
+html[data-text-size="large"] body :is(p,li,label,input,textarea,select,.item-copy,.item-copy b,.message-content,.message-content p,.message-content li,.qn-editor,.qn-list){font-size:18px!important;line-height:1.6}
+html[data-text-size="large"] body :is(button,.primary,.secondary,.quiet,.nav a){min-height:44px;font-size:16px}
+html[data-text-size="large"] body :is(.setting-row,.item,.qn-toolbar){flex-wrap:wrap}
+html[data-text-size="large"] body :is(.item-copy,.setting-row>div){min-width:0;overflow-wrap:anywhere}
+html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
+
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">

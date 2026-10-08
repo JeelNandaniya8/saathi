@@ -89,6 +89,13 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
    await page.evaluate(()=>openView('account'));
+   await page.locator('[data-large-text]').click();
+   assert.equal(await page.locator('html').getAttribute('data-text-size'),'large');
+   assert.equal(await page.locator('[data-large-text]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.locator('#dailyPreferenceSummary').evaluate(el=>getComputedStyle(el).fontSize),'18px');
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Large text fits the workspace');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('saathi-large-text')),'on');
+   await page.locator('[data-large-text]').click();
    await page.locator('#languageSelect').selectOption('gu');
    await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent.includes('ધ્યાન'));
    assert.equal(await page.locator('#profileDisplayName').textContent(),'Search','User names must remain unchanged');
