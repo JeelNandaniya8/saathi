@@ -151,3 +151,35 @@ def register(app,b):
                 cur.execute('INSERT INTO chat_action_receipts(message_id,user_id,kind,resource_id) VALUES(%s,%s,%s,%s)',(message_id,uid,kind,resource_id));conn.commit()
                 return jsonify(saved=True,receipt=dict(kind=kind,resource_id=resource_id)),201
         except ValueError as error:return jsonify(error=str(error)),400
+
+
+def local_reply(messages, memory_context, language='en', file_only=False):
+    """Zero-provider previews for explicit commands only; ambiguity stays with chat."""
+    if file_only or ACTION_INSTRUCTIONS not in memory_context or not messages:return None
+    latest=messages[-1]
+    if latest.get('role')!='user' or latest.get('attachments'):return None
+    text=str(latest.get('content','')).strip()
+    if '<SAATHI_ACTION' in text or re.search(r'medic(ine|ation)|insulin|injection|dose|દવા|દવાઈ|ઇન્સ્યુલિન|इंसुलिन|दवा|खुराक',text,re.I):return None
+    draft=None
+    named=re.fullmatch(r'(?:please\s+)?(?:create|add|save)\s+(?:a\s+)?(?:planner\s+)?task\s+(?:titled|named)\s+["“]([^"”]+)["”](.*)',text,re.I|re.S)
+    if named and re.fullmatch(r'[\s.;]*(?:with\s+)?no deadline[\s.;]*(?:prepare (?:its|the) save preview[\s.;]*(?:reply in one short sentence[\s.;]*)?)?',named[2],re.I):
+        draft=dict(kind='task',title=named[1],text='',at=None)
+    if draft is None:
+        task=re.fullmatch(r'(?:please\s+)?(?:(?:add|create|save)\s+(?:a\s+)?(?:planner\s+)?task|કામ ઉમેરો|નવું કામ|काम जोड़ें|नया काम)\s*:\s*(.+)',text,re.I|re.S)
+        if task:
+            title=re.sub(r'\.\s*No deadline\.?(?:\s*Show (?:the |its )?save preview\.?)?$','',task[1],flags=re.I).strip()
+            if '\n' not in title and not re.search(r'\b(?:tomorrow|today|deadline|due|at\s+\d)\b|કાલે|આજે|कल|आज|\d{1,2}:\d{2}',title,re.I):
+                draft=dict(kind='task',title=title,text='',at=None)
+    if draft is None:
+        note=re.fullmatch(r'(?:please\s+)?(?:(?:save|add|create)\s+(?:a\s+)?note|નોંધ સાચવો|नोट सेव करें)\s*:\s*(.+)',text,re.I|re.S)
+        if note:draft=dict(kind='note',title=note[1].splitlines()[0][:80],text=note[1])
+    if draft is None:
+        habit=re.fullmatch(r'(?:please\s+)?(?:add|create|save)\s+(?:a\s+)?(daily|weekly)\s+habit\s*:\s*(.+)',text,re.I)
+        if habit:draft=dict(kind='habit',title=habit[2],text='',recurrence=habit[1].lower())
+    if draft is None:return None
+    try:draft=validate_action(draft)
+    except ValueError:return None
+    notice={'en':'Preview prepared without AI. Review the details and select Save; nothing is saved yet.',
+            'gu':'AI વિના પૂર્વાવલોકન તૈયાર છે. વિગતો તપાસીને સાચવો; હજી કંઈ સાચવાયું નથી.',
+            'hi':'AI के बिना पूर्वावलोकन तैयार है। विवरण जाँचकर सेव करें; अभी कुछ सेव नहीं हुआ है।'}
+    return notice.get(language,notice['en'])+'\n\n<SAATHI_ACTION>'+json.dumps(draft,ensure_ascii=False)+'</SAATHI_ACTION>'

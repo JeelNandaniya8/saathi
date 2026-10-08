@@ -57,7 +57,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
       data={session:focus};
      }else if(pathname==='/api/focus/1'){
       const action=body().action;focus={...focus,status:action==='pause'?'paused':action==='resume'?'running':'cancelled',version:focus.version+1};data={session:focus};
-     }else if(pathname==='/api/conversations'&&method==='POST')data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};
+     }else if(pathname==='/api/conversations'&&method==='POST'){await new Promise(resolve=>setTimeout(resolve,350));data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};}
      else if(pathname==='/api/conversations')data={conversations:[{id:7,title:'Search',preview:'Search',updated_at:original.created_at,is_archived:false}]};
      else if(pathname==='/api/conversations/7/messages')data={messages:[original,answer],has_more:false,conversation:{id:7,title:'Search'}};
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
@@ -352,6 +352,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
+   const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
+   await page.getByRole('button',{name:'New chat',exact:true}).click();
+   assert.equal(await page.locator('#chatInput').isDisabled(),true);assert.equal(await page.locator('#sendButton').isDisabled(),true);
+   await page.getByRole('button',{name:'New chat',exact:true}).click();
+   await page.waitForFunction(()=>state.creatingConversation===false&&state.activeId===8);
+   assert.equal(requests.filter(p=>p==='/api/conversations').length-beforeCreate,1,'Double-click must create only one conversation');
    await page.goto(base+'/');
    await page.locator('#heroCta').waitFor();
    for(const screen of [320,360,390,768,1280]){
