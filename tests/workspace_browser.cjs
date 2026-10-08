@@ -72,7 +72,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else {status=404;data={error:'Unmocked fixture endpoint: '+pathname}}
      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
     }
-    const filename=pathname==='/dashboard'?'dashboard.html':pathname==='/chat'?'chat.html':pathname.slice(1),local=path.resolve(root,filename);
+    const filename=pathname==='/'?'saathi.html':pathname==='/dashboard'?'dashboard.html':pathname==='/chat'?'chat.html':pathname.slice(1),local=path.resolve(root,filename);
     if(!local.startsWith(root+path.sep)||!fs.existsSync(local)||!fs.statSync(local).isFile())return route.fulfill({status:404,body:''});
     const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'};
     return route.fulfill({contentType:types[path.extname(local)]||'application/octet-stream',body:fs.readFileSync(local)});
@@ -255,6 +255,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
    releaseReply();
    await page.locator('.message.failed').waitFor();
+   await page.goto(base+'/');
+   await page.locator('#heroCta').waitFor();
+   assert.equal(await page.locator('#product .story').count(),1,'Landing keeps one focused story');
+   for(const screen of [320,360,390,768,1280]){
+    await page.setViewportSize({width:screen,height:900});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Landing must fit '+screen+'px');
+    assert.ok(await page.locator('#heroCta').isVisible(),'Primary action remains visible');
+   }
    assert.deepEqual(errors,[],'No uncaught errors in real pages');
    console.log('PASS: real Chromium '+width+'px, deferred tools/retry, English/Gujarati, private user text, focus reopen, search escaping and chat edit cancellation');
    await context.close();
