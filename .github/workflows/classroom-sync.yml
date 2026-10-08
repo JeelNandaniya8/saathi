@@ -1,6 +1,12 @@
 name: Classroom background refresh
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/classroom-sync.yml
+      - scripts/sync_classroom.py
+      - scripts/send_background_alerts.py
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:

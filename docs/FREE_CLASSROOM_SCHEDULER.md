@@ -23,3 +23,5 @@ Sources:
 - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
 - https://docs.github.com/en/billing/concepts/product-billing/github-actions
 - https://render.com/docs/free
+
+Updates to the scheduler workflow/scripts on main now also trigger one protected dispatch. This verifies a deployment without waiting for GitHub's best-effort schedule. The same activation variable, secret, main-branch restriction, concurrency lock and bounded jobs still apply. A successful zero-send run proves dispatcher readiness, not device receipt.

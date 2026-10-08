@@ -205,3 +205,44 @@ def test_selected_assignment_ai_consent_ownership_no_memory_and_revocation_race(
         return ('Must not return',{})
     monkeypatch.setattr(b,'generate_gemini_reply',changed)
     assert c.post(url,json={'confirmed':True,'ai_confirmed':True}).status_code==409
+
+
+def test_student_journey_onboarding_assignment_planner_practice_and_reminder(db_app,configured,monkeypatch):
+    from datetime import timedelta
+    from uuid import uuid4
+    from test_reliability import questions
+    b,c,db=db_app
+    preferences=c.patch('/api/workspace/preferences',json={'goal':'study','onboarding_done':True,'timezone':'Asia/Kolkata'})
+    assert preferences.status_code==200,preferences.json
+    assert c.get('/api/workspace/preferences').json['preferences']['onboarding_done']
+    selected_setup(c,monkeypatch)
+    assert c.post('/api/classroom/sync',json={'confirmed':True}).status_code==200
+    assignment=c.get('/api/classroom/assignments').json['assignments'][0]
+    aid=assignment['id'];endpoint=f'/api/classroom/assignments/{aid}'
+    assert c.post(endpoint+'/explain',json={'confirmed':True}).status_code==400
+    calls=[]
+    def explain(messages,**kwargs):
+        calls.append((messages,kwargs))
+        return 'Read the instructions, outline your ideas, and check the original assignment.',{'prompt_tokens':1,'output_tokens':1,'total_tokens':2}
+    monkeypatch.setattr(b,'generate_gemini_reply',explain)
+    assert c.post(endpoint+'/explain',json={'confirmed':True,'ai_confirmed':True,'language':'gu'}).status_code==200
+    assert calls[0][1]['memory_context']=='' and calls[0][1]['language']=='gu'
+    planned=c.post(endpoint+'/planner',json={'confirmed':True});assert planned.status_code==201
+    assert c.post(endpoint+'/planner',json={'confirmed':True}).json['task_id']==planned.json['task_id']
+    assert len(c.get('/api/tasks').json['tasks'])==1
+    monkeypatch.setattr(b,'generate_study_json',lambda *args:questions())
+    generated=c.post('/api/mock-tests/generate',json={'topic':assignment['title'],'question_count':5,'time_limit_minutes':5,'language':'gu'})
+    assert generated.status_code==200,generated.json
+    tid=generated.json['test']['id']
+    result=c.post(f'/api/mock-tests/{tid}/submit',json={'answers':{'1':'A'}})
+    assert result.status_code==200
+    history=c.get('/api/mock-tests/history').json['tests'][0]
+    assert history['score']==result.json['attempt']['score'] and history['language']=='gu'
+    reminder=c.post('/api/reminders',json={'title':'Review assignment notes','next_run_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat(),'recurrence':'once','email_enabled':False,'client_id':str(uuid4())})
+    assert reminder.status_code==201,reminder.json
+    assert one(db,'SELECT COUNT(*) n FROM reminders WHERE user_id=1')['n']==1
+    with c.session_transaction() as s:s['user_id']=2
+    assert c.get('/api/classroom/assignments').json['assignments']==[]
+    assert c.get('/api/tasks').json['tasks']==[]
+    assert c.get('/api/mock-tests/history').json['tests']==[]
+    assert c.post(endpoint+'/explain',json={'confirmed':True,'ai_confirmed':True}).status_code==404
