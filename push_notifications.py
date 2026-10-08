@@ -216,7 +216,7 @@ def register(app,b):
         limited=b['limited']('push_test',str(uid),3,5)
         if limited:return limited
         data=request.get_json(silent=True) or {}
-        if type(data.get('subscription_id')) is not int:return jsonify(error='Choose this device first.'),400
+        if not isinstance(data,dict) or type(data.get('subscription_id')) is not int:return jsonify(error='Choose this device first.'),400
         with database(b) as (_,cur):
             cur.execute('SELECT subscription_json FROM push_subscriptions WHERE id=%s AND user_id=%s AND session_version=(SELECT session_version FROM users WHERE id=%s)',(data['subscription_id'],uid,uid));row=cur.fetchone()
         if not row:return jsonify(error='Enable alerts on this device first.'),404
