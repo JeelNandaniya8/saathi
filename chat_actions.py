@@ -7,9 +7,14 @@ from flask import jsonify, request
 from contextlib import contextmanager
 
 MARKER = re.compile(r'<SAATHI_ACTION>\s*(\{[\s\S]{1,8000}?\})\s*</SAATHI_ACTION>')
-SOURCES = ('tasks', 'reminders', 'classroom')
+SOURCES = ('tasks', 'reminders', 'classroom', 'notes', 'habits', 'study', 'exams')
 ACTION_INSTRUCTIONS = '''
 CONVERSATIONAL ORGANISATION (authenticated user only)
+FEATURE CONNECTIONS
+The chat Tools menu connects every workspace feature. Offer the relevant tool instead of saying you cannot help.
+Use chat modes for explanations, deep study, summaries, quizzes, flashcards and study plans.
+Use /dashboard#mocktests for timed tests; /dashboard#mindmaps for saved visual maps; /dashboard#study for subjects, revision, exam plans and Google Classroom; /dashboard#healer for care routines, food plans and consented care profiles; /dashboard#family for Family Bridge; /dashboard#account for settings and alerts.
+Private journals and check-ins are not shared automatically. Care profile AI access follows its separate consent and selected mode. Never claim to have run a tool, connected Google or changed settings from a chat reply.
 Help the user organise tasks, general reminders, notes, habits, journal entries, check-ins and explicitly requested general memory through conversation.
 Only when the user clearly asks to save/create something, ask for missing details in their language.
 Never claim something has been saved: the interface must show a preview and the user must press Save.
@@ -82,7 +87,11 @@ def workspace_context(cur, uid):
     queries={
       'tasks':"SELECT title,left(details,500) AS details,due_at,priority FROM tasks WHERE user_id=%s AND completed=FALSE ORDER BY due_at ASC NULLS LAST,id DESC LIMIT 20",
       'reminders':"SELECT title,left(note,300) AS note,next_run_at,recurrence FROM reminders WHERE user_id=%s AND active=TRUE AND kind='general' ORDER BY next_run_at LIMIT 20",
-      'classroom':"SELECT a.title,left(a.instructions,800) AS instructions,a.due_at,a.deadline_uncertain,a.synced_at FROM classroom_assignments a JOIN classroom_connections c ON c.user_id=a.user_id WHERE a.user_id=%s AND a.available=TRUE AND c.selected_courses ? a.course_id ORDER BY a.due_at ASC NULLS LAST LIMIT 20"
+      'classroom':"SELECT a.title,left(a.instructions,800) AS instructions,a.due_at,a.deadline_uncertain,a.synced_at FROM classroom_assignments a JOIN classroom_connections c ON c.user_id=a.user_id WHERE a.user_id=%s AND a.available=TRUE AND c.selected_courses ? a.course_id ORDER BY a.due_at ASC NULLS LAST LIMIT 20",
+      'notes':"SELECT title,left(content,1000) AS content FROM quick_notes WHERE user_id=%s ORDER BY updated_at DESC LIMIT 20",
+      'habits':"SELECT name,frequency FROM habits WHERE user_id=%s AND active=TRUE ORDER BY updated_at DESC LIMIT 20",
+      'study':"SELECT topic,left(front,600) AS question,next_review_at FROM revision_items WHERE user_id=%s AND paused=FALSE ORDER BY next_review_at LIMIT 20",
+      'exams':"SELECT title,exam_date,timezone,daily_minutes,topics FROM exam_plans WHERE user_id=%s ORDER BY exam_date DESC LIMIT 20"
     }
     for key in SOURCES:
         if permission.get(key):
@@ -108,12 +117,15 @@ def register(app,b):
         with db() as (conn,cur):
             if request.method=='PATCH':
                 data=request.get_json(silent=True)
-                if not isinstance(data,dict) or set(data)!=set(SOURCES) or any(type(data[k]) is not bool for k in SOURCES):
+                if not isinstance(data,dict) or not {'tasks','reminders','classroom'}<=set(data)<=set(SOURCES) or any(type(value) is not bool for value in data.values()):
                     return jsonify(error='Choose which sources chat may read.'),400
-                cur.execute('''INSERT INTO chat_context_permissions(user_id,tasks,reminders,classroom) VALUES(%s,%s,%s,%s)
-                  ON CONFLICT(user_id) DO UPDATE SET tasks=EXCLUDED.tasks,reminders=EXCLUDED.reminders,classroom=EXCLUDED.classroom,updated_at=NOW()''',(uid,*(data[k] for k in SOURCES)))
+                provided=[key for key in SOURCES if key in data]
+                columns=','.join(provided)
+                updates=','.join(key+'=EXCLUDED.'+key for key in provided)
+                placeholders=','.join(['%s']*(len(provided)+1))
+                cur.execute('INSERT INTO chat_context_permissions(user_id,'+columns+') VALUES('+placeholders+') ON CONFLICT(user_id) DO UPDATE SET '+updates+',updated_at=NOW()', (uid,*(data[key] for key in provided)))
                 conn.commit()
-            cur.execute('SELECT tasks,reminders,classroom FROM chat_context_permissions WHERE user_id=%s',(uid,));row=cur.fetchone()
+            cur.execute('SELECT '+','.join(SOURCES)+' FROM chat_context_permissions WHERE user_id=%s',(uid,));row=cur.fetchone()
         return jsonify(permissions=row or dict.fromkeys(SOURCES,False))
 
     @app.route('/api/chat-actions/<int:message_id>',methods=['GET','POST'])

@@ -25,7 +25,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
      if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
      else if(pathname==='/api/chat-actions/999'){if(method==='POST'){assert.equal(body().confirmed,true);assert.equal(body().action.title,'Edited chat task');actionSaves++;data={saved:true,receipt:{kind:'task',resource_id:9}}}else data=actionSaves?{saved:true,receipt:{kind:'task',resource_id:9}}:{saved:false,action:{kind:'task',title:'Chat task',text:'User requested details',at:null,priority:'medium',recurrence:'once'}}}
-     else if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
+     else if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'},{id:'quiz',label:'Quiz',description:'Practice questions'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
      else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'}};
@@ -360,11 +360,30 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    releaseReply();
    await page.locator('.message.failed').waitFor();
    await page.evaluate(()=>SaathiI18n.setLanguage('en'));
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   let toolsDialog=page.getByRole('dialog',{name:'Tools',exact:true});
+   assert.equal(await toolsDialog.getByRole('link',{name:'Study & Classroom',exact:true}).getAttribute('href'),'/dashboard#study');
+   assert.equal(await toolsDialog.getByRole('link',{name:'Mock tests',exact:true}).getAttribute('target'),'_blank');
+   assert.equal(await toolsDialog.getByRole('button',{name:'Deep study',exact:true}).isDisabled(),true);
+   await toolsDialog.getByRole('button',{name:'Quiz',exact:true}).click();
+   assert.equal(await page.locator('#chatMode').inputValue(),'quiz');
+   await page.locator('#chatInput').fill('Keep this draft');
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Add a task',exact:true}).click();
+   assert.equal(await page.locator('#chatInput').inputValue(),'Keep this draft');
+   await page.locator('#chatInput').fill('');
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Add a task',exact:true}).click();
+   assert.match(await page.locator('#chatInput').inputValue(),/Help me add a Planner task/);
+   assert.equal(await page.locator('#chatMode').inputValue(),'normal');
+   await page.locator('#chatInput').fill('');
    await page.getByRole('button',{name:'Chat context',exact:true}).click();
    let chatContext=page.getByRole('dialog',{name:'Chat context',exact:true});
    assert.equal(await chatContext.getByLabel('Planner tasks',{exact:true}).isChecked(),false);
+   assert.equal(await chatContext.getByLabel('Saved notes',{exact:true}).isChecked(),false);
+   await chatContext.getByLabel('Saved notes',{exact:true}).check();
    await chatContext.getByLabel('Planner tasks',{exact:true}).check();await chatContext.getByRole('button',{name:'Save',exact:true}).click();
-   await chatContext.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(contextPrefs.tasks,true);assert.equal(contextPrefs.classroom,false);
+   await chatContext.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(contextPrefs.tasks,true);assert.equal(contextPrefs.notes,true);assert.equal(contextPrefs.classroom,false);
    await chatContext.getByRole('button',{name:'Close',exact:true}).click();
    await page.evaluate(()=>{const box=document.createElement('div');document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:999,content:'Review this <SAATHI_ACTION>{"kind":"task"}</SAATHI_ACTION>'})});
    await page.getByRole('button',{name:'Review save preview',exact:true}).click();
