@@ -15,6 +15,9 @@ def test_local_development_and_invalid_port():
     app=App();serve(app,{'PORT':'8765','FLASK_DEBUG':'true'})
     assert app.options=={'host':'0.0.0.0','port':8765,'debug':True}
     with pytest.raises(ValueError):serve(app,{'PORT':'0'})
+    for key in ('','short'):
+        with pytest.raises(RuntimeError,match='persistent FLASK_SECRET_KEY'):
+            serve(app,{'PORT':'8765','RENDER':'true','FLASK_SECRET_KEY':key})
 
 
 def test_real_render_entry_runs_gunicorn_and_health_during_stream():
@@ -37,6 +40,7 @@ def stream():
 serve(app)
 '''
     environment={**os.environ,'RENDER':'true','PORT':str(port),'FLASK_DEBUG':'true',
+                 'FLASK_SECRET_KEY':'fixture-stable-signing-key-not-production',
                  'GUNICORN_CMD_ARGS':'--workers 99 --access-logfile -'}
     process=subprocess.Popen([sys.executable,'-c',fixture],env=environment,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     base=f'http://127.0.0.1:{port}'
