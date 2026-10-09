@@ -160,7 +160,7 @@ def test_context_limits_notes_and_prioritises_upcoming_exams(db_app):
             for i in range(12):
                 cur.execute("INSERT INTO quick_notes(user_id,client_id,title,content,updated_at) VALUES(1,%s,%s,%s,NOW()+%s*INTERVAL '1 minute')",(__import__('uuid').uuid4().hex,'Budget note '+str(i),'x'*9000,i))
             for offset in (-10,1,2,3,4,5,100):
-                cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,%s,CURRENT_DATE+%s,'UTC',30,'["Topic"]')",(__import__('uuid').uuid4().hex,'Exam offset '+str(offset),offset))
+                cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,%s,CURRENT_DATE+%s,'UTC',30,%s)",(__import__('uuid').uuid4().hex,'Exam offset '+str(offset),offset,json.dumps(['Topic'])))
     prefs=dict.fromkeys(__import__('chat_actions').SOURCES,False);prefs.update(notes=True,exams=True)
     assert c.patch('/api/chat-context',json=prefs).status_code==200
     text,_=b.load_active_memory_bundle(1,include_workspace=True)
