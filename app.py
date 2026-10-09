@@ -1063,6 +1063,7 @@ def public_styles():
 @app.get("/saathi-social.png")
 @app.get("/theme.js")
 @app.get("/chat-actions.js")
+@app.get("/chat-study.js")
 @app.get("/landing-locales.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")

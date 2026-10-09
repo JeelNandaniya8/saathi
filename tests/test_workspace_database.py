@@ -83,6 +83,7 @@ def test_subscription_ownership_csrf_config_and_logout(db_app,monkeypatch):
     assert client.post('/api/push/subscriptions',json=subscription).json['id']==sid
     config=client.get('/api/push/config').json
     assert config['enabled'] is True and config['subscriptions'][0]['id']==sid
+    assert config['subscriptions'][0]['delivery_status'] is None
     assert 'private_key' not in config and 'endpoint' not in config['subscriptions'][0]
     assert client.post('/api/push/subscriptions',json=subscription,headers={'X-CSRF-Token':''}).status_code==403
     with client.session_transaction() as session:session['user_id']=2
@@ -140,3 +141,17 @@ def test_concurrent_cron_and_session_revocation(db_app,monkeypatch):
     reminder(connect)
     assert client.post('/api/logout-all',json={}).status_code==200
     assert push.deliver_due(vars(b))['sent']==0 and len(calls)==1
+
+
+def test_delivery_status_is_scoped_to_each_owned_device(db_app,monkeypatch):
+    _,client,connect=db_app;subscription,first=subscribed(db_app,monkeypatch)
+    second_payload={**subscription,'endpoint':subscription['endpoint']+'-second'}
+    second=client.post('/api/push/subscriptions',json=second_payload).json['id']
+    with connect() as conn:
+        with conn.cursor() as cur:
+            for sid,status in ((first,'sent'),(second,'failed')):
+                cur.execute("INSERT INTO push_digest_deliveries(subscription_id,local_date,status) VALUES(%s,CURRENT_DATE,%s)",(sid,status))
+    rows={row['id']:row for row in client.get('/api/push/config').json['subscriptions']}
+    assert rows[first]['delivery_status']=='sent' and rows[second]['delivery_status']=='failed'
+    with client.session_transaction() as session:session['user_id']=2
+    assert client.get('/api/push/config').json['subscriptions']==[]

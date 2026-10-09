@@ -80,17 +80,21 @@ def register(app, b):
             zone = ZoneInfo(pref['timezone'] if pref else 'UTC')
             tomorrow = datetime.combine(now.astimezone(zone).date() + timedelta(days=1), time.min, zone)
             cur.execute('''SELECT * FROM tasks WHERE user_id=%s AND completed=FALSE AND (due_at IS NULL OR due_at<%s)
-                ORDER BY CASE WHEN due_at<%s THEN 0 ELSE 1 END,
+                ORDER BY CASE WHEN due_at<%s THEN 0 WHEN due_at IS NOT NULL THEN 1 ELSE 2 END,
                     CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
                     due_at NULLS LAST,id LIMIT 3''', (uid, tomorrow, now))
             tasks = [b['task_to_dict'](row) for row in cur.fetchall()]
             cur.execute('SELECT COUNT(*) AS n FROM revision_items WHERE user_id=%s AND paused=FALSE AND next_review_at<=%s', (uid, now))
             due = cur.fetchone()['n']
+            local_date=now.astimezone(zone).date()
+            cur.execute('SELECT id,title,exam_date FROM exam_plans WHERE user_id=%s AND exam_date BETWEEN %s AND %s ORDER BY exam_date,id LIMIT 1',(uid,local_date,local_date+timedelta(days=30)))
+            exam=cur.fetchone()
+            next_exam=dict(id=exam['id'],title=exam['title'],exam_date=exam['exam_date'].isoformat(),days_left=(exam['exam_date']-local_date).days) if exam else None
             cur.execute('''SELECT id,title FROM conversations c WHERE user_id=%s AND is_archived=FALSE
                 AND EXISTS(SELECT 1 FROM messages m WHERE m.conversation_id=c.id AND m.user_id=%s)
                 ORDER BY updated_at DESC LIMIT 1''', (uid, uid))
             recent = cur.fetchone()
-        return jsonify(tasks=tasks, revision_due=due, recent_chat=dict(recent) if recent else None)
+        return jsonify(tasks=tasks, revision_due=due, recent_chat=dict(recent) if recent else None,next_exam=next_exam)
 
     def settle(cur, row, now):
         if row and row['status'] == 'running' and focus_elapsed(row, now) >= row['duration_seconds']:

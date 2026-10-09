@@ -231,7 +231,7 @@ def register(app,b):
     def push_config(uid):
         config=configuration()
         with database(b) as (_,cur):
-            cur.execute('SELECT id,endpoint_hash FROM push_subscriptions WHERE user_id=%s AND session_version=(SELECT session_version FROM users WHERE id=%s)',(uid,uid));rows=cur.fetchall()
+            cur.execute('SELECT s.id,s.endpoint_hash,d.status AS delivery_status,d.updated_at AS delivery_at FROM push_subscriptions s LEFT JOIN LATERAL (SELECT status,updated_at FROM (SELECT status,updated_at,subscription_id FROM push_deliveries UNION ALL SELECT status,updated_at,subscription_id FROM push_digest_deliveries) deliveries WHERE subscription_id=s.id ORDER BY updated_at DESC LIMIT 1) d ON TRUE WHERE s.user_id=%s AND s.session_version=(SELECT session_version FROM users WHERE id=%s)',(uid,uid));rows=cur.fetchall()
             cur.execute("SELECT last_run,sent,failed FROM background_alert_runs WHERE name='general'");run=cur.fetchone()
             cur.execute("SELECT status,updated_at FROM (SELECT status,updated_at,subscription_id FROM push_deliveries UNION ALL SELECT status,updated_at,subscription_id FROM push_digest_deliveries) AS deliveries WHERE subscription_id IN (SELECT id FROM push_subscriptions WHERE user_id=%s) ORDER BY updated_at DESC LIMIT 1",(uid,));delivery=cur.fetchone()
         return jsonify(enabled=config['enabled'],public_key=config['public_key'],subscriptions=rows,scheduler=run,last_delivery=delivery)

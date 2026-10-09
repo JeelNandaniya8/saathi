@@ -128,3 +128,16 @@ def test_pdf_page_view_is_owned_inline_and_sandboxed(db_app):
     with client.session_transaction() as session:session.clear()
     for endpoint in (path+'/view','/api/workspace/today','/api/workspace/search?q=hi','/api/focus'):
         assert client.get(endpoint).status_code == 401
+
+
+def test_today_prioritises_due_task_and_owned_upcoming_exam(db_app):
+    _,client,db=db_app
+    client.post('/api/tasks',json={'title':'Undated high','priority':'high'})
+    client.post('/api/tasks',json={'title':'Due now','priority':'low','due_at':(datetime.now(timezone.utc)-timedelta(minutes=1)).isoformat()})
+    insert(db,"INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,'My upcoming exam',CURRENT_DATE+2,'UTC',30,'[]')",(uuid.uuid4().hex,))
+    insert(db,"INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(2,%s,'Other private exam',CURRENT_DATE+1,'UTC',30,'[]')",(uuid.uuid4().hex,))
+    data=client.get('/api/workspace/today').json
+    assert data['tasks'][0]['title']=='Due now'
+    assert data['next_exam']['title']=='My upcoming exam' and data['next_exam']['days_left']==2
+    switch(client,2)
+    assert client.get('/api/workspace/today').json['next_exam']['title']=='Other private exam'
