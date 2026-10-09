@@ -492,6 +492,64 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
     assert captured["closed"] is True
 
 
+@pytest.mark.parametrize("ending", ["complete", "timeout", "cancelled"])
+def test_stream_timings_measure_first_text_without_logging_content(backend, monkeypatch, ending):
+    from unittest.mock import Mock
+
+    clock = iter([100.0, 102.0, 113.0, 114.0])
+    monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
+    logger = Mock()
+    monkeypatch.setattr(backend.app, "logger", logger)
+
+    class Response:
+        encoding = None
+        close = Mock()
+
+        def iter_lines(self, **kwargs):
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"private reply"}]}}]}'
+            if ending == "timeout":
+                raise backend.requests.exceptions.Timeout("private provider error")
+            yield 'data: {"candidates":[{"finishReason":"STOP"}]}'
+
+    response = Response()
+    monkeypatch.setattr(backend, "provider_send", lambda *args, **kwargs: response)
+    stream = backend.stream_gemini_reply([{"role": "user", "content": "private prompt"}])
+    assert next(stream) == "private reply"
+    if ending == "cancelled":
+        stream.close()
+    elif ending == "timeout":
+        with pytest.raises(backend.ProviderError):
+            next(stream)
+    else:
+        with pytest.raises(StopIteration):
+            next(stream)
+    logger.warning.assert_called_once_with(
+        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
+        2000, 13000, 14000, "complete" if ending == "complete" else "interrupted")
+    logger.info.assert_not_called()
+    response.close.assert_called_once()
+
+
+def test_stream_timings_handle_failure_before_provider_headers(backend, monkeypatch):
+    from unittest.mock import Mock
+
+    clock = iter([100.0, 101.0])
+    monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
+    logger = Mock()
+    monkeypatch.setattr(backend.app, "logger", logger)
+
+    def failed_provider(*args, **kwargs):
+        raise backend.requests.exceptions.Timeout("private provider error")
+
+    monkeypatch.setattr(backend, "provider_send", failed_provider)
+    with pytest.raises(backend.ProviderError):
+        list(backend.stream_gemini_reply([{"role": "user", "content": "private prompt"}]))
+    logger.info.assert_called_once_with(
+        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
+        None, None, 1000, "interrupted")
+    logger.warning.assert_not_called()
+
+
 def test_real_http_stream_delivers_small_unicode_event_before_completion(backend, monkeypatch):
     import json
     import threading
