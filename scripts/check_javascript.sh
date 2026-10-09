@@ -8,6 +8,7 @@ done
 node --check service-worker.js
 node --check theme.js
 node --check workspace.js
+node --check chat-study.js
 node --check recovery.js
 node --check daily-workspace.js
 for script in workspace-hub.js i18n.js locale-gu.js lazy-tools.js dashboard-study.js dashboard-mindmaps.js dashboard-care.js; do node --check "$script"; done

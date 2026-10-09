@@ -11,7 +11,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
   for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
-   let actionSaves=0,contextPrefs={tasks:false,reminders:false,classroom:false};
+   let actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -23,12 +23,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
      if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
-     if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
+     if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}}}
+     else if(pathname==='/api/mock-tests/53/submit'){inlineSubmits++;assert.equal(body().answers['1'],'A');data={attempt:{score:1,total_questions:5},review:[{id:1,question:'Fixture question 1',user_answer:'A',correct_answer:'A',explanation:'Literal <script>unsafe</script> explanation'}]}}
+     else if(pathname==='/api/mindmaps/generate')data={mindmap:{id:62,topic:body().topic,data:{summary:'Saved map summary',root:{label:'Chat map root',desc:'Topic-specific explanation',children:[{label:'Chat map branch',desc:'Actual detail <script>unsafe</script>',children:[]}]}}}};
+     else if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
      else if(pathname==='/api/chat-actions/999'){if(method==='POST'){assert.equal(body().confirmed,true);assert.equal(body().action.title,'Edited chat task');actionSaves++;data={saved:true,receipt:{kind:'task',resource_id:9}}}else data=actionSaves?{saved:true,receipt:{kind:'task',resource_id:9}}:{saved:false,action:{kind:'task',title:'Chat task',text:'User requested details',at:null,priority:'medium',recurrence:'once'}}}
      else if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'},{id:'quiz',label:'Quiz',description:'Practice questions'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
-     else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'}};
+     else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'},next_exam:{id:4,title:'Owned upcoming exam',days_left:2}};
      else if(pathname==='/api/overview')data={pending_tasks:1,conversations:1,active_reminders:0,active_memories:0};
      else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
@@ -109,6 +112,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
    assert.equal(await page.locator('#moreNavigation [data-view="study"],#moreNavigation [data-view="healer"]').count(),2,'Study and Care remain reachable');
    assert.equal(await page.locator('.nav-group').count(),3,'Secondary tools are grouped instead of one long list');
+   await page.getByText('Owned upcoming exam · 2 days left',{exact:true}).waitFor();
    assert.ok(await page.locator('.hero-panel').evaluate(node=>node.getBoundingClientRect().height<190),'Today greeting leaves the next action in view');
    assert.equal(await page.evaluate(()=>{const before=document.documentElement.dataset.theme;document.documentElement.dataset.theme='dark';const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim();if(before)document.documentElement.dataset.theme=before;else delete document.documentElement.dataset.theme;return paper}), '#20251d','Dark workspace uses the shared surface palette');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
@@ -380,6 +384,38 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.match(await page.locator('#chatInput').inputValue(),/Help me add a Planner task/);
    assert.equal(await page.locator('#chatMode').inputValue(),'normal');
    await page.locator('#chatInput').fill('');
+   assert.equal(requests.filter(p=>p==='/chat-study.js').length,0,'Study generation loads only when requested');
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Mock Test',exact:true}).click();
+   const inlineTest=page.getByRole('dialog',{name:'Mock Test',exact:true});
+   await inlineTest.getByLabel('Topic',{exact:true}).fill('Fractions');
+   assert.equal(inlineGenerations,0,'Opening a tool never spends an AI call');
+   await inlineTest.getByRole('button',{name:'Generate and save',exact:true}).click();
+   await inlineTest.getByText('Fixture creation failed',{exact:true}).waitFor();
+   assert.equal(await inlineTest.getByLabel('Topic',{exact:true}).inputValue(),'Fractions');
+   await inlineTest.getByRole('button',{name:'Generate and save',exact:true}).click();
+   await inlineTest.getByRole('radio',{name:'A. Choice A 1',exact:true}).check();
+   await inlineTest.getByRole('button',{name:'Submit answers',exact:true}).click();
+   await inlineTest.getByRole('heading',{name:'Score: 1 / 5',exact:true}).waitFor();
+   assert.equal(inlineGenerations,2);assert.equal(inlineSubmits,1);
+   assert.equal(await inlineTest.locator('script').count(),0);
+   assert.equal(new URL(page.url()).pathname,'/chat');
+   await inlineTest.getByRole('button',{name:'Close',exact:true}).click();
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Mindmap',exact:true}).click();
+   const inlineMap=page.getByRole('dialog',{name:'Mindmap',exact:true});
+   await inlineMap.getByLabel('Topic',{exact:true}).fill('Newton laws');
+   await inlineMap.getByRole('button',{name:'Generate and save',exact:true}).click();
+   await inlineMap.getByText('Chat map branch',{exact:true}).waitFor();
+   assert.equal(await inlineMap.locator('script').count(),0);
+   assert.equal(requests.filter(p=>p==='/chat-study.js').length,1,'Both tools reuse one lazy module');
+   await inlineMap.getByRole('button',{name:'Close',exact:true}).click();
+   await page.evaluate(()=>SaathiI18n.setLanguage('hi'));
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Mindmap',exact:true}).click();
+   await page.getByRole('dialog',{name:'Mindmap',exact:true}).getByLabel('विषय',{exact:true}).waitFor();
+   await page.getByRole('dialog',{name:'Mindmap',exact:true}).getByRole('button',{name:'बंद करें',exact:true}).click();
+   await page.evaluate(()=>SaathiI18n.setLanguage('en'));
    const personalLoads=requests.filter(p=>p==='/personal-context.js').length;
    await page.getByRole('button',{name:'Tools',exact:true}).click();
    await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Plan for an exam',exact:true}).click();
