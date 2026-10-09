@@ -20,6 +20,7 @@ from uuid import UUID
 from html import escape
 import gzip
 import time
+from time import monotonic
 from functools import lru_cache
 import re
 import secrets
@@ -5284,8 +5285,12 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
     response = None
     usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
     finish_reason = None
+    started = monotonic()
+    headers_ms = first_text_ms = None
+    outcome = "interrupted"
     try:
         response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, stream=True)
+        headers_ms = round((monotonic() - started) * 1000)
         # Requests otherwise buffers SSE data in 512-byte blocks and may infer
         # Latin-1 when a provider omits a charset. One-byte line iteration lets
         # the first model delta reach the browser immediately and preserves
@@ -5303,9 +5308,12 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
             if any(chunk_usage.values()):
                 usage = chunk_usage
             if text:
+                if first_text_ms is None:
+                    first_text_ms = round((monotonic() - started) * 1000)
                 yield text
         if finish_reason != "STOP":
             raise RuntimeError("The reply stopped before it was complete. Please retry or ask a shorter question.")
+        outcome = "complete"
         return usage
     except requests.exceptions.Timeout:
         raise ProviderError("AI_TIMEOUT", "The reply timed out. Received text is kept here; please retry when ready.") from None
@@ -5314,6 +5322,12 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
     except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
         raise ProviderError("AI_FORMAT", "Saathi could not prepare a reply. Please try again.") from None
     finally:
+        elapsed_ms = round((monotonic() - started) * 1000)
+        # Operational timing only: never include prompts, replies, account IDs,
+        # provider URLs, credentials or exception text in this event.
+        log_timing = app.logger.warning if elapsed_ms >= 10000 else app.logger.info
+        log_timing("ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
+                   headers_ms, first_text_ms, elapsed_ms, outcome)
         if response is not None:
             response.close()
 
