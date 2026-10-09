@@ -496,6 +496,7 @@ def test_gemini_stream_yields_real_deltas_and_closes_provider(backend, monkeypat
 def test_stream_timings_measure_first_text_without_logging_content(backend, monkeypatch, ending):
     from unittest.mock import Mock
 
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     clock = iter([100.0, 102.0, 113.0, 114.0])
     monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
     logger = Mock()
@@ -533,6 +534,7 @@ def test_stream_timings_measure_first_text_without_logging_content(backend, monk
 def test_stream_timings_handle_failure_before_provider_headers(backend, monkeypatch):
     from unittest.mock import Mock
 
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
     clock = iter([100.0, 101.0])
     monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
     logger = Mock()
