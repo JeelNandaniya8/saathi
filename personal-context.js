@@ -68,5 +68,5 @@ async function exams(){
 function labels(){document.querySelectorAll('[data-personal-label]').forEach(n=>n.textContent=text(n.dataset.personalLabel))}
 function connect(options){({api,notify,openView,refreshTasks}=options);document.querySelectorAll('[data-personal-context]').forEach(b=>b.onclick=()=>profiles(b.dataset.personalContext));document.querySelectorAll('[data-exam-plans]').forEach(b=>b.onclick=exams);labels()}
 new MutationObserver(labels).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-window.SaathiPersonal={connect};
+window.SaathiPersonal={connect,openExams(options){connect(options);return exams()}};
 })();
