@@ -70,13 +70,15 @@ def validate_payment(payment, order, payment_id=None):
 
 
 def refresh_access(cur, user_id):
-    cur.execute("""SELECT plan, MAX(ends_at) AS ends_at FROM access_grants
+    cur.execute("""SELECT plan, MAX(ends_at) AS ends_at, BOOL_AND(source_id LIKE 'referral:%%') AS study_bonus FROM access_grants
         WHERE user_id=%s AND revoked_at IS NULL AND ends_at>NOW() GROUP BY plan
         ORDER BY CASE WHEN plan='family' THEN 0 ELSE 1 END LIMIT 1""", (user_id,))
     grant = cur.fetchone()
     cur.execute("UPDATE users SET plan=%s,plan_status='active',subscription_end_at=%s WHERE id=%s RETURNING *",
                 (grant['plan'] if grant else 'free', grant['ends_at'] if grant else None, user_id))
-    return cur.fetchone()
+    user=cur.fetchone()
+    if user:user['study_bonus']=bool(grant and grant.get('study_bonus'))
+    return user
 
 
 def grant_access(cur, user_id, source_id, plan, days):

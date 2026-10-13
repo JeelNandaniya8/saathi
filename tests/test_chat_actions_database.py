@@ -139,7 +139,7 @@ def test_extended_context_defaults_ownership_revocation_and_old_clients(db_app):
             cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,'Owner-only exam','2026-12-01','UTC',30,%s)",(__import__('uuid').uuid4().hex,json.dumps(['Topic '+str(i) for i in range(60)])))
     prefs=dict.fromkeys(keys,True)
     assert c.patch('/api/chat-context',json=prefs).status_code==200
-    shared=b.load_active_memory_bundle(1,include_workspace=True)[0]
+    shared=b.load_active_memory_bundle(1,include_workspace=True,turn_content='Read my notes')[0]
     for title in ('Owner-only details','Owner-only habit','Owner-only revision','Owner-only exam'):assert title in shared
     assert 'Topic 11' in shared and 'Topic 12' not in shared
     other=b.load_active_memory_bundle(2,include_workspace=True)[0]
@@ -163,7 +163,7 @@ def test_context_limits_notes_and_prioritises_upcoming_exams(db_app):
                 cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,%s,CURRENT_DATE+%s,'UTC',30,%s)",(__import__('uuid').uuid4().hex,'Exam offset '+str(offset),offset,json.dumps(['Topic'])))
     prefs=dict.fromkeys(__import__('chat_actions').SOURCES,False);prefs.update(notes=True,exams=True)
     assert c.patch('/api/chat-context',json=prefs).status_code==200
-    text,_=b.load_active_memory_bundle(1,include_workspace=True)
+    text,_=b.load_active_memory_bundle(1,include_workspace=True,turn_content='Read my notes')
     assert 'Budget note 11' in text and 'Budget note 3"' not in text
     assert '"excerpted": true' in text
     assert 'x'*601 not in text

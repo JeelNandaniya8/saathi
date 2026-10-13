@@ -705,5 +705,14 @@ window.SaathiI18n.register({
 "Send test alert": "ટેસ્ટ સૂચના મોકલો",
 "Review result": "પરિણામ જુઓ",
 "Resume test": "પરીક્ષા આગળ વધારો",
-"Practise again": "ફરી અભ્યાસ કરો"
+"Practise again": "ફરી અભ્યાસ કરો",
+"More for today": "આજ માટે વધુ વિકલ્પો",
+"Study bonus": "અભ્યાસ બોનસ",
+"Study access": "વધુ અભ્યાસ સુવિધાઓ",
+"Family plan": "પરિવાર પ્લાન",
+"Invite classmates · Unlock study bonuses": "મિત્રોને આમંત્રણ આપો · અભ્યાસ બોનસ મેળવો",
+"Student invitations": "વિદ્યાર્થી આમંત્રણો",
+"Memories you can review and edit.": "યાદો તમે જોઈ અને બદલી શકો છો.",
+"Details you explicitly share or ask to remember in Chat can be saved here. Sensitive details need separate consent.": "Chatમાં તમે સ્પષ્ટપણે જણાવો અથવા યાદ રાખવા કહો તે અહીં સાચવી શકાય છે. સંવેદનશીલ માહિતી માટે અલગ મંજૂરી જરૂરી છે.",
+"Invite a friend. Unlock 7 days of higher study limits after they verify their email, wait one day and complete a task or mock test. Up to 28 bonus days. This is a free study bonus, not a paid Plus subscription. Plus subscriptions are coming soon.": "મિત્ર ઈમેઇલ ચકાસે, એક દિવસ રાહ જુએ અને એક કામ અથવા mock test પૂર્ણ કરે ત્યારે વધુ અભ્યાસ મર્યાદાના 7 દિવસ મેળવો. વધુમાં વધુ 28 બોનસ દિવસ. આ મફત અભ્યાસ બોનસ છે; paid Plus subscription નથી. Plus subscription ટૂંક સમયમાં આવશે."
 });
