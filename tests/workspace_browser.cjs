@@ -443,6 +443,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
+   const actionWrites=actionSaves;
+   await page.evaluate(()=>{const box=document.createElement('div');box.id='confirmed-chat-memory';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:998,auto_action:true,action_receipt:{kind:'memory',resource_id:12},content:'Details prepared. <SAATHI_ACTION>{"kind":"memory","title":"Home city","text":"Ahmedabad <script>window.injected=true</script>"}</SAATHI_ACTION>'})});
+   await page.locator('#confirmed-chat-memory').getByText('Saved to your account',{exact:true}).waitFor();
+   await page.locator('#confirmed-chat-memory summary').click();
+   assert.ok((await page.locator('#confirmed-chat-memory').innerText()).includes('Ahmedabad <script>'));
+   assert.equal(await page.evaluate(()=>window.injected),undefined);
+   assert.equal(actionSaves,actionWrites,'Server-confirmed actions must not be executed again by the browser');
+   assert.equal(await page.locator('#confirmed-chat-memory a').getAttribute('href'),'/dashboard#memory');
    await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{\"kind\":\"task\"}</SAATHI_ACTION>';renderConversations()});
    assert.ok(!(await page.locator('#history').textContent()).includes('SAATHI_ACTION'),'Sidebar previews must hide action metadata');
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;

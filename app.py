@@ -43,6 +43,7 @@ import care
 import care_routines
 import care_support
 import chat_actions
+import chat_intents
 import personal_context
 import study_tools
 import workspace_extras
@@ -876,7 +877,7 @@ if DATABASE_URL:
 
 
 def user_to_dict(row):
-    return {
+    result = {
         "id": row["id"],
         "name": row["name"],
         "username": row["username"],
@@ -889,6 +890,9 @@ def user_to_dict(row):
         "referral_code": row.get("referral_code"),
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
+    if "study_bonus" in row:
+        result["plan_label"] = "Study bonus" if row["study_bonus"] and result["plan"]=="plus" else "Saathi Plus" if result["plan"]=="plus" else "Family plan" if result["plan"]=="family" else "Free plan"
+    return result
 
 
 def username_taken(cur, username):
@@ -1520,7 +1524,10 @@ def me():
         return jsonify({"user": None, "google_client_id": google_client_id})
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    cur.execute("""SELECT u.*, COALESCE((SELECT BOOL_AND(g.source_id LIKE 'referral:%%')
+        FROM access_grants g WHERE g.user_id=u.id AND g.plan=u.plan
+        AND g.revoked_at IS NULL AND g.ends_at>NOW()),FALSE) AS study_bonus
+        FROM users u WHERE u.id=%s""", (user_id,))
     user = cur.fetchone()
     if not user:
         cur.close()
@@ -1945,6 +1952,8 @@ def message_to_dict(row, attachments=None, study_progress=None):
         "source_pages": clean_sources,
         "study_progress": study_progress,
     }
+    for key in ("action_receipt", "action_resource", "action_error"):
+        if row.get(key) is not None:result[key] = row[key]
     result["attachments"] = [attachment_to_dict(item) for item in (attachments or [])]
     return result
 
@@ -2350,6 +2359,7 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     assistant_message = next((row for row in rows if row["role"] == "assistant"), None)
     if not user_message or not assistant_message:
         return None
+    chat_actions.load_receipts(cur, user_id, [assistant_message])
     attachments = load_attachment_metadata(cur, [user_message["id"]], user_id)
     study = load_study_progress(cur, [assistant_message["id"]], user_id)
     return {
@@ -2461,6 +2471,8 @@ def persist_streamed_exchange(
             ),
         )
         assistant_message = cur.fetchone()
+        assistant_message["conversation_id"] = conversation_id
+        chat_actions.save_requested(cur, user_id, assistant_message, content)
         study_progress = create_study_progress(
             cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
         )
@@ -2660,6 +2672,7 @@ def conversation_messages(conversation_id):
         page_rows = descending_rows[:limit]
         next_before_id = page_rows[-1]["id"] if has_more and page_rows else None
         rows = list(reversed(page_rows))
+        chat_actions.load_receipts(cur, user_id, rows)
         attachments_by_message = load_attachment_metadata(
             cur, [row["id"] for row in rows], user_id
         )
@@ -2689,7 +2702,7 @@ def conversation_messages(conversation_id):
         data = request.get_json(force=True, silent=True) or {}
         uploaded_files = []
 
-    mode = normalise_chat_mode(data.get("mode"))
+    mode = chat_intents.mode(data.get("content"), normalise_chat_mode(data.get("mode")))
     request_id = str(data.get("request_id") or "").strip() or None
     if request_id and not CLIENT_REQUEST_ID_RE.fullmatch(request_id):
         cur.close()
@@ -2766,6 +2779,8 @@ def conversation_messages(conversation_id):
         (conversation_id, user_id),
     )
     recent = list(reversed(cur.fetchall()))
+    pending_scope = chat_intents.continuation(recent, content)
+    turn_context = (pending_scope + "\n" + content) if pending_scope else content
     cur.close()
     conn.close()
 
@@ -2777,7 +2792,7 @@ def conversation_messages(conversation_id):
         "attachments": attachments,
     })
 
-    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True)
+    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True, turn_context)
     try:
         reply, ai_usage = generate_gemini_reply(
             context, memory_context, load_user_language(user_id), mode,
@@ -2896,6 +2911,8 @@ def conversation_messages(conversation_id):
         ),
     )
     assistant_message = cur.fetchone()
+    assistant_message["conversation_id"] = conversation_id
+    chat_actions.save_requested(cur, user_id, assistant_message, content)
     study_progress = create_study_progress(
         cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
     )
@@ -2950,7 +2967,7 @@ def stream_conversation_message(conversation_id):
     else:
         data = request.get_json(force=True, silent=True) or {}
         uploaded_files = []
-    mode = normalise_chat_mode(data.get("mode"))
+    mode = chat_intents.mode(data.get("content"), normalise_chat_mode(data.get("mode")))
     request_id = str(data.get("request_id") or "").strip() or None
     if request_id and not CLIENT_REQUEST_ID_RE.fullmatch(request_id):
         cur.close()
@@ -3019,9 +3036,11 @@ def stream_conversation_message(conversation_id):
         (conversation_id, user_id),
     )
     recent = list(reversed(cur.fetchall()))
+    pending_scope = chat_intents.continuation(recent, content)
+    turn_context = (pending_scope + "\n" + content) if pending_scope else content
     # Reuse this connection for context, then release it before streaming.
     try:
-        memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, cur, mode, True)
+        memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, cur, mode, True, turn_context)
         language = load_user_language(user_id, cur)
     finally:
         cur.close()
@@ -3942,7 +3961,7 @@ def memory_to_dict(row):
     }
 
 
-def load_active_memory_bundle(user_id, cur=None, mode="normal", include_workspace=False):
+def load_active_memory_bundle(user_id, cur=None, mode="normal", include_workspace=False, turn_content=""):
     conn = get_db() if cur is None else None
     if conn is not None:
         cur = conn.cursor()
@@ -3956,7 +3975,7 @@ def load_active_memory_bundle(user_id, cur=None, mode="normal", include_workspac
             (user_id,),
         )
         rows = cur.fetchall()
-        workspace_text, workspace_labels = chat_actions.workspace_context(cur, user_id) if include_workspace else ("", [])
+        workspace_text, workspace_labels = chat_actions.workspace_context(cur, user_id, turn_content) if include_workspace else ("", [])
         profile_text, profile_labels = "", []
         if mode in personal_context.PROFILE_MODES:
             cur.execute("SELECT category,field,value,source,use_in_ai,reviewed_at FROM personal_context_fields WHERE user_id=%s AND use_in_ai=TRUE AND reviewed_at>=NOW()-INTERVAL '90 days'", (user_id,))
@@ -5187,6 +5206,11 @@ def build_gemini_payload(
             generation_config["thinkingConfig"] = {"thinkingLevel": "minimal"}
         elif model == "gemini-3.8-flash":
             generation_config["thinkingConfig"] = {"thinkingLevel": "low"}
+    latest_text = str(messages[-1].get("content", "")) if messages else ""
+    pending_scope = chat_intents.continuation(messages[:-1], latest_text)
+    latest_text = pending_scope or latest_text
+    if chat_intents.automatic(latest_text, "plan") or chat_intents.automatic(latest_text, "mindmap"):
+        generation_config["maxOutputTokens"] = max(generation_config["maxOutputTokens"], 3300)
     return {
         "contents": contents,
         "systemInstruction": {"parts": [{"text": system_text}]},
