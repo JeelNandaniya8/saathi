@@ -62,6 +62,15 @@ def test_expired_preview_cannot_create_an_alert(db_app):
     assert one(connect,'SELECT COUNT(*) AS n FROM reminders')['n']==0
 
 
+def test_today_defaults_to_india_and_counts_exam_days_in_the_account_date(db_app):
+    _,c,connect=db_app
+    assert c.get('/api/me').json['user']['timezone']=='Asia/Kolkata'
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,'India exam',(NOW() AT TIME ZONE 'Asia/Kolkata')::date+2,'Asia/Kolkata',30,'[]')",(str(uuid4()),))
+    assert c.get('/api/workspace/today').json['next_exam']['days_left']==2
+
+
 def test_study_job_is_visible_during_creation_and_replay_never_regenerates(db_app,monkeypatch):
     b,c,connect=db_app;started=threading.Event();release=threading.Event();calls=[]
     def generate(*args):

@@ -903,7 +903,7 @@ async function loadViewSections(id,refresh=false){
   const keys=dependencies[id]||[id];
   return loadWorkspaceSections(workspaceSections.filter(section=>keys.includes(section.key)&&(refresh||!state.loadedSections?.has(section.key))));
 }
-function updateGreeting(){$('greeting').removeAttribute('aria-busy');const hour=window.SaathiClock?.hour()??new Date().getHours(),language=state.user?.language||'en',words={en:hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
+function updateGreeting(){$('greeting').removeAttribute('aria-busy');const hour=window.SaathiClock?.hour()??new Date().getHours(),language=state.user?.language||'en',night=(window.SaathiClock?.period()||(hour<6||hour>=22?'night':''))==='night',words={en:night?'Welcome back':hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:night?'ફરી સ્વાગત છે':hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:night?'आपका स्वागत है':hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
 function playChime(){
   if(localStorage.getItem('saathi-sounds')!=='on')return;
   try{

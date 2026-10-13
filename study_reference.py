@@ -4,9 +4,9 @@ import chat_intents
 
 REFERENCES = {
  'newton': ('https://ncert.nic.in/textbook/pdf/keph104.pdf', {
-  'en': 'Newton’s second law says that net force changes momentum; for constant mass in an inertial frame, F_net = ma. For the same mass, a larger net force produces a larger acceleration in the force’s direction.',
-  'gu': 'ન્યૂટનનો બીજો નિયમ કહે છે કે પરિણામી બળ વેગમાનમાં ફેરફાર કરે છે; અચળ દળ અને જડત્વીય સંદર્ભતંત્ર માટે F_net = ma છે. સમાન દળ માટે વધુ પરિણામી બળ લાગતાં બળની દિશામાં વધુ પ્રવેગ થાય છે.',
-  'hi': 'न्यूटन का दूसरा नियम कहता है कि परिणामी बल संवेग बदलता है; स्थिर द्रव्यमान और जड़त्वीय संदर्भ तंत्र के लिए F_net = ma है। समान द्रव्यमान पर अधिक परिणामी बल लगाने से बल की दिशा में अधिक त्वरण होता है।'}),
+  'en': 'Newton’s second law says that net force equals the rate of change of momentum; for constant mass in an inertial frame, F_net = ma. For the same mass, a larger net force produces a larger acceleration in the force’s direction.',
+  'gu': 'ન્યૂટનનો બીજો નિયમ કહે છે કે પરિણામી બળ વેગમાનમાં ફેરફારના દર બરાબર છે; અચળ દળ અને જડત્વીય સંદર્ભતંત્ર માટે F_net = ma છે. સમાન દળ માટે વધુ પરિણામી બળ લાગતાં બળની દિશામાં વધુ પ્રવેગ થાય છે.',
+  'hi': 'न्यूटन का दूसरा नियम कहता है कि परिणामी बल संवेग के परिवर्तन की दर के बराबर है; स्थिर द्रव्यमान और जड़त्वीय संदर्भ तंत्र के लिए F_net = ma है। समान द्रव्यमान पर अधिक परिणामी बल लगाने से बल की दिशा में अधिक त्वरण होता है।'}),
  'probability': ('https://ncert.nic.in/textbook/pdf/jemh114.pdf', {
   'en': 'For a finite sample space with equally likely outcomes, P(E) = number of favourable outcomes / total number of outcomes. For a fair six-sided die, P(even number) = 3/6 = 1/2; this counting formula cannot be used unchanged when outcomes have different chances.',
   'gu': 'મર્યાદિત નમૂના અવકાશમાં બધા પરિણામો સમાન સંભાવનાવાળા હોય ત્યારે P(E) = અનુકૂળ પરિણામોની સંખ્યા / કુલ પરિણામોની સંખ્યા છે. નિષ્પક્ષ છ બાજુના પાસામાં સમ સંખ્યા આવવાની સંભાવના 3/6 = 1/2 છે; પરિણામોની સંભાવના અલગ હોય તો આ ગણતરીનું સૂત્ર સીધું લાગુ પડતું નથી.',
