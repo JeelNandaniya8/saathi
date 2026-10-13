@@ -4,6 +4,7 @@ import re
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+from uuid import UUID
 
 from flask import jsonify, request
 import billing
@@ -124,8 +125,60 @@ def register(app,b):
         if not isinstance(language,str) or language not in {'en','gu','hi'}:raise ValueError('Choose a supported language.')
         return data,topic,{'en':'English','gu':'Gujarati','hi':'Hindi'}[language]
 
+    def job_data(row):
+        return dict(id=str(row['id']),kind=row['kind'],request=row['request'],status=row['status'],result_id=row['result_id'],error=row['error'],created_at=row['created_at'].isoformat())
+
+    def track_job(kind):
+        def decorate(fn):
+            @wraps(fn)
+            def tracked(uid):
+                data=request.get_json(silent=True) or {}
+                # Keep older API clients compatible; new UI always supplies a job ID.
+                if not isinstance(data,dict) or not data.get('job_id'):return fn(uid)
+                try:job_id=str(UUID(data['job_id']))
+                except (ValueError,TypeError,AttributeError):raise ValueError('Use a valid study job ID.') from None
+                payload={key:value for key,value in data.items() if key!='job_id'}
+                if len(json.dumps(payload,ensure_ascii=False))>5000:raise ValueError('Use a shorter topic.')
+                with db() as (conn,cur):
+                    cur.execute("INSERT INTO study_jobs(id,user_id,kind,request,status) VALUES(%s,%s,%s,%s,'creating') ON CONFLICT DO NOTHING RETURNING id",(job_id,uid,kind,json.dumps(payload,ensure_ascii=False)))
+                    created=cur.fetchone()
+                    if not created:
+                        cur.execute('SELECT * FROM study_jobs WHERE id=%s AND user_id=%s',(job_id,uid));row=cur.fetchone()
+                        if not row:return jsonify(error='Job not found.'),404
+                        if row['kind']!=kind or row['request']!=payload:return jsonify(error='This job ID belongs to another request.'),409
+                        return jsonify(job=job_data(row)),202
+                    conn.commit()
+                try:
+                    result=fn(uid)
+                    response=result[0] if isinstance(result,tuple) else result
+                    body=response.get_json() or {}
+                    resource=body.get('test') if kind=='mock' else body.get('mindmap')
+                    status='ready' if resource and resource.get('id') else 'failed'
+                    error=None if status=='ready' else body.get('error','Could not finish. Retry when ready.')
+                    with db() as (conn,cur):
+                        cur.execute('UPDATE study_jobs SET status=%s,result_id=%s,error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s',(status,resource.get('id') if resource else None,error,job_id,uid));conn.commit()
+                    return result
+                except Exception as error:
+                    message=str(error) if isinstance(error,(ValueError,RuntimeError)) else 'Creation was interrupted. Retry when ready.'
+                    with db() as (conn,cur):
+                        cur.execute("UPDATE study_jobs SET status='failed',error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s",(message[:500],job_id,uid));conn.commit()
+                    raise
+            return tracked
+        return decorate
+
+    @app.get('/api/study-jobs')
+    @private
+    def jobs(uid):
+        kind=request.args.get('kind','mock')
+        if kind not in {'mock','map'}:raise ValueError('Choose a study tool.')
+        with db() as (conn,cur):
+            cur.execute("UPDATE study_jobs SET status='failed',error='Creation was interrupted. Retry when ready.',updated_at=NOW() WHERE user_id=%s AND status='creating' AND updated_at<NOW()-INTERVAL '5 minutes'",(uid,))
+            cur.execute('SELECT * FROM study_jobs WHERE user_id=%s AND kind=%s ORDER BY created_at DESC LIMIT 5',(uid,kind));rows=cur.fetchall();conn.commit()
+        return jsonify(jobs=[job_data(row) for row in rows])
+
     @app.post('/api/mock-tests/generate')
     @private
+    @track_job('mock')
     def generate_mock_test(uid):
         data,topic,language=topic_request()
         count=data.get('question_count',10);minutes=data.get('time_limit_minutes',15)
@@ -196,6 +249,7 @@ def register(app,b):
 
     @app.post('/api/mindmaps/generate')
     @private
+    @track_job('map')
     def generate_mindmap(uid):
         data,topic,language=topic_request()
         limit=b['limited']('mindmap_generate',str(uid),5,5)

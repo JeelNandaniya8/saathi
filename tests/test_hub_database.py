@@ -132,6 +132,7 @@ def test_pdf_page_view_is_owned_inline_and_sandboxed(db_app):
 
 def test_today_prioritises_due_task_and_owned_upcoming_exam(db_app):
     _,client,db=db_app
+    assert client.patch('/api/workspace/preferences',json={'timezone':'UTC'}).status_code==200
     client.post('/api/tasks',json={'title':'Undated high','priority':'high'})
     client.post('/api/tasks',json={'title':'Due now','priority':'low','due_at':(datetime.now(timezone.utc)-timedelta(minutes=1)).isoformat()})
     insert(db,"INSERT INTO exam_plans(user_id,client_id,title,exam_date,timezone,daily_minutes,topics) VALUES(1,%s,'My upcoming exam',CURRENT_DATE+2,'UTC',30,'[]')",(uuid.uuid4().hex,))

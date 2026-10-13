@@ -53,6 +53,7 @@ import workspace_hub
 import response_insights
 import db_pool
 from ai_transport import send as provider_send, ProviderError
+import study_reference
 from ai_transport import post as provider_post
 from flask import Flask, request, jsonify, send_from_directory, session, Response, g, send_file, redirect, stream_with_context, has_request_context
 from pypdf import PdfReader
@@ -892,6 +893,8 @@ def user_to_dict(row):
     }
     if "study_bonus" in row:
         result["plan_label"] = "Study bonus" if row["study_bonus"] and result["plan"]=="plus" else "Saathi Plus" if result["plan"]=="plus" else "Family plan" if result["plan"]=="family" else "Free plan"
+    if "timezone" in row:
+        result['timezone']=row['timezone'] or 'Asia/Kolkata'
     return result
 
 
@@ -1069,6 +1072,8 @@ def public_styles():
 @app.get("/theme.js")
 @app.get("/chat-actions.js")
 @app.get("/chat-study.js")
+@app.get("/account-clock.js")
+@app.get("/study-jobs.js")
 @app.get("/landing-locales.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
@@ -1526,7 +1531,8 @@ def me():
     cur = conn.cursor()
     cur.execute("""SELECT u.*, COALESCE((SELECT BOOL_AND(g.source_id LIKE 'referral:%%')
         FROM access_grants g WHERE g.user_id=u.id AND g.plan=u.plan
-        AND g.revoked_at IS NULL AND g.ends_at>NOW()),FALSE) AS study_bonus
+        AND g.revoked_at IS NULL AND g.ends_at>NOW()),FALSE) AS study_bonus,
+        COALESCE((SELECT timezone FROM workspace_preferences WHERE user_id=u.id),'Asia/Kolkata') AS timezone
         FROM users u WHERE u.id=%s""", (user_id,))
     user = cur.fetchone()
     if not user:
@@ -2377,7 +2383,7 @@ def completed_chat_request(cur, conversation, user_id, request_id):
 def persist_streamed_exchange(
     user_id, conversation_id, conversation, content, user_wrote_content, mode,
     request_id, attachments, reply, ai_usage, memory_labels, entitlement,
-    is_first_user_message, file_only,
+    is_first_user_message, file_only, direct=None,
 ):
     now = datetime.now(timezone.utc)
     new_title = (
@@ -2472,6 +2478,7 @@ def persist_streamed_exchange(
         )
         assistant_message = cur.fetchone()
         assistant_message["conversation_id"] = conversation_id
+        chat_actions.stage_preview(cur, user_id, assistant_message, direct)
         chat_actions.save_requested(cur, user_id, assistant_message, content)
         study_progress = create_study_progress(
             cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
@@ -2781,6 +2788,8 @@ def conversation_messages(conversation_id):
     recent = list(reversed(cur.fetchall()))
     pending_scope = chat_intents.continuation(recent, content)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
+    language = load_user_language(user_id, cur)
+    direct = None if file_only else chat_actions.direct_reply(cur, user_id, recent + [{"role":"user","content":content,"attachments":attachments}], language)
     cur.close()
     conn.close()
 
@@ -2792,12 +2801,12 @@ def conversation_messages(conversation_id):
         "attachments": attachments,
     })
 
-    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True, turn_context)
+    memory_context, memory_labels = ("", []) if file_only or direct or study_reference.short_study(context,mode) else load_active_memory_bundle(user_id, None, mode, True, turn_context)
     try:
-        reply, ai_usage = generate_gemini_reply(
-            context, memory_context, load_user_language(user_id), mode,
-            include_usage=True, file_only=file_only,
-        )
+        if direct:
+            reply, ai_usage = direct['reply'], {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
+        else:
+            reply, ai_usage = generate_gemini_reply(context, memory_context, language, mode, include_usage=True, file_only=file_only)
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
     except Exception:
@@ -2912,6 +2921,7 @@ def conversation_messages(conversation_id):
     )
     assistant_message = cur.fetchone()
     assistant_message["conversation_id"] = conversation_id
+    chat_actions.stage_preview(cur, user_id, assistant_message, direct)
     chat_actions.save_requested(cur, user_id, assistant_message, content)
     study_progress = create_study_progress(
         cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
@@ -3040,8 +3050,9 @@ def stream_conversation_message(conversation_id):
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
     # Reuse this connection for context, then release it before streaming.
     try:
-        memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, cur, mode, True, turn_context)
         language = load_user_language(user_id, cur)
+        direct = None if file_only else chat_actions.direct_reply(cur, user_id, recent + [{"role":"user","content":content,"attachments":attachments}], language)
+        memory_context, memory_labels = ("", []) if file_only or direct or study_reference.short_study([dict(role='user',content=content,attachments=attachments)],mode) else load_active_memory_bundle(user_id, cur, mode, True, turn_context)
     finally:
         cur.close()
         conn.close()
@@ -3057,9 +3068,13 @@ def stream_conversation_message(conversation_id):
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         try:
             yield ndjson_event("ready")
-            provider = stream_gemini_reply(
-                context, memory_context, language, mode, file_only=file_only
-            )
+            if direct:
+                def direct_stream():
+                    yield direct['reply']
+                    return {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
+                provider = direct_stream()
+            else:
+                provider = stream_gemini_reply(context, memory_context, language, mode, file_only=file_only)
             while True:
                 try:
                     chunk = next(provider)
@@ -3075,7 +3090,7 @@ def stream_conversation_message(conversation_id):
             saved = persist_streamed_exchange(
                 user_id, conversation_id, conversation, content, user_wrote_content,
                 mode, request_id, attachments, reply, usage, memory_labels,
-                entitlement, is_first_user_message, file_only,
+                entitlement, is_first_user_message, file_only, direct,
             )
             yield ndjson_event("complete", data=saved)
         except GeneratorExit:
@@ -4796,6 +4811,8 @@ def export_data():
         ("response_timings", "SELECT request_id::text,conversation_id,first_text_ms,total_ms,outcome,error_code,created_at FROM response_timings WHERE user_id=%s ORDER BY id"),
         ("chat_context_permissions", "SELECT * FROM chat_context_permissions WHERE user_id=%s"),
         ("chat_action_receipts", "SELECT * FROM chat_action_receipts WHERE user_id=%s"),
+        ("chat_action_previews", "SELECT * FROM chat_action_previews WHERE user_id=%s"),
+        ("study_jobs", "SELECT * FROM study_jobs WHERE user_id=%s ORDER BY created_at"),
         ("mock_tests", "SELECT * FROM mock_tests WHERE user_id=%s ORDER BY id"),
         ("mock_test_attempts", "SELECT * FROM mock_test_attempts WHERE user_id=%s ORDER BY id"),
         ("mindmaps", "SELECT * FROM mindmaps WHERE user_id=%s ORDER BY id"),
@@ -5188,6 +5205,8 @@ def build_gemini_payload(
             "'[filename, Page N]' format supplied with the page text."
         )
 
+    system_text += "\nFor study formulas, state the key applicability conditions next to the formula (for example, equally likely outcomes for counting probabilities). Never claim generated practice is independently verified."
+
     generation_config = {
         "maxOutputTokens": mode_details["max_output_tokens"],
         "temperature": mode_details["temperature"],
@@ -5285,14 +5304,15 @@ def generate_gemini_reply(
     messages, memory_context="", language="en", mode="normal", include_usage=False,
     file_only=False,
 ):
-    local = chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None
+    local = (chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None) or (None if file_only else study_reference.answer(messages,language,mode))
     if local:
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
         return (local, usage) if include_usage else local
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
+    if not file_only:payload=study_reference.compact_payload(payload,messages,language,mode) or payload
 
     try:
-        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES)
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
         try:
             result = response.json()
         finally:
@@ -5308,12 +5328,13 @@ def generate_gemini_reply(
 
 def stream_gemini_reply(messages, memory_context="", language="en", mode="normal", file_only=False):
     """Yield provider text deltas and return final token usage on completion."""
-    local = chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None
+    local = (chat_actions.local_reply(messages, memory_context, language, file_only) if mode == "normal" else None) or (None if file_only else study_reference.answer(messages,language,mode))
     if local:
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
         yield local
         return usage
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
+    if not file_only:payload=study_reference.compact_payload(payload,messages,language,mode) or payload
     response = None
     usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
     finish_reason = None
@@ -5321,7 +5342,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
     headers_ms = first_text_ms = None
     outcome = "interrupted"
     try:
-        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, stream=True)
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, stream=True, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
         headers_ms = round((monotonic() - started) * 1000)
         # Requests otherwise buffers SSE data in 512-byte blocks and may infer
         # Latin-1 when a provider omits a charset. One-byte line iteration lets

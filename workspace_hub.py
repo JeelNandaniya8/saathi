@@ -77,7 +77,7 @@ def register(app, b):
         with db() as (_, cur):
             cur.execute('SELECT timezone FROM workspace_preferences WHERE user_id=%s', (uid,))
             pref = cur.fetchone()
-            zone = ZoneInfo(pref['timezone'] if pref else 'UTC')
+            zone = ZoneInfo(pref['timezone'] if pref else 'Asia/Kolkata')
             tomorrow = datetime.combine(now.astimezone(zone).date() + timedelta(days=1), time.min, zone)
             cur.execute('''SELECT * FROM tasks WHERE user_id=%s AND completed=FALSE AND (due_at IS NULL OR due_at<%s)
                 ORDER BY CASE WHEN due_at<%s THEN 0 WHEN due_at IS NOT NULL THEN 1 ELSE 2 END,

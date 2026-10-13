@@ -9,7 +9,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from flask import jsonify,request
 
-DEFAULTS={'goal':'explore','onboarding_done':False,'timezone':'UTC','quiet_enabled':False,
+DEFAULTS={'goal':'explore','onboarding_done':False,'timezone':'Asia/Kolkata','quiet_enabled':False,
           'quiet_start':'22:00','quiet_end':'08:00','notification_mode':'immediate','digest_time':'18:00','celebrations':False}
 
 

@@ -132,7 +132,7 @@ def test_quiet_hours_filter_before_claim_and_digest_is_once_per_local_day(db_app
     # A one-hour window around now works across midnight without relying on wall-clock hour.
     now=datetime.now(timezone.utc)
     start=(now-timedelta(minutes=30)).strftime('%H:%M');end=(now+timedelta(minutes=30)).strftime('%H:%M')
-    assert c.patch('/api/workspace/preferences',json={'quiet_enabled':True,'quiet_start':start,'quiet_end':end}).status_code==200
+    assert c.patch('/api/workspace/preferences',json={'timezone':'UTC','quiet_enabled':True,'quiet_start':start,'quiet_end':end}).status_code==200
     assert push.deliver_due(vars(b))['sent']==0 and not calls
     assert one(db,'SELECT count(*) AS n FROM push_deliveries')['n']==0
     assert c.patch('/api/workspace/preferences',json={'quiet_enabled':False,'notification_mode':'digest','digest_time':'00:00'}).status_code==200
