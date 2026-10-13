@@ -76,3 +76,13 @@ def test_clarification_continuation_is_cancelable_and_cannot_replace_new_intent(
     for answer in ['Cancel','No thanks','> Use this instead','Save this as a note']:
         assert intents.continuation(recent,answer)==''
     assert intents.continuation([dict(role='user',content='Make a study plan'),dict(role='assistant',content='Plan ready <SAATHI_ACTION>{}</SAATHI_ACTION>')],'Yes')==''
+
+
+@pytest.mark.parametrize('question',['Which subject and how much time each day?','Sure, which chapter should I use?','કયા વિષય માટે બનાવવું છે?','कौन सा अध्याय चाहिए?'])
+def test_clarification_questions_can_request_missing_details(question):
+    assert intents.clarification(question)
+
+
+@pytest.mark.parametrize('claim',['Saved. What else?','Which chapter? I saved it.','Which subject have I created a plan for?','કયા વિષય માટે સાચવ્યું?','क्या मैंने सेव कर दिया?'])
+def test_success_claim_is_not_a_clarification(claim):
+    assert not intents.clarification(claim)

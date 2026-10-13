@@ -299,8 +299,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await share.getByRole('button',{name:'Confirm: Revoke access',exact:true}).click();await share.getByText(/Revoked/).waitFor();assert.equal(sharedStatus,'revoked');
    await share.getByRole('button',{name:'Close',exact:true}).click();
    // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
-   await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:'Overview',children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
+   await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:String.raw`Overview \(\frac{1}{2}\)`,children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
    assert.equal(await page.locator('.mm-node').count(),25);
+   assert.equal(await page.locator('.mm-desc mfrac').count(),1);
    await page.getByRole('button',{name:'Collapse Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),20);
    await page.getByRole('button',{name:'Expand Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),25);
    const download=page.waitForEvent('download');await page.evaluate(()=>exportMindmapPng());const png=await download;
@@ -462,6 +463,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await actionDialog.getByLabel('Title',{exact:true}).fill('Edited chat task');assert.equal(actionSaves,0);
    await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(actionSaves,1);
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
+   await page.evaluate(()=>{const box=document.createElement('div');box.id='confirmed-chat-map';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:994,content:'Mindmap created and saved.',action_receipt:{kind:'mindmap',resource_id:62},action_resource:{summary:'Saved study map',root:{label:String.raw`\(P(E)\)`,desc:String.raw`## Chance
+- Formula: \(\frac{1}{2}\)
+<img src=x onerror=alert(1)>`,children:[]}}})});
+   assert.equal(await page.locator('#confirmed-chat-map mfrac').count(),1);
+   assert.equal(await page.locator('#confirmed-chat-map li').count(),1);
+   assert.equal(await page.locator('#confirmed-chat-map img').count(),0);
+   await page.evaluate(()=>{const box=document.createElement('div');box.id='failed-markerless-action';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:993,content:'Failed: Nothing was saved.\nRetry when ready.',action_error:'Nothing was saved.'})});
+   assert.equal(await page.locator('#failed-markerless-action').getByRole('button',{name:'Retry',exact:true}).count(),1);
+   assert.equal(await page.locator('#failed-markerless-action').getByRole('button',{name:'Review save preview',exact:true}).count(),0);
    const actionWrites=actionSaves;
    await page.evaluate(()=>{const box=document.createElement('div');box.id='confirmed-chat-memory';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:998,auto_action:true,action_receipt:{kind:'memory',resource_id:12},content:'Details prepared. <SAATHI_ACTION>{"kind":"memory","title":"Home city","text":"Ahmedabad <script>window.injected=true</script>"}</SAATHI_ACTION>'})});
    await page.locator('#confirmed-chat-memory').getByText('Saved to Memory',{exact:true}).waitFor();

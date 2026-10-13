@@ -2484,7 +2484,7 @@ def persist_streamed_exchange(
         assistant_message = cur.fetchone()
         assistant_message["conversation_id"] = conversation_id
         chat_actions.stage_preview(cur, user_id, assistant_message, direct)
-        chat_actions.save_requested(cur, user_id, assistant_message, content)
+        chat_actions.save_requested(cur, user_id, assistant_message, content, direct)
         study_progress = create_study_progress(
             cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
         )
@@ -2929,7 +2929,7 @@ def conversation_messages(conversation_id):
     assistant_message = cur.fetchone()
     assistant_message["conversation_id"] = conversation_id
     chat_actions.stage_preview(cur, user_id, assistant_message, direct)
-    chat_actions.save_requested(cur, user_id, assistant_message, content)
+    chat_actions.save_requested(cur, user_id, assistant_message, content, direct)
     study_progress = create_study_progress(
         cur, user_id, conversation_id, assistant_message["id"], mode, reply, now
     )

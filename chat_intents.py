@@ -87,3 +87,8 @@ def continuation(recent, answer):
 
 def explicit(text):
     return any(automatic(text,k,op) for k in ('task','reminder','note','memory','habit','journal','checkin','plan','mindmap') for op in ('create','edit','pause','resume','snooze','complete','delete'))
+
+
+def clarification(text):
+    text=str(text or '').strip().lstrip('*# ')
+    return bool(len(text)<=500 and text.endswith('?') and not re.search(r'[.!?\n।。]',text[:-1]) and re.match(r'(?:(?:sure|okay)[, ]+)?(?:which|what|when|where|how much|how many|how long|can you|could you|would you|do you|please|કય|શું|કેટલ|ક્યારે|ક્યાં|કૃપા|कौन|क्या|कितन|कब|कहाँ|कृपया)',text,re.I) and not re.search(r'\b(?:saved|created|added|updated|deleted|paused|resumed|snoozed|scheduled|stored|recorded|ready|set|done|complete|completed|success)\b|સાચવ્યું|સાચવાય|બનાવ્યું|થઈ ગયું|सेव कर|सहेज|बना दिया|हो गया',text,re.I))
