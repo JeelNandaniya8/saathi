@@ -62,7 +62,7 @@ def sources(text):
     patterns = {'tasks':r'work|task|plan|revision|કામ|યોજના|काम|योजना',
                 'reminders':r'remind|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
-                'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|નોંધ|नोट',
+                'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ).*નોંધ|નોંધ.*(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ)|(?:पढ़|दिखा|सारांश|बदल|हटा).*नोट|नोट.*(?:पढ़|दिखा|सारांश|बदल|हटा)',
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
                 'exams':r'exam|પરીક્ષા|परीक्षा', 'memories':r'memor|remember|birthday|home city|address|યાદ|जन्मदिन|याद'}
     result = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}

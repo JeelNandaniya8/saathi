@@ -41,6 +41,10 @@ def test_one_turn_sources_do_not_implicitly_share_private_notes():
     assert intents.sources('Summarise my notes')=={'notes'}
     assert intents.sources('Make flashcards from my notes')=={'notes'}
     assert 'notes' not in intents.sources('Make a note of this formula')
+    assert 'notes' not in intents.sources('આની નોંધ બનાવો')
+    assert 'notes' not in intents.sources('इसका नोट बनाओ')
+    assert 'notes' in intents.sources('મારી નોંધ વાંચો')
+    assert 'notes' in intents.sources('मेरे नोट पढ़ो')
 
 
 @pytest.mark.parametrize('text,mode', [('Make flashcards of this','flashcards'),
