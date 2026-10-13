@@ -108,7 +108,7 @@ def register(app,b):
             if not reminder['active'] or reminder['next_run_at'].isoformat()!=expected:
                 return jsonify(ok=True,already_completed=True,reminder=b['reminder_to_dict'](reminder))
             if reminder['next_run_at']>now:return jsonify(error='This reminder is not due yet.'),409
-            next_run,active=b['next_reminder_occurrence'](reminder['next_run_at'],reminder['recurrence'],now)
-            cur.execute('UPDATE reminders SET next_run_at=%s,active=%s WHERE id=%s AND user_id=%s RETURNING *',(next_run,active,reminder_id,uid))
+            next_run,active=b['next_reminder_occurrence'](reminder.get('snoozed_from') or reminder['next_run_at'],reminder['recurrence'],now)
+            cur.execute('UPDATE reminders SET next_run_at=%s,active=%s,snoozed_from=NULL WHERE id=%s AND user_id=%s RETURNING *',(next_run,active,reminder_id,uid))
             updated=cur.fetchone();conn.commit()
         return jsonify(ok=True,reminder=b['reminder_to_dict'](updated))

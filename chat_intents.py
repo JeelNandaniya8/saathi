@@ -68,6 +68,7 @@ def sources(text):
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
                 'exams':r'exam|પરીક્ષા|परीक्षा', 'memories':r'memor|remember|birthday|home city|address|યાદ|जन्मदिन|याद'}
     result = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}
+    if re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending).*\btoday\b|(?:આજ|आज).*(?:બાકી|बाकी)',text,re.I):result.add('tasks')
     if re.search(r'activity today|આજ.*પ્રવૃત્તિ|आज.*गतिविधि', text, re.I):
         result.update(('tasks', 'reminders', 'habits'))
     return result

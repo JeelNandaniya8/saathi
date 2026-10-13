@@ -83,7 +83,7 @@ async function generateMockTest(event){
   const btn=$('testSubmitBtn');
   btn.disabled=true;
   const originalText=btn.textContent;
-  btn.textContent='Generating exam with AI... ⏳';
+  btn.textContent='Checking allowance…';
   const payload={
     topic:$('testTopic').value.trim(),
     question_count:parseInt($('testCount').value,10)||10,
@@ -92,7 +92,7 @@ async function generateMockTest(event){
     language:$('testLanguage').value||'en'
   };
   try{
-    const res=window.SaathiJobs?await SaathiJobs.create('mock',payload,api):await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
+    const res=window.SaathiJobs?await SaathiJobs.create('mock',payload,api,()=>{btn.textContent='Generating exam with AI…'}):await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
     state.activeTest=res.test;
     state.activeTest.questions=res.test.questions||[];
     if(!state.activeTest.questions.length)throw new Error('This test has no questions. Please retry.');
@@ -161,7 +161,7 @@ function renderQuestion(index){
   const qId=q.id||(index+1);
   
   $('qNumberDisplay').textContent=`Question ${index+1} of ${questions.length}`;
-  $('qTextDisplay').textContent=q.question;
+  SaathiMarkup.render($('qTextDisplay'),q.question);
   
   const isFlagged=state.activeTestFlags.has(qId);
   const flagBtn=$('qFlagBtn');
@@ -182,7 +182,7 @@ function renderQuestion(index){
     badge.className='option-badge';
     badge.textContent=letter;
     const textSpan=document.createElement('span');
-    textSpan.textContent=optText;
+    SaathiMarkup.inline(textSpan,optText);
     optBtn.append(badge,textSpan);
     optBtn.onclick=()=>selectOption(qId,letter);
     optionsWrap.append(optBtn);
@@ -372,7 +372,7 @@ function renderTestResults(data){
     
     const qPrompt=document.createElement('p');
     qPrompt.style.cssText='font-size:15px;font-weight:600;margin:0 0 14px;color:var(--ink)';
-    qPrompt.textContent=item.question;
+    SaathiMarkup.render(qPrompt,item.question);
     
     const answersRow=document.createElement('div');
     answersRow.style.cssText='display:flex;gap:18px;font-size:13px;flex-wrap:wrap;margin-bottom:12px';
@@ -386,7 +386,7 @@ function renderTestResults(data){
     
     const expBox=document.createElement('div');
     expBox.className='review-explanation';
-    expBox.innerHTML=`<strong>💡 Detailed Explanation:</strong><p style="margin:6px 0 0">${escapeText(item.explanation||'Review this topic carefully.')}</p>`;
+    const expHeading=document.createElement('strong');expHeading.textContent='Explanation';const explanation=document.createElement('div');SaathiMarkup.render(explanation,item.explanation||'Review this topic carefully.');expBox.append(expHeading,explanation);
     
     card.append(head,qPrompt,answersRow,expBox);
     list.append(card);

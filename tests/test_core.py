@@ -747,9 +747,9 @@ def test_attachment_usage_payload_keeps_retry_allowance_current(backend):
             return {"count": 3}
 
     payload = backend.attachment_usage_payload(
-        Cursor(), 7, backend.PLAN_ENTITLEMENTS["free"]
+        Cursor(), 7, backend.PLAN_ENTITLEMENTS["free"],datetime(2026,10,13,23,59,tzinfo=timezone.utc)
     )
-    assert payload == {"used_today": 3, "remaining_today": 2, "per_day": 5}
+    assert payload == {"used_today": 3, "remaining_today": 2, "per_day": 5,"reset_at":"2026-10-14T00:00:00+00:00"}
 
 
 def test_message_payload_exposes_only_saved_memory_labels_and_feedback(backend):

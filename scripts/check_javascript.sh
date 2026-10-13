@@ -45,3 +45,5 @@ node tests/chat_actions.cjs
 node --check account-clock.js
 node --check study-jobs.js
 node tests/account_clock.cjs
+
+node --check message-format.js

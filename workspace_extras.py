@@ -79,9 +79,14 @@ def register(app,b):
             note=cur.fetchone();conn.commit()
         return jsonify(note=note_dict(note)),201
 
-    @app.route('/api/quick-notes/<int:note_id>',methods=['PATCH','DELETE'])
+    @app.route('/api/quick-notes/<int:note_id>',methods=['GET','PATCH','DELETE'])
     @private
     def change_note(uid,note_id):
+        if request.method=='GET':
+            with db() as (_,cur):
+                cur.execute('SELECT * FROM quick_notes WHERE id=%s AND user_id=%s',(note_id,uid));note=cur.fetchone()
+                if not note:return jsonify(error='Note not found.'),404
+                return jsonify(note=note_dict(note))
         data=request.get_json(silent=True)
         if not isinstance(data,dict) or type(data.get('version')) is not int or data['version']<1:
             raise ValueError('Refresh this note before changing it.')

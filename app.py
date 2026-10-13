@@ -31,6 +31,7 @@ import unicodedata
 import base64
 from decimal import Decimal
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from io import BytesIO
 from pathlib import Path
 
@@ -1074,6 +1075,8 @@ def public_styles():
 @app.get("/chat-study.js")
 @app.get("/account-clock.js")
 @app.get("/study-jobs.js")
+@app.get("/message-format.js")
+@app.get("/vendor/katex-0.19.0.min.js")
 @app.get("/landing-locales.js")
 @app.get("/workspace.js")
 @app.get("/daily-workspace.js")
@@ -2280,8 +2283,10 @@ def attachment_usage_today(cur, user_id, now=None):
 
 
 def attachment_usage_payload(cur, user_id, entitlement, now=None):
+    now = now or datetime.now(timezone.utc)
     used_today = attachment_usage_today(cur, user_id, now)
     return {
+        "reset_at": (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
         "used_today": used_today,
         "remaining_today": max(entitlement["attachments_per_day"] - used_today, 0),
         "per_day": entitlement["attachments_per_day"],
@@ -2769,11 +2774,12 @@ def conversation_messages(conversation_id):
     if attachments:
         used_today = attachment_usage_today(cur, user_id)
         if used_today + len(attachments) > entitlement["attachments_per_day"]:
+            allowance = attachment_usage_payload(cur, user_id, entitlement)
+            zone = chat_actions.account_timezone(cur, user_id)
+            reset = datetime.fromisoformat(allowance['reset_at']).astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')
             cur.close()
             conn.close()
-            return jsonify({
-                "error": "You have reached today's attachment limit. Try again tomorrow."
-            }), 429
+            return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
 
     cur.execute(
         """
@@ -2851,11 +2857,12 @@ def conversation_messages(conversation_id):
         used_today = attachment_usage_today(cur, user_id, now)
         if used_today + len(attachments) > entitlement["attachments_per_day"]:
             conn.rollback()
+            allowance = attachment_usage_payload(cur, user_id, entitlement)
+            zone = chat_actions.account_timezone(cur, user_id)
+            reset = datetime.fromisoformat(allowance['reset_at']).astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')
             cur.close()
             conn.close()
-            return jsonify({
-                "error": "You have reached today's attachment limit. Try again tomorrow."
-            }), 429
+            return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
     cur.execute(
         """
         INSERT INTO messages (
@@ -3032,9 +3039,12 @@ def stream_conversation_message(conversation_id):
     if attachments:
         used_today = attachment_usage_today(cur, user_id)
         if used_today + len(attachments) > entitlement["attachments_per_day"]:
+            allowance = attachment_usage_payload(cur, user_id, entitlement)
+            zone = chat_actions.account_timezone(cur, user_id)
+            reset = datetime.fromisoformat(allowance['reset_at']).astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')
             cur.close()
             conn.close()
-            return jsonify({"error": "You have reached today's attachment limit. Try again tomorrow."}), 429
+            return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
     cur.execute(
         """
         SELECT id, role, content, created_at
@@ -3083,7 +3093,8 @@ def stream_conversation_message(conversation_id):
                         usage = finished.value
                     break
                 chunks.append(chunk)
-                yield ndjson_event("delta", text=chunk)
+                if not chat_intents.explicit(turn_context):
+                    yield ndjson_event("delta", text=chunk)
             reply = "".join(chunks).strip()
             if not reply:
                 raise RuntimeError("Saathi could not prepare a reply. Please try again.")
@@ -3153,6 +3164,9 @@ def regenerate_conversation_reply(conversation_id):
     )
     if last_user_index is None:
         return jsonify({"error": "Send a message before asking for another reply."}), 400
+
+    if chat_intents.explicit(rows[last_user_index]['content']) or chat_intents.sources(rows[last_user_index]['content']):
+        return jsonify(error="For saved work, send the command or question again to read the latest state. Use Retry for a failed save."), 409
 
     last_user_id = rows[last_user_index]["id"]
     mode = normalise_chat_mode(rows[last_user_index].get("ai_mode"))
@@ -3556,7 +3570,7 @@ def reminder_detail(reminder_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        "SELECT * FROM reminders WHERE id = %s AND user_id = %s",
+        "SELECT * FROM reminders WHERE id = %s AND user_id = %s FOR UPDATE",
         (reminder_id, user_id),
     )
     reminder = cur.fetchone()
@@ -3585,6 +3599,10 @@ def reminder_detail(reminder_id):
             (reminder_id, user_id),
         )
     elif action == "snooze":
+        if not reminder['active'] or reminder['next_run_at'] > datetime.now(timezone.utc):
+            cur.close()
+            conn.close()
+            return jsonify(error="Only due, active reminders can be snoozed. Use Edit to change a future date or time.", code="REMINDER_NOT_DUE"), 409
         try:
             minutes = min(max(int(data.get("minutes") or 30), 5), 1440)
         except (TypeError, ValueError):
@@ -3592,16 +3610,16 @@ def reminder_detail(reminder_id):
             conn.close()
             return jsonify({"error": "Choose a valid snooze time."}), 400
         cur.execute(
-            "UPDATE reminders SET next_run_at = %s, active = TRUE WHERE id = %s AND user_id = %s RETURNING *",
+            "UPDATE reminders SET snoozed_from = COALESCE(snoozed_from,next_run_at), next_run_at = %s, active = TRUE WHERE id = %s AND user_id = %s RETURNING *",
             (datetime.now(timezone.utc) + timedelta(minutes=minutes), reminder_id, user_id),
         )
     elif action == "complete":
         now = datetime.now(timezone.utc)
         next_run, active = next_reminder_occurrence(
-            reminder["next_run_at"], reminder["recurrence"], now
+            reminder.get("snoozed_from") or reminder["next_run_at"], reminder["recurrence"], now
         )
         cur.execute(
-            "UPDATE reminders SET next_run_at = %s, active = %s WHERE id = %s AND user_id = %s RETURNING *",
+            "UPDATE reminders SET next_run_at = %s, active = %s, snoozed_from = NULL WHERE id = %s AND user_id = %s RETURNING *",
             (next_run, active, reminder_id, user_id),
         )
     elif action == "update":
@@ -3631,7 +3649,7 @@ def reminder_detail(reminder_id):
             """
             UPDATE reminders
             SET title = %s, note = %s, next_run_at = %s, recurrence = %s,
-                active = %s, email_enabled = %s
+                active = %s, email_enabled = %s, snoozed_from = NULL
             WHERE id = %s AND user_id = %s
             RETURNING *
             """,

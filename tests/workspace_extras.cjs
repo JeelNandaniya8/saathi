@@ -25,6 +25,7 @@ function workspaceEnvironment(api,storage=null){
   const env=workspaceEnvironment(async(path,options={})=>{
     requests.push([path,options.method||'GET']);
     if(path==='/api/quick-notes'&&!options.method){if(pendingRefresh)return pendingRefresh;return {notes:notes.map(n=>({...n}))}}
+    if(path==='/api/quick-notes/1'&&!options.method)return {note:{...notes[0]}};
     const data=JSON.parse(options.body||'{}');
     if(options.method==='POST'){
       if(notes.length)return {note:{...notes[0]},replayed:true};
@@ -107,7 +108,7 @@ function workspaceEnvironment(api,storage=null){
   // Reload restores unsaved note text and its original conflict version.
   class Storage{getItem(k){return this[k]??null}setItem(k,v){this[k]=String(v)}removeItem(k){delete this[k]}}
   const storage=new Storage();let recoveredVersion;
-  const noteApi=async(path,options={})=>{if(options.method==='PATCH'){recoveredVersion=JSON.parse(options.body).version;throw Error('Note changed on another device')}return {notes:[{id:8,client_id:webcrypto.randomUUID(),version:2,title:'Saved',content:'Server content',updated_at:new Date().toISOString()}]}};
+  const noteApi=async(path,options={})=>{if(options.method==='PATCH'){recoveredVersion=JSON.parse(options.body).version;throw Error('Note changed on another device')}const note={id:8,client_id:webcrypto.randomUUID(),version:2,title:'Saved',content:'Server content',updated_at:new Date().toISOString()};return path==='/api/quick-notes/8'?{note}:{notes:[note]}};
   const beforeReload=workspaceEnvironment(noteApi,storage);beforeReload.controller.connect({user:{id:1},api:noteApi});await beforeReload.controller.openNote(8);
   const noteUi=beforeReload.body.children[0].parts;noteUi.content.value='My unsaved edit';noteUi.content.events.input();
   const raw=JSON.parse(storage.getItem('saathi-draft-v1:1:note:8'));raw.version=1;storage.setItem('saathi-draft-v1:1:note:8',JSON.stringify(raw));
