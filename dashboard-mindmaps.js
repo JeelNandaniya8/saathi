@@ -7,18 +7,16 @@ async function handleMindmapSubmit(event){
   const depth=$('mindmapDepth')?.value||'standard';
   const btn=$('mindmapSubmitBtn');
   btn.disabled=true;
-  btn.textContent='Generating mindmap…';
+  btn.textContent='Checking allowance…';
   try{
-    const res=await api('/api/mindmaps/generate',{
-      method:'POST',
-      body:JSON.stringify({topic,language:state.user?.language||'en'})
-    });
+    const res=await SaathiJobs.create('map',{topic,language:state.user?.language||'en'},api,()=>{btn.textContent='Generating mindmap…'});
+    if(!res.mindmap?.id||!res.mindmap?.data?.root)throw Error('Failed: no saved mindmap was returned. Retry.');
     state.activeMindmap=res.mindmap;
     if(!state.mindmaps)state.mindmaps=[];
     state.mindmaps.unshift(res.mindmap);
     renderMindmapsHistory();
     displayMindmap(res.mindmap);
-    toast('Mindmap generated successfully! ✨','success');
+    toast('Mindmap created and saved.','success');
   }catch(err){
     if(err.message&&err.message.includes('Upgrade to Saathi Plus')){
       openUpgradeModal();

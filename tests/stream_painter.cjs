@@ -11,7 +11,7 @@ assert.equal(renders.length,1,'burst does not repeatedly parse Markdown');
 now=80;scheduled();assert.equal(renders.length,2);assert.equal(renders[1],message.content);
 context.el.messages.scrollTop=0;message.content+='tail';painter.update();now=160;scheduled();assert.equal(scrolls,2,'reading older content does not jump to bottom');
 message.content+='pending';painter.update();painter.cancel();assert.equal(scheduled,null);painter.update();assert.equal(renders.length,3);
-assert.ok(source.includes('el.input.disabled=Boolean(state.loadingConversation||state.historyError)'));
+assert.ok(source.includes('el.input.disabled=false'));assert.ok(source.includes('Boolean(state.creatingConversation||state.loadingConversation||state.historyError)'));
 assert.ok(source.includes("if(!el.input.value.trim())window.SaathiRecovery?.removeDraft"));
 message.content='Visible<SAATHI_ACTION>{partial';now=300;const actionPainter=context.createStreamPainter(message);actionPainter.update();assert.equal(renders.at(-1),'Visible','Streaming previews never expose action JSON');actionPainter.cancel();
 console.log('PASS immediate first chunk, coalesced burst, scroll intent, cancellation and draft guards');

@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const state={user:null,api:null,notify:()=>{},notes:[],loaded:false,selected:null,clientId:null,dirty:false,busy:false,pushConfig:null,pushId:null,pushBusy:false};
-  let dialog,ui={},notesRequest=null,notesRevision=0;
+  let dialog,ui={},notesRequest=null,notesRevision=0,noteOpenSequence=0;
   function uuid(){if(crypto.randomUUID)return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;return Array.from(b,(v,i)=>([4,6,8,10].includes(i)?'-':'')+v.toString(16).padStart(2,'0')).join('')}
   function status(text,error=false){ui.status.textContent=text;ui.status.classList.toggle('error',error)}
   function renderAvatar(container,user){
@@ -34,7 +34,7 @@
   function canSwitch(){if(!state.dirty)return true;status('Save or discard your edits before opening another note.',true);ui.save.focus();return false}
   function selectNote(note,force=false){
     if(state.busy||(!force&&!canSwitch()))return;
-    state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;state.draftVersion=null;
+    noteOpenSequence++;state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;state.draftVersion=null;
     ui.title.value=note?.title||'';ui.content.value=note?.content||'';ui.delete.hidden=!note;ui.discard.hidden=true;state.confirmDelete=false;ui.delete.textContent='Delete note';
     ui.counter.textContent=ui.content.value.length+' / 10,000';status(note?'Saved to your account.':'Capture a thought. Save when you’re ready.');renderList();
     const draft=window.SaathiRecovery?.getDraft('note',noteDraftKey());
@@ -69,7 +69,7 @@
     return notesRequest;
   }
   async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.content.focus()}
-  async function openNote(id){await openNotes();if(state.loaded&&canSwitch()){const note=state.notes.find(item=>item.id===id);if(note)selectNote(note);else status("This note is no longer available. Refresh your notes.",true)}}
+  async function openNote(id){await openNotes();if(!canSwitch()||!dialog.open)return;const sequence=++noteOpenSequence;status('Opening the saved note…');try{const result=await state.api('/api/quick-notes/'+id);if(sequence!==noteOpenSequence||!canSwitch()||!dialog.open)return;if(result.note?.id!==id)throw Error('The requested note could not be verified. Retry.');state.notes=[result.note,...state.notes.filter(item=>item.id!==result.note.id)];selectNote(result.note)}catch(error){status(error.message||'This note is no longer available.',true)}}
   async function saveNote(event){
     event.preventDefault();if(state.busy)return;if(!ui.content.value.trim()){status('Write something before saving.',true);return}
     invalidateNotesLoad();state.busy=true;ui.save.disabled=true;ui.delete.disabled=true;status('Saving…');
@@ -179,6 +179,7 @@
     document.querySelectorAll('[data-quick-notes]').forEach(button=>{button.onclick=openNotes});
     document.querySelectorAll('[data-push-toggle]').forEach(button=>{button.onclick=togglePush});
     loadPush();
+    const linkedNote=(window.location?.search||'').match(/[?&]note=(\d+)(?:&|$)/)?.[1];if(linkedNote&&/^\d+$/.test(linkedNote))openNote(Number(linkedNote));
   }
   window.SaathiWorkspace={connect,renderAvatar,openNotes,openNote,togglePush,prepareLogout,pushStatus:()=>!pushSupported()?'off':state.pushConfig===null?'unknown':state.pushConfig.enabled&&state.pushId&&Notification.permission==='granted'?'on':'off',testPush:async()=>{if(!state.pushId)throw Error('Enable background alerts on this device first.');const result=await state.api('/api/push/test',{method:'POST',body:JSON.stringify({subscription_id:state.pushId})});state.notify(result.message)},pushActive:()=>Boolean(state.pushId),pushConfigured:()=>Boolean(state.pushConfig?.enabled)};
 })();

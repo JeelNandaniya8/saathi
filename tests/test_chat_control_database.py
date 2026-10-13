@@ -74,6 +74,10 @@ def test_reminder_changes_match_exact_owned_snapshot_and_confirm_deletion(db_app
         mid,_=seed(connect,command,dict(draft,operation=operation))
         result=execute(c,mid);assert result.status_code==201,result.json
         assert one(connect,'SELECT active FROM reminders WHERE id=%s',(rid,))['active']==(operation=='resume')
+    due=datetime.now(timezone.utc)-timedelta(minutes=1)
+    with connect() as conn:
+        with conn.cursor() as cur:cur.execute('UPDATE reminders SET next_run_at=%s WHERE id=%s',(due,rid))
+    draft['expected_at']=due.isoformat()
     snoozed=datetime.now(timezone.utc)+timedelta(minutes=30)
     mid,_=seed(connect,'Snooze that reminder 30 minutes',dict(draft,operation='snooze',at=snoozed.isoformat()))
     assert execute(c,mid).status_code==201

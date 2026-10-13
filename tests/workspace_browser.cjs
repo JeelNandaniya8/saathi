@@ -23,8 +23,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     if(pathname.startsWith('/api/')){
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
-     if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
+     if(pathname==='/api/conversations/7/messages'){if(chatProfilePending)historyWhileProfilePending=true;await new Promise(resolve=>setTimeout(resolve,850))}
      if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}};assert.ok(body().job_id);const {job_id,...input}=body();inlineJobs.unshift({id:job_id,kind:'mock',request:input,status:status===503?'failed':'ready',result_id:status===503?null:53,error:status===503?'Fixture creation failed':null});if(data.test)inlineSaved=data.test}
+     else if(pathname==='/api/study-allowance')data={allowance:{kind:url.searchParams.get('kind'),remaining:2,reset_local:'2026-10-15, 05:30 AM · Asia/Kolkata'}};
      else if(pathname==='/api/study-jobs')data={jobs:inlineJobs.filter(job=>job.kind===url.searchParams.get('kind'))};
      else if(pathname==='/api/mock-tests/53')data={test:inlineSaved,...(inlineSubmits?{result:{attempt:{score:1,total_questions:5},review:[]}}:{})};
      else if(pathname==='/api/mock-tests/53/submit'){inlineSubmits++;assert.equal(body().answers['1'],'A');data={attempt:{score:1,total_questions:5},review:[{id:1,question:'Fixture question 1',user_answer:'A',correct_answer:'A',explanation:'Literal <script>unsafe</script> explanation'}]}}
@@ -56,6 +57,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/referrals')data={referral_code:'fixture',referral_url:base,invited:0,qualified:0,bonus_days:0};
      else if(pathname==='/api/mock-tests/history')data={tests:[]};
      else if(pathname==='/api/mindmaps/history')data={mindmaps:[]};
+     else if(pathname==='/api/quick-notes/3')data={note:{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}};
      else if(pathname==='/api/quick-notes')data={notes:[{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}]};
      else if(pathname==='/api/workspace/search'){searches++;data={items:[{kind:'task',id:1,title:'Search',excerpt:'<img src=x onerror=alert(1)>'}]}}
      else if(pathname==='/api/focus'){
@@ -314,8 +316,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#tasks').getByRole('button',{name:'Completed',exact:true}).click();
    await page.locator('#tasks .item.done').waitFor();
    await page.goto(base+'/chat?conversation=7');
-   await page.locator('.message.user').waitFor();
+   await page.waitForFunction(()=>!document.querySelector('#chatInput').disabled);await page.locator('#chatInput').fill('Draft typed while history loads');assert.equal(await page.locator('#sendButton').isDisabled(),true,'Send waits for consistent saved history');
+   await page.locator('.message.user').waitFor();assert.equal(await page.locator('#chatInput').inputValue(),'Draft typed while history loads');await page.locator('#chatInput').fill('');
    assert.equal(historyWhileProfilePending,true,'History should load concurrently with the profile');
+   const math=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);SaathiMarkup.render(box,"## Study\n- First\n- Second\n\n\\(P(E)=\\frac{1}{\\sqrt{4}}\\)\n\\[\\frac{a+b}{c}\\]\nBare: \\frac{x}{y}\n`\\frac{x}{y}`\n<img src=x onerror=alert(1)>\n\\(\\href{javascript:alert(1)}{x}\\)\n\n```js\nconst x = 1;\n```");const result={fractions:box.querySelectorAll('mfrac').length,roots:box.querySelectorAll('msqrt').length,heading:box.querySelector('h2')?.textContent,list:box.querySelectorAll('li').length,code:box.querySelector('pre code')?.textContent,unsafe:box.querySelectorAll('img,script,a[href^="javascript:"]').length};box.remove();return result});
+   assert.equal(math.fractions,3);assert.equal(math.roots,1);assert.equal(math.heading,'Study');assert.equal(math.list,2);assert.equal(math.code,'const x = 1;');assert.equal(math.unsafe,0);
+   await page.evaluate(()=>{const host=document.createElement('div');host.id='audit-note-link';document.body.append(host);SaathiChatActions.attach(host,{id:996,role:'assistant',content:'Saved to Notes. <SAATHI_ACTION>{"kind":"note","title":"Search","text":"Search"}</SAATHI_ACTION>',action_receipt:{kind:'note',resource_id:3},action_resource:{id:3}})});
+   await page.locator('#audit-note-link a').click();await page.locator('[data-qn="content"]').waitFor();assert.equal(await page.locator('[data-qn="content"]').inputValue(),'Search');assert.equal(new URL(page.url()).pathname,'/chat','Exact note opens without navigating to Today');await page.locator('[data-qn="close"]').click();await page.locator('#audit-note-link').evaluate(node=>node.remove());
+
    assert.equal(await page.locator('#chatMode').evaluate(node=>Boolean(node.closest('.composer-actions'))),true,'Mode shares the compact composer action row');
    const layout=await page.evaluate(()=>{const composer=document.querySelector('#composer').getBoundingClientRect(),toolbar=document.querySelector('.composer-toolbar').getBoundingClientRect(),send=document.querySelector('#sendButton').getBoundingClientRect();return {height:composer.height,toolbarBottom:toolbar.bottom,sendBottom:send.bottom,overflow:document.documentElement.scrollWidth>innerWidth+1}});
    assert.ok(layout.height<165,'Empty composer leaves room for the conversation');assert.ok(Math.abs(layout.toolbarBottom-layout.sendBottom)<8,'Mode and Send share one row');assert.equal(layout.overflow,false,'Chat fits every screen width');

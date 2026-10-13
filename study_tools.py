@@ -5,9 +5,39 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from flask import jsonify, request
 import billing
+
+
+class QuotaError(ValueError):
+    def __init__(self,allowance):
+        self.allowance=allowance
+        super().__init__('0 '+allowance['kind']+' generations remaining. Resets '+allowance['reset_local']+'. Existing results remain available.')
+
+
+def study_allowance(cur,uid,kind,pending=False):
+    if kind not in {'mock','map'}:raise ValueError('Choose a study tool.')
+    cur.execute('SELECT plan,plan_status,subscription_end_at FROM users WHERE id=%s FOR UPDATE',(uid,))
+    paid=billing.effective_plan(cur.fetchone()) in {'plus','family'}
+    table='mock_tests' if kind=='mock' else 'mindmaps'
+    cur.execute("SELECT COUNT(*) AS count FROM "+table+" WHERE user_id=%s AND created_at>=date_trunc('day',NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'",(uid,))
+    used=cur.fetchone()['count'];reserved=0
+    if pending:
+        cur.execute("SELECT COUNT(*) AS count FROM study_jobs WHERE user_id=%s AND kind=%s AND status='creating' AND updated_at>NOW()-INTERVAL '5 minutes'",(uid,kind))
+        reserved=cur.fetchone()['count']
+    cur.execute('SELECT timezone FROM workspace_preferences WHERE user_id=%s',(uid,));pref=cur.fetchone()
+    zone=(pref or {}).get('timezone') or 'Asia/Kolkata'
+    reset=(datetime.now(timezone.utc)+timedelta(days=1)).replace(hour=0,minute=0,second=0,microsecond=0)
+    limit=20 if paid else 1 if kind=='mock' else 2
+    return dict(kind=kind,limit=limit,used=used,reserved=reserved,remaining=max(0,limit-used-reserved),reset_at=reset.isoformat(),timezone=zone,reset_local=reset.astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')+' · '+zone)
+
+
+def check_allowance(cur,uid,kind,pending=False):
+    allowance=study_allowance(cur,uid,kind,pending)
+    if not allowance['remaining']:raise QuotaError(allowance)
+    return allowance
 
 
 def clean_text(value, maximum=2000):
@@ -103,19 +133,18 @@ def register(app,b):
             uid=b['require_user_id']()
             if not uid:return jsonify(error='Please log in first.'),401
             try:return fn(uid,*args,**kwargs)
+            except QuotaError as error:return jsonify(error=str(error),code='STUDY_QUOTA',allowance=error.allowance),429
             except ValueError as error:return jsonify(error=str(error)),400
             except RuntimeError as error:return jsonify(error=str(error)),503
         return wrapped
 
     def allowance(cur,uid,kind):
-        cur.execute('SELECT plan,plan_status,subscription_end_at FROM users WHERE id=%s FOR UPDATE',(uid,))
-        paid=billing.effective_plan(cur.fetchone()) in {'plus','family'}
-        # Table names come only from these two literal statements.
-        sql = 'SELECT COUNT(*) AS count FROM mock_tests WHERE user_id=%s AND created_at>=date_trunc(\'day\', NOW() AT TIME ZONE \'UTC\') AT TIME ZONE \'UTC\'' if kind=='mock' else 'SELECT COUNT(*) AS count FROM mindmaps WHERE user_id=%s AND created_at>=date_trunc(\'day\', NOW() AT TIME ZONE \'UTC\') AT TIME ZONE \'UTC\''
-        cur.execute(sql,(uid,))
-        limit=20 if paid else (1 if kind=='mock' else 2)
-        if cur.fetchone()['count']>=limit:
-            raise ValueError(f'You have used today’s {limit} {"mock test" if kind=="mock" else "mindmap"} allowance. It resets at midnight UTC.')
+        return check_allowance(cur,uid,kind)
+
+    @app.get('/api/study-allowance')
+    @private
+    def remaining_allowance(uid):
+        with db() as (_,cur):return jsonify(allowance=study_allowance(cur,uid,request.args.get('kind','mock'),pending=True))
 
     def topic_request():
         data=request.get_json(silent=True) or {}
@@ -140,6 +169,9 @@ def register(app,b):
                 payload={key:value for key,value in data.items() if key!='job_id'}
                 if len(json.dumps(payload,ensure_ascii=False))>5000:raise ValueError('Use a shorter topic.')
                 with db() as (conn,cur):
+                    cur.execute('SELECT id FROM users WHERE id=%s FOR UPDATE',(uid,));cur.fetchone()
+                    cur.execute('SELECT * FROM study_jobs WHERE id=%s',(job_id,));existing=cur.fetchone()
+                    if not existing:check_allowance(cur,uid,kind,pending=True)
                     cur.execute("INSERT INTO study_jobs(id,user_id,kind,request,status) VALUES(%s,%s,%s,%s,'creating') ON CONFLICT DO NOTHING RETURNING id",(job_id,uid,kind,json.dumps(payload,ensure_ascii=False)))
                     created=cur.fetchone()
                     if not created:
@@ -201,7 +233,10 @@ def register(app,b):
             allowance(cur,uid,'mock')
             cur.execute('''INSERT INTO mock_tests (user_id,topic,difficulty,question_count,time_limit_minutes,questions_json,created_at,language)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',(uid,topic,difficulty,count,minutes,json.dumps(questions,ensure_ascii=False),now,data.get("language","en")))
-            row=cur.fetchone();conn.commit()
+            row=cur.fetchone()
+            cur.execute('SELECT * FROM mock_tests WHERE id=%s AND user_id=%s',(row['id'],uid));row=cur.fetchone()
+            if not row:raise ValueError('Test save could not be read back. Retry.')
+            conn.commit()
         return jsonify(ok=True,test=public_test(row))
 
     @app.get('/api/mock-tests/<int:test_id>')
@@ -265,5 +300,8 @@ def register(app,b):
         with db() as (conn,cur):
             allowance(cur,uid,'map')
             cur.execute('INSERT INTO mindmaps (user_id,topic,data_json,created_at) VALUES (%s,%s,%s,%s) RETURNING *',(uid,topic,json.dumps(mindmap,ensure_ascii=False),datetime.now(timezone.utc)))
-            saved=cur.fetchone();conn.commit()
+            saved=cur.fetchone()
+            cur.execute('SELECT * FROM mindmaps WHERE id=%s AND user_id=%s',(saved['id'],uid));saved=cur.fetchone()
+            if not saved:raise ValueError('Mindmap save could not be read back. Retry.')
+            mindmap=validate_mindmap(saved['data_json'],saved['topic']);conn.commit()
         return jsonify(ok=True,mindmap={'id':saved['id'],'topic':topic,'data':mindmap,'created_at':saved['created_at'].isoformat()})
