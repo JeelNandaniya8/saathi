@@ -106,19 +106,29 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
     if current != model or omit_thinking:
         body.get('generationConfig', {}).pop('thinkingConfig', None)
     deadline = time.monotonic() + (40 if fast else 65)
+    def switch_fast_model():
+        nonlocal current, omit_thinking
+        candidate = discover_model(key, fast=True, exclude=current) or fallback
+        if not candidate or candidate == current or 'flash' not in candidate:
+            return False
+        current, omit_thinking = candidate, True
+        body.get('generationConfig', {}).pop('thinkingConfig', None)
+        return True
+
     for attempt in range(2):
         url = 'https://generativelanguage.googleapis.com/v1beta/models/' + current
         url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
         response = None
         try:
-            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, min(30 if fast else 45, max(1, deadline - time.monotonic() - 5))))
+            read_limit = 15 if fast and stream and attempt == 0 else 30 if fast else 45
+            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, min(read_limit, max(1, deadline - time.monotonic() - 5))))
             if stream:
                 options['stream'] = True
             response = post_request(url, **options)
             response.raise_for_status()
             if current != model or omit_thinking:
                 with _choice_lock:
-                    _choices[(model, fast)] = (current, omit_thinking, time.monotonic() + 600)
+                    _choices[(model, fast)] = (current, omit_thinking, time.monotonic() + 180)
             return response
         except requests.HTTPError as exc:
             rejected = response if response is not None else exc.response
@@ -134,6 +144,8 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
             retry_delay = int(retry_value) if str(retry_value).isdigit() else 1
             if attempt == 0 and rejected.status_code in (500, 502, 503, 504) and retry_delay <= 2 and deadline - time.monotonic() > retry_delay + 6:
                 rejected.close()
+                if fast:
+                    switch_fast_model()
                 logging.getLogger(__name__).warning('Gemini transient rejection status=%s; one bounded retry', rejected.status_code)
                 time.sleep(retry_delay)
                 continue
@@ -153,6 +165,12 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
         except requests.Timeout:
             if response is not None:
                 response.close()
+            # Only generation requests that have returned no response may recover.
+            # Stream consumption happens outside send(); partial output is never replayed.
+            if fast and stream and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_fast_model():
+                logging.getLogger(__name__).warning('Gemini startup timeout; one bounded alternate-model attempt')
+                continue
+            logging.getLogger(__name__).warning('Gemini startup timeout; recovery exhausted')
             raise ProviderError('AI_TIMEOUT', 'The AI service took too long to start. Please retry; your message is kept here.') from None
         except requests.RequestException:
             if response is not None:
