@@ -117,7 +117,7 @@ def test_local_preview_saves_exchange_and_action_without_ai_service(db_app,monke
     reply=c.post(f'/api/conversations/{cid}/messages',json={'content':'Add a task: Revise fractions. No deadline. Show the save preview.'})
     assert reply.status_code==200,reply.json
     message=reply.json['assistant_message']
-    assert 'without AI' in message['content'] and message['memory_labels']==[]
+    assert 'Not saved.' in message['content'] and message['memory_labels']==[]
     assert one(connect,'SELECT COUNT(*) AS n FROM ai_usage_events')['n']==0
     path='/api/chat-actions/'+str(message['id']);draft=c.get(path).json['action']
     assert c.post(path,json=dict(action=draft,confirmed=True)).status_code==201
