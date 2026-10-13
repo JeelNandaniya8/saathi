@@ -67,3 +67,8 @@ def test_scheduler_updates_trigger_only_main_and_keep_activation_gate():
     assert "vars.CLASSROOM_SYNC_ENABLED == 'true'" in workflow
     assert "secrets.CLASSROOM_SYNC_SECRET" in workflow
     assert 'pull_request' not in workflow
+    alerts = workflow.split('  alerts:\n')[1].split('  refresh:\n')[0]
+    refresh = workflow.split('  refresh:\n')[1]
+    assert 'needs:' not in alerts
+    assert 'scripts/send_background_alerts.py' in alerts
+    assert 'scripts/send_background_alerts.py' not in refresh

@@ -13,6 +13,28 @@ from test_workspace_extras import push_fixture
 pytestmark=pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'),reason='Requires isolated PostgreSQL test service')
 
 
+@pytest.mark.parametrize('status', [404, 410, 503])
+def test_expired_push_test_removes_only_owned_device_and_preserves_transient_failures(db_app, monkeypatch, status):
+    b, client, connect = db_app
+    monkeypatch.setattr(b, 'limited', lambda *args: None)
+    subscription = push_fixture(monkeypatch)
+    sid = client.post('/api/push/subscriptions', json=subscription).json['id']
+    with client.session_transaction() as session:
+        session['user_id'] = 2
+    other_device = dict(subscription, endpoint=subscription['endpoint']+'-other')
+    foreign = client.post('/api/push/subscriptions', json=other_device).json['id']
+    calls = []
+    monkeypatch.setattr(push, 'send_push', lambda *args: calls.append(True) or status)
+    assert client.post('/api/push/test', json={'subscription_id': sid}).status_code == 404
+    assert not calls
+    with client.session_transaction() as session:
+        session['user_id'] = 1
+    response = client.post('/api/push/test', json={'subscription_id': sid})
+    assert response.status_code == (410 if status in (404, 410) else 502)
+    assert one(connect, 'SELECT count(*) AS n FROM push_subscriptions WHERE id=%s', (sid,))['n'] == (0 if status in (404, 410) else 1)
+    assert one(connect, 'SELECT count(*) AS n FROM push_subscriptions WHERE id=%s', (foreign,))['n'] == 1
+
+
 def test_notes_crud_retry_conflict_and_export(db_app):
     _,client,connect=db_app
     data={'client_id':str(uuid.uuid4()),'title':'અભ્યાસ','content':'ગુજરાતી notes <script>literal</script>'}
