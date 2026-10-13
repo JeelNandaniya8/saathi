@@ -120,7 +120,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
         url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
         response = None
         try:
-            read_limit = 15 if fast and stream and attempt == 0 else 30 if fast else 45
+            read_limit = 15 if fast and attempt == 0 else 30 if fast else 45
             options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, min(read_limit, max(1, deadline - time.monotonic() - 5))))
             if stream:
                 options['stream'] = True
@@ -167,7 +167,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
                 response.close()
             # Only generation requests that have returned no response may recover.
             # Stream consumption happens outside send(); partial output is never replayed.
-            if fast and stream and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_fast_model():
+            if fast and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_fast_model():
                 logging.getLogger(__name__).warning('Gemini startup timeout; one bounded alternate-model attempt')
                 continue
             logging.getLogger(__name__).warning('Gemini startup timeout; recovery exhausted')

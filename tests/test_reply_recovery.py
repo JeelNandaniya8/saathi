@@ -192,16 +192,17 @@ def test_one_transient_retry_recovers_without_changing_payload(monkeypatch):
     assert '/gemini-3.1-flash-lite:' in post.call_args.args[0]
 
 
-def test_fast_stream_startup_timeout_tries_one_alternate_and_caches_success():
+@pytest.mark.parametrize('stream',[False,True])
+def test_fast_startup_timeout_tries_one_alternate_and_caches_success(stream):
     good=response(200)
     post=Mock(side_effect=[requests.ReadTimeout('private-url'),good,good])
     payload={'generationConfig':{'thinkingConfig':{'thinkingBudget':0}},'contents':[]}
-    assert transport.send(post,'fixture','gemini-3.5-flash-lite',payload,fast=True,stream=True) is good
+    assert transport.send(post,'fixture','gemini-3.5-flash-lite',payload,fast=True,stream=stream) is good
     assert post.call_count==2
     assert '/gemini-3.1-flash-lite:' in post.call_args.args[0]
     assert 'thinkingConfig' in payload['generationConfig']
     assert 'thinkingConfig' not in post.call_args.kwargs['json']['generationConfig']
-    transport.send(post,'fixture','gemini-3.5-flash-lite',payload,fast=True,stream=True)
+    transport.send(post,'fixture','gemini-3.5-flash-lite',payload,fast=True,stream=stream)
     assert post.call_count==3 and '/gemini-3.1-flash-lite:' in post.call_args.args[0]
 
 
