@@ -1,6 +1,7 @@
 /* Shared safe Markdown and native MathML; all rendering assets are self-hosted. */
 (function(){'use strict';
 function math(target,tex,block=false){
+  target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-block';target.style.verticalAlign='middle';
   target.setAttribute('aria-label',tex);target.dataset.math=tex;target.dataset.display=String(block);
   if(!window.katex){target.textContent=tex;return}
   try{if(!window.katex)throw Error('Math renderer unavailable');window.katex.render(tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}

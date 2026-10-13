@@ -34,7 +34,7 @@
   function canSwitch(){if(!state.dirty)return true;status('Save or discard your edits before opening another note.',true);ui.save.focus();return false}
   function selectNote(note,force=false){
     if(state.busy||(!force&&!canSwitch()))return;
-    noteOpenSequence++;state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;state.draftVersion=null;
+    noteOpenSequence++;ui.title.disabled=ui.content.disabled=ui.save.disabled=false;state.selected=note;state.clientId=note?.client_id||uuid();state.dirty=false;state.draftVersion=null;
     ui.title.value=note?.title||'';ui.content.value=note?.content||'';ui.delete.hidden=!note;ui.discard.hidden=true;state.confirmDelete=false;ui.delete.textContent='Delete note';
     ui.counter.textContent=ui.content.value.length+' / 10,000';status(note?'Saved to your account.':'Capture a thought. Save when you’re ready.');renderList();
     const draft=window.SaathiRecovery?.getDraft('note',noteDraftKey());
@@ -69,7 +69,15 @@
     return notesRequest;
   }
   async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.content.focus()}
-  async function openNote(id){await openNotes();if(!canSwitch()||!dialog.open)return;const sequence=++noteOpenSequence;status('Opening the saved note…');try{const result=await state.api('/api/quick-notes/'+id);if(sequence!==noteOpenSequence||!canSwitch()||!dialog.open)return;if(result.note?.id!==id)throw Error('The requested note could not be verified. Retry.');state.notes=[result.note,...state.notes.filter(item=>item.id!==result.note.id)];selectNote(result.note)}catch(error){status(error.message||'This note is no longer available.',true)}}
+  async function openNote(id){
+    if(!state.user||state.busy)return;buildDialog();if(!dialog.open)dialog.showModal();if(!canSwitch())return;
+    const sequence=++noteOpenSequence;ui.title.disabled=ui.content.disabled=ui.save.disabled=true;status('Opening the saved note…');
+    try{const result=await state.api('/api/quick-notes/'+id);if(sequence!==noteOpenSequence||!canSwitch()||!dialog.open)return;
+      if(result.note?.id!==id)throw Error('The requested note could not be verified. Retry.');
+      state.notes=[result.note,...state.notes.filter(item=>item.id!==result.note.id)];selectNote(result.note);if(!state.loaded)loadNotes();
+    }catch(error){if(sequence===noteOpenSequence)status(error.message||'This note is no longer available.',true)}
+    finally{if(sequence===noteOpenSequence)ui.title.disabled=ui.content.disabled=ui.save.disabled=false}
+  }
   async function saveNote(event){
     event.preventDefault();if(state.busy)return;if(!ui.content.value.trim()){status('Write something before saving.',true);return}
     invalidateNotesLoad();state.busy=true;ui.save.disabled=true;ui.delete.disabled=true;status('Saving…');
