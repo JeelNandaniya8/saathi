@@ -96,7 +96,7 @@ def test_plan_tasks_are_atomic_and_task_completion_is_idempotent(db_app):
     assert one(connect,'SELECT count(*) AS n FROM tasks')['n']==3
     task=one(connect,'SELECT id,title FROM tasks ORDER BY id LIMIT 1')
     mid,_=seed(connect,'Mark '+task['title']+' as done',dict(kind='task',title=task['title'],target_title=task['title'],target_id=task['id'],operation='complete'))
-    assert execute(c,mid).status_code==201
+    result=execute(c,mid);assert result.status_code==201,result.json
     assert one(connect,'SELECT completed FROM tasks WHERE id=%s',(task['id'],))['completed'] is True
 
 

@@ -66,6 +66,8 @@ def test_mutations_do_not_authorise_a_different_operation():
     assert not intents.automatic('Pause my walk reminder','reminder','resume')
     assert intents.automatic('Pause my walk reminder','reminder','pause')
     assert intents.mode('Pause my walk reminder','flashcards')=='normal'
+    assert intents.automatic('Mark Day 1: Probability as done','task','complete')
+    assert not intents.automatic('Mark Day 1: Probability as done','task','create')
 
 
 def test_clarification_continuation_is_cancelable_and_cannot_replace_new_intent():

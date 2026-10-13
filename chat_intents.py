@@ -44,6 +44,8 @@ def automatic(text, kind, operation='create'):
     verbs = r'^(?:(?:please|can you|could you|will you|i want you to|yes[, ]*|so[, ]*|okay[, ]*)\s*)*(?:save|remember|remind|add|create|make|put|turn|mark|snooze|pause|resume|edit|update|replace|change|delete|confirm)\b|સાચવ|યાદ રાખ|યાદ કરાવ|ઉમેર|બનાવ|પૂર્ણ|મોકૂફ|રોક|ફેરફાર|કાઢ|सेव|याद रख|याद दिला|जोड़|बनाओ|पूरा|स्नूज़|रोक|बदल|हटा'
     if not re.search(verbs, text, re.I):
         return False
+    if kind == 'task' and operation == 'complete' and re.search(r'^(?:please\s+)?mark\s+.+\s+(?:as\s+)?(?:done|complete|completed|finished)[.!]?$',text,re.I):
+        return True
     patterns = {'task':r'task|revision|plan|કામ|અભ્યાસ|યોજના|काम|योजना',
                 'plan':r'study plan|અભ્યાસ.*યોજના|पढ़ाई.*योजना',
                 'reminder':r'remind|reminder|યાદ કરાવ|રિમાઇન્ડર|યાદ અપાવ|रिमाइंडर|याद दिला',
