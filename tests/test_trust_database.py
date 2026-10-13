@@ -56,7 +56,9 @@ def test_mindmap_claim_is_replaced_by_verified_save_or_persistent_failure(db_app
     if valid:
         rid=result['action_receipt']['resource_id']
         assert c.get('/api/mindmaps/'+str(rid)).json['mindmap']['data']['root']['label']=='Probability'
-        assert c.get('/api/mindmaps').json['maps'][0]['id']==rid
+        history=c.get('/api/mindmaps/history')
+        assert history.status_code==200,history.json
+        assert history.json['mindmaps'][0]['id']==rid
         assert stored['content'].startswith('Mindmap created and saved.')
     else:
         assert result['content'].startswith('Failed:') and 'created and saved' not in result['content']
