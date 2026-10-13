@@ -174,7 +174,15 @@
   "Hello, I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?": "નમસ્તે, હું Saathi. અત્યારે ભણવામાં, દિવસ ગોઠવવામાં કે કોઈ વાત સમજવામાં શું મદદ જોઈએ?",
   "Message Saathi": "Saathiને લખો",
   "Join the waitlist": "રાહ યાદીમાં જોડાઓ",
-  "Email": "Email"
+  "Email": "Email",
+  "What can I upload?": "શું અપલોડ કરી શકું?",
+  "PDFs and JPEG, PNG or WebP images. Free accounts: one file per message, up to 5 MB and five uploads per day. Study bonuses allow higher limits. Chat shows your current limits and remaining uploads; unclear scans may need a clearer photo.": "PDF અને JPEG, PNG અથવા WebP ફોટા. મફત ખાતામાં દરેક સંદેશ સાથે એક ફાઇલ, વધુમાં વધુ 5 MB અને દિવસમાં પાંચ અપલોડ. અભ્યાસ બોનસથી મર્યાદા વધે છે. Chatમાં હાલની મર્યાદા અને બાકી અપલોડ દેખાય છે; અસ્પષ્ટ સ્કેન માટે વધુ સ્પષ્ટ ફોટો જરૂરી થઈ શકે.",
+  "Will a saved reminder notify me?": "સાચવેલો રિમાઇન્ડર સૂચના આપશે?",
+  "Saved means scheduled. Background alerts need browser permission and an enabled device subscription. Enable and test alerts from the reminder card or Account. Delivery is best-effort and can be late; use a separate alarm for time-critical reminders.": "સાચવાયો એટલે સમય નક્કી થયો. પૃષ્ઠભૂમિ સૂચનાઓ માટે બ્રાઉઝરની મંજૂરી અને ઉપકરણ પર ચાલુ નોંધણી જરૂરી છે. રિમાઇન્ડર કાર્ડ અથવા ખાતામાં સૂચનાઓ ચાલુ કરીને પરીક્ષણ કરો. સૂચના મોડી આવી શકે; ચોક્કસ સમયના કામ માટે અલગ એલાર્મ રાખો.",
+  "What can AI verify?": "AI શું ચકાસી શકે?",
+  "AI explanations and practice can contain mistakes. Saathi can cite extracted PDF pages and provides labelled study references for some core concepts. It does not independently verify every answer or guarantee official syllabus alignment. Check key answers against your textbook or teacher.": "AIની સમજૂતી અને અભ્યાસમાં ભૂલો હોઈ શકે. સાથી PDFમાંથી મેળવેલા પાનાનો સંદર્ભ અને અમુક મૂળભૂત વિષયો માટે ઓળખાવેલો અભ્યાસ સંદર્ભ આપે છે. દરેક જવાબ સ્વતંત્ર રીતે ચકાસાતો નથી અને સત્તાવાર અભ્યાસક્રમ સાથે મેળની ખાતરી નથી. મહત્વના જવાબ પુસ્તક કે શિક્ષક સાથે ચકાસો.",
+  "Which study uses are supported?": "અભ્યાસમાં કઈ મદદ મળે છે?",
+  "Ask in English, Gujarati or Hindi for explanations, revision, flashcards, mindmaps and study plans. Mock tests are AI practice, not official exams. Include your class, board or entrance exam and chapter for a relevant answer.": "અંગ્રેજી, ગુજરાતી કે હિન્દીમાં સમજૂતી, પુનરાવર્તન, ફ્લેશકાર્ડ, માઇન્ડમેપ અને અભ્યાસ યોજના માંગો. મોક ટેસ્ટ AI દ્વારા તૈયાર અભ્યાસ છે, સત્તાવાર પરીક્ષા નથી. યોગ્ય જવાબ માટે ધોરણ, બોર્ડ અથવા પ્રવેશ પરીક્ષા અને પ્રકરણ જણાવો."
  },
  "hi": {
   "Product": "उत्पाद",
@@ -350,6 +358,14 @@
   "Hello, I am Saathi. What would be most useful right now: studying, planning your day, or talking something through?": "नमस्ते, मैं Saathi। अभी पढ़ाई, दिन व्यवस्थित करने या किसी बात को समझने में क्या मदद चाहिए?",
   "Message Saathi": "Saathi को लिखें",
   "Join the waitlist": "प्रतीक्षा सूची से जुड़ें",
-  "Email": "Email"
+  "Email": "Email",
+  "What can I upload?": "क्या अपलोड कर सकता हूँ?",
+  "PDFs and JPEG, PNG or WebP images. Free accounts: one file per message, up to 5 MB and five uploads per day. Study bonuses allow higher limits. Chat shows your current limits and remaining uploads; unclear scans may need a clearer photo.": "PDF और JPEG, PNG या WebP तस्वीरें। मुफ्त खाते में हर संदेश पर एक फाइल, अधिकतम 5 MB और रोज पाँच अपलोड। अध्ययन बोनस से सीमा बढ़ती है। Chat में वर्तमान सीमा और बचे अपलोड दिखते हैं; अस्पष्ट स्कैन के लिए साफ तस्वीर चाहिए।",
+  "Will a saved reminder notify me?": "क्या सेव रिमाइंडर सूचना देगा?",
+  "Saved means scheduled. Background alerts need browser permission and an enabled device subscription. Enable and test alerts from the reminder card or Account. Delivery is best-effort and can be late; use a separate alarm for time-critical reminders.": "सेव होने का अर्थ समय तय होना है। पृष्ठभूमि सूचनाओं के लिए ब्राउज़र की अनुमति और उपकरण पर सक्रिय सदस्यता चाहिए। रिमाइंडर कार्ड या खाते से सूचनाएँ चालू कर जाँचें। सूचना देर से आ सकती है; समय जरूरी हो तो अलग अलार्म रखें।",
+  "What can AI verify?": "AI क्या जाँच सकता है?",
+  "AI explanations and practice can contain mistakes. Saathi can cite extracted PDF pages and provides labelled study references for some core concepts. It does not independently verify every answer or guarantee official syllabus alignment. Check key answers against your textbook or teacher.": "AI की व्याख्या और अभ्यास में गलती हो सकती है। साथी निकाले गए PDF पृष्ठों के संदर्भ और कुछ मूल अवधारणाओं के चिह्नित अध्ययन संदर्भ देता है। हर उत्तर की स्वतंत्र जाँच या आधिकारिक पाठ्यक्रम से मेल की गारंटी नहीं है। जरूरी उत्तर पुस्तक या शिक्षक से जाँचें।",
+  "Which study uses are supported?": "पढ़ाई में क्या मदद मिलती है?",
+  "Ask in English, Gujarati or Hindi for explanations, revision, flashcards, mindmaps and study plans. Mock tests are AI practice, not official exams. Include your class, board or entrance exam and chapter for a relevant answer.": "अंग्रेजी, गुजराती या हिंदी में व्याख्या, पुनरावृत्ति, फ्लैशकार्ड, माइंडमैप और अध्ययन योजना पूछें। मॉक टेस्ट AI अभ्यास हैं, आधिकारिक परीक्षा नहीं। उपयोगी उत्तर के लिए कक्षा, बोर्ड या प्रवेश परीक्षा और अध्याय बताइए."
  }
 };const nodes=[],walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);while(walker.nextNode()){const n=walker.currentNode;if(n.nodeValue.trim()&&!n.parentElement.closest('script,style,#chatLog,#promptChips'))nodes.push({node:n,original:n.nodeValue})}window.translateLanding=lang=>{for(const {node,original} of nodes){if(node.isConnected)node.nodeValue=original.replace(original.trim(),catalog[lang]?.[original.trim()]||original.trim())}const attrs={gu:{'Main navigation':'મુખ્ય નેવિગેશન','Language':'ભાષા','Open menu':'મેનુ ખોલો','Message Saathi':'Saathiને લખો','Send message':'સંદેશ મોકલો','Switch colour theme':'દેખાવ બદલો'},hi:{'Main navigation':'मुख्य नेविगेशन','Language':'भाषा','Open menu':'मेनू खोलें','Message Saathi':'Saathi को लिखें','Send message':'संदेश भेजें','Switch colour theme':'रंग बदलें'}};document.querySelectorAll('[aria-label],[placeholder]').forEach(e=>{for(const a of ['aria-label','placeholder'])if(e.hasAttribute(a)){const key='original'+a.replace('-','');if(!e.dataset[key])e.dataset[key]=e.getAttribute(a);e.setAttribute(a,attrs[lang]?.[e.dataset[key]]||e.dataset[key])}})};})();

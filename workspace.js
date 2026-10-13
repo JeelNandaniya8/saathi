@@ -131,6 +131,7 @@
     document.querySelectorAll('[data-push-test]').forEach(button=>{button.disabled=!state.pushId||state.pushBusy;button.onclick=async()=>{button.disabled=true;try{const result=await state.api('/api/push/test',{method:'POST',body:JSON.stringify({subscription_id:state.pushId})});state.notify(result.message)}catch(error){state.notify(error.message,'error')}finally{button.disabled=!state.pushId}}});
     document.querySelectorAll('[data-push-toggle]').forEach(button=>{button.textContent=state.pushBusy?'Please wait…':label;button.disabled=disabled||state.pushBusy;button.setAttribute('aria-pressed',String(Boolean(state.pushId)))});
     document.querySelectorAll('[data-push-status]').forEach(node=>{node.textContent=message});
+    if(typeof Event==='function')window.dispatchEvent?.(new Event('saathi-push-status'));
   }
   async function endpointHash(endpoint){const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(endpoint));return Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,'0')).join('')}
   function keyBytes(key){return Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-key.length%4)%4)),char=>char.charCodeAt(0))}
@@ -179,6 +180,6 @@
     document.querySelectorAll('[data-push-toggle]').forEach(button=>{button.onclick=togglePush});
     loadPush();
   }
-  window.SaathiWorkspace={connect,renderAvatar,openNotes,openNote,togglePush,prepareLogout,pushActive:()=>Boolean(state.pushId),pushConfigured:()=>Boolean(state.pushConfig?.enabled)};
+  window.SaathiWorkspace={connect,renderAvatar,openNotes,openNote,togglePush,prepareLogout,pushStatus:()=>!pushSupported()?'off':state.pushConfig===null?'unknown':state.pushConfig.enabled&&state.pushId&&Notification.permission==='granted'?'on':'off',testPush:async()=>{if(!state.pushId)throw Error('Enable background alerts on this device first.');const result=await state.api('/api/push/test',{method:'POST',body:JSON.stringify({subscription_id:state.pushId})});state.notify(result.message)},pushActive:()=>Boolean(state.pushId),pushConfigured:()=>Boolean(state.pushConfig?.enabled)};
 })();
 

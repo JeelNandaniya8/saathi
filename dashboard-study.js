@@ -13,6 +13,7 @@ function renderMockTestHistory(){
   const box=$('mockTestHistoryList');
   if(!box)return;
   box.replaceChildren();
+  if(window.SaathiJobs){const jobs=document.createElement('div');box.append(jobs);SaathiJobs.render(jobs,{kind:'mock',api,open:(_result,job)=>quickStartFromHistory({id:job.result_id}),retry:request=>{for(const [key,id] of Object.entries({topic:'testTopic',difficulty:'testDifficulty',question_count:'testCount',time_limit_minutes:'testTimeLimit',language:'testLanguage'}))if($(id))$(id).value=request[key];return generateMockTest()}})}
   if(!state.mockTests||!state.mockTests.length){
     box.append(emptyNode('No tests completed yet. Start your first mock test above!'));
     return;
@@ -91,7 +92,7 @@ async function generateMockTest(event){
     language:$('testLanguage').value||'en'
   };
   try{
-    const res=await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
+    const res=window.SaathiJobs?await SaathiJobs.create('mock',payload,api):await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
     state.activeTest=res.test;
     state.activeTest.questions=res.test.questions||[];
     if(!state.activeTest.questions.length)throw new Error('This test has no questions. Please retry.');

@@ -11,9 +11,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
   for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
+   let inlineSaved=null,inlineJobs=[];
    let actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
-   const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',language});
+   const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',timezone:'Asia/Kolkata',language});
    page.on('pageerror',error=>errors.push(error.message));
    await page.route('**/*',async route=>{
     const url=new URL(route.request().url());if(url.origin!==base)return route.abort();
@@ -23,7 +24,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
      if(pathname==='/api/conversations/7/messages'&&chatProfilePending)historyWhileProfilePending=true;
-     if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}}}
+     if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}};assert.ok(body().job_id);const {job_id,...input}=body();inlineJobs.unshift({id:job_id,kind:'mock',request:input,status:status===503?'failed':'ready',result_id:status===503?null:53,error:status===503?'Fixture creation failed':null});if(data.test)inlineSaved=data.test}
+     else if(pathname==='/api/study-jobs')data={jobs:inlineJobs.filter(job=>job.kind===url.searchParams.get('kind'))};
+     else if(pathname==='/api/mock-tests/53')data={test:inlineSaved,...(inlineSubmits?{result:{attempt:{score:1,total_questions:5},review:[]}}:{})};
      else if(pathname==='/api/mock-tests/53/submit'){inlineSubmits++;assert.equal(body().answers['1'],'A');data={attempt:{score:1,total_questions:5},review:[{id:1,question:'Fixture question 1',user_answer:'A',correct_answer:'A',explanation:'Literal <script>unsafe</script> explanation'}]}}
      else if(pathname==='/api/mindmaps/generate')data={mindmap:{id:62,topic:body().topic,data:{summary:'Saved map summary',root:{label:'Chat map root',desc:'Topic-specific explanation',children:[{label:'Chat map branch',desc:'Actual detail <script>unsafe</script>',children:[]}]}}}};
      else if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
@@ -391,7 +394,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await inlineTest.getByLabel('Topic',{exact:true}).fill('Fractions');
    assert.equal(inlineGenerations,0,'Opening a tool never spends an AI call');
    await inlineTest.getByRole('button',{name:'Generate and save',exact:true}).click();
-   await inlineTest.getByText('Fixture creation failed',{exact:true}).waitFor();
+   await inlineTest.getByText('Fixture creation failed',{exact:true}).first().waitFor();
    assert.equal(await inlineTest.getByLabel('Topic',{exact:true}).inputValue(),'Fractions');
    await inlineTest.getByRole('button',{name:'Generate and save',exact:true}).click();
    await inlineTest.getByRole('radio',{name:'A. Choice A 1',exact:true}).check();
@@ -401,6 +404,14 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await inlineTest.locator('script').count(),0);
    assert.equal(new URL(page.url()).pathname,'/chat');
    await inlineTest.getByRole('button',{name:'Close',exact:true}).click();
+   await page.getByRole('button',{name:'Tools',exact:true}).click();
+   await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Mock Test',exact:true}).click();
+   const reopenedTest=page.getByRole('dialog',{name:'Mock Test',exact:true});
+   await reopenedTest.getByText('Ready',{exact:true}).waitFor();
+   await reopenedTest.getByRole('button',{name:'Open result',exact:true}).click();
+   await reopenedTest.getByRole('heading',{name:'Score: 1 / 5',exact:true}).waitFor();
+   assert.equal(inlineGenerations,2,'Reopening a saved job does not regenerate');
+   await reopenedTest.getByRole('button',{name:'Close',exact:true}).click();
    await page.getByRole('button',{name:'Tools',exact:true}).click();
    await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Mindmap',exact:true}).click();
    const inlineMap=page.getByRole('dialog',{name:'Mindmap',exact:true});
@@ -445,7 +456,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(await actionDialog.evaluate(e=>e.getBoundingClientRect().width<=innerWidth));await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
    const actionWrites=actionSaves;
    await page.evaluate(()=>{const box=document.createElement('div');box.id='confirmed-chat-memory';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:998,auto_action:true,action_receipt:{kind:'memory',resource_id:12},content:'Details prepared. <SAATHI_ACTION>{"kind":"memory","title":"Home city","text":"Ahmedabad <script>window.injected=true</script>"}</SAATHI_ACTION>'})});
-   await page.locator('#confirmed-chat-memory').getByText('Saved to your account',{exact:true}).waitFor();
+   await page.locator('#confirmed-chat-memory').getByText('Saved to Memory',{exact:true}).waitFor();
    await page.locator('#confirmed-chat-memory summary').click();
    assert.ok((await page.locator('#confirmed-chat-memory').innerText()).includes('Ahmedabad <script>'));
    assert.equal(await page.evaluate(()=>window.injected),undefined);

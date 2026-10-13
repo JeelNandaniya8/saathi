@@ -627,11 +627,13 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <canvas id="confettiCanvas"></canvas>
 
 <script src="/i18n.js?v=20261008e"></script>
-<script src="/lazy-tools.js?v=20261008e"></script>
+<script src="/lazy-tools.js?v=20261014b"></script>
 <script src="/workspace-hub.js?v=20261009e"></script>
 <script src="/recovery.js?v=20260919"></script>
-<script src="/workspace.js?v=20261009e"></script>
-<script src="/daily-workspace.js?v=20260919"></script>
+<script src="/account-clock.js?v=20261014a"></script>
+<script src="/study-jobs.js?v=20261014a"></script>
+<script src="/workspace.js?v=20261014b"></script>
+<script src="/daily-workspace.js?v=20261014b"></script>
 <script src="/personal-context.js?v=20261008c"></script>
 <script src="/classroom.js?v=20261008d"></script>
 <script src="/care-support.js?v=20261008e"></script>
@@ -696,10 +698,11 @@ window.addEventListener('hashchange',()=>syncWorkspaceHistory());
 navigationMedia.addEventListener('change',()=>setNavigation(false));
 function applyTheme(theme){SaathiTheme.apply(theme)}
 function toggleTheme(){SaathiTheme.toggle()}
-function localInputToIso(value){return value?new Date(value).toISOString():null}function isoToLocalInput(value){if(!value)return'';const date=new Date(value),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,16)}function localDate(){const date=new Date(),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,10)}function formatDate(value){if(!value)return'No due date';const date=new Date(value);return date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}function average(values){if(!values.length)return'—';return(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1)}
+function localInputToIso(value){return window.SaathiClock?SaathiClock.fromInput(value):value?new Date(value).toISOString():null}function isoToLocalInput(value){if(!value)return'';if(window.SaathiClock)return SaathiClock.input(value);const date=new Date(value),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,16)}function localDate(){if(window.SaathiClock)return SaathiClock.date();const date=new Date(),offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,10)}function formatDate(value){if(!value)return'No due date';if(window.SaathiClock)return SaathiClock.format(value);const date=new Date(value);return date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}function average(values){if(!values.length)return'—';return(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1)}
 function emptyNode(text){const node=document.createElement('div');node.className='empty';node.textContent=text;return node}
 function quickRow(title,detail){const row=document.createElement('div');row.className='quick-row';const dot=document.createElement('i'),copy=document.createElement('div'),b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;copy.append(b,small);row.append(dot,copy);return row}
 function setUser(user){
+  if(user.timezone)window.SaathiClock?.setZone(user.timezone);
   if(!user.plan_label&&state.user?.id===user.id&&state.user?.plan===user.plan)user.plan_label=state.user.plan_label;state.user=user;const initial=(user.name?.[0]||'S').toUpperCase();
   SaathiWorkspace.renderAvatar($('sideAvatar'),user);SaathiWorkspace.renderAvatar($('profileAvatar'),user);$('sideName').textContent=user.name;
   const paid=['plus','family'].includes(user.plan);
@@ -895,12 +898,12 @@ async function loadViewSections(id,refresh=false){
     state.failedTool=id;$('workspaceStatus').hidden=false;$('workspaceStatusText').textContent=error.message;$('retryWorkspace').disabled=false;return;
   }
   if(state.failedTool===id)state.failedTool=null;
-  const dependencies={overview:['overview','today','reminders','habits'],tasks:['overview','tasks'],reminders:['overview','reminders'],healer:['overview','tasks'],account:['referrals'],study:[]};
+  const dependencies={overview:['overview','today','reminders'],tasks:['overview','tasks'],reminders:['overview','reminders'],healer:['overview','tasks'],account:['referrals'],study:[]};
   // Keep due-reminder checks available even when opening a deep link.
-  const keys=['reminders',...(dependencies[id]||[id])];
+  const keys=dependencies[id]||[id];
   return loadWorkspaceSections(workspaceSections.filter(section=>keys.includes(section.key)&&(refresh||!state.loadedSections?.has(section.key))));
 }
-function updateGreeting(){$('greeting').removeAttribute('aria-busy');const hour=new Date().getHours(),language=state.user?.language||'en',words={en:hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
+function updateGreeting(){$('greeting').removeAttribute('aria-busy');const hour=window.SaathiClock?.hour()??new Date().getHours(),language=state.user?.language||'en',words={en:hour<12?'Good morning':hour<18?'Good afternoon':'Good evening',gu:hour<12?'સુપ્રભાત':hour<18?'શુભ બપોર':'શુભ સાંજ',hi:hour<12?'सुप्रभात':hour<18?'नमस्कार':'शुभ संध्या'};$('greeting').textContent=`${words[language]||words.en}, ${state.user.name.split(' ')[0]}.`}
 function playChime(){
   if(localStorage.getItem('saathi-sounds')!=='on')return;
   try{
@@ -1065,12 +1068,12 @@ async function init(){
     SaathiTheme.refresh();$('journalDate').value=localDate();syncWorkspaceHistory(false);
     const profile=api('/api/me');
     if((state.currentView||'overview')==='overview'){
-      state.startupSections=new Map(workspaceSections.filter(section=>['overview','today','reminders','habits'].includes(section.key)).map(section=>[section.key,api(typeof section.url==='function'?section.url():section.url).then(data=>({data}),error=>({error}))]));
+      state.startupSections=new Map(workspaceSections.filter(section=>['overview','today','reminders'].includes(section.key)).map(section=>[section.key,api(typeof section.url==='function'?section.url():section.url).then(data=>({data}),error=>({error}))]));
     }
     const me=await profile;if(!me.user){location.replace('/account?next='+encodeURIComponent('/dashboard'+location.hash));return}
     state.csrf=me.csrf_token||'';state.paymentEnabled=me.payment_enabled===true;state.paymentTest=me.payment_test_mode===true;setUser(me.user);SaathiRecovery.connect({user:me.user,api,notify:toast});SaathiWorkspace.connect({user:me.user,api,notify:toast});SaathiHub.connect({user:me.user,api,notify:toast,openView,openTask:async id=>{openView('tasks');await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===id);if(task)editTask(task);else toast('Task not found.')},refreshToday:()=>{state.loadedSections?.delete('tasks');return loadWorkspaceSections(workspaceSections.filter(item=>['today','overview'].includes(item.key)))}});updateGreeting();
     const selectedTask=Number(new URLSearchParams(location.search).get('task'));if(selectedTask>0){await loadViewSections('tasks');const task=state.tasks.find(item=>item.id===selectedTask);if(task)editTask(task);history.replaceState(null,'','/dashboard#tasks')}
-    state.workspaceReady=true;await loadViewSections(state.currentView||'overview');
+    state.workspaceReady=true;loadViewSections(state.currentView||'overview').catch(error=>toast(error.message,'error'));
     SaathiCareRoutines.connect({api,notify:toast});
     SaathiCareSupport.connect({api,notify:toast});
     SaathiClassroom.connect({api,notify:toast,refreshTasks:()=>loadWorkspaceSections(workspaceSections.filter(item=>['tasks','overview'].includes(item.key)))});
@@ -1086,6 +1089,7 @@ $('backToToday').addEventListener('click',()=>openView('overview'));
 $('retryWorkspace').addEventListener('click',()=>state.user?(state.failedTool?loadViewSections(state.failedTool,true):state.loadFailures.length?loadWorkspaceSections(state.loadFailures):loadViewSections(state.currentView,true)):init());
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
 window.addEventListener('pagehide',()=>{clearInterval(state.testTimerInterval);window.stopCare?.()});
+window.addEventListener('saathi-timezone',()=>{updateGreeting();state.loadedSections?.delete('today');loadViewSections(state.currentView||'overview')});
 init();
 
 </script>

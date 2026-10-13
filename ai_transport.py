@@ -86,7 +86,7 @@ def discover_model(key, fast=True, exclude=None):
     return None
 
 
-def send(post_request, key, model, payload, *, fast=False, stream=False):
+def send(post_request, key, model, payload, *, fast=False, stream=False, fallback_payload=None):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
     key = (key or '').strip("\"' \t\r\n")
     fast_fallbacks = ('gemini-3.5-flash-lite', 'gemini-3.1-flash-lite')
@@ -107,15 +107,18 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
         body.get('generationConfig', {}).pop('thinkingConfig', None)
     deadline = time.monotonic() + (40 if fast else 65)
     def switch_fast_model():
-        nonlocal current, omit_thinking
+        nonlocal current, omit_thinking, body
         candidate = discover_model(key, fast=True, exclude=current) or fallback
         if not candidate or candidate == current or 'flash' not in candidate:
             return False
         current, omit_thinking = candidate, True
+        if fallback_payload is not None:
+            body = copy.deepcopy(fallback_payload)
         body.get('generationConfig', {}).pop('thinkingConfig', None)
         return True
 
     for attempt in range(2):
+        attempted_model=current
         url = 'https://generativelanguage.googleapis.com/v1beta/models/' + current
         url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
         response = None
@@ -126,6 +129,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
                 options['stream'] = True
             response = post_request(url, **options)
             response.raise_for_status()
+            logging.getLogger(__name__).info('Gemini accepted model=%s fast=%s stream=%s attempt=%s',current,fast,stream,attempt+1)
             if current != model or omit_thinking:
                 with _choice_lock:
                     _choices[(model, fast)] = (current, omit_thinking, time.monotonic() + 180)
@@ -146,7 +150,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
                 rejected.close()
                 if fast:
                     switch_fast_model()
-                logging.getLogger(__name__).warning('Gemini transient rejection status=%s; one bounded retry', rejected.status_code)
+                logging.getLogger(__name__).warning('Gemini transient rejection status=%s model=%s fallback=%s fast=%s stream=%s; one bounded retry', rejected.status_code,attempted_model,current,fast,stream)
                 time.sleep(retry_delay)
                 continue
             recover_model = rejected.status_code == 404
@@ -168,9 +172,9 @@ def send(post_request, key, model, payload, *, fast=False, stream=False):
             # Only generation requests that have returned no response may recover.
             # Stream consumption happens outside send(); partial output is never replayed.
             if fast and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_fast_model():
-                logging.getLogger(__name__).warning('Gemini startup timeout; one bounded alternate-model attempt')
+                logging.getLogger(__name__).warning('Gemini startup timeout model=%s fallback=%s fast=%s stream=%s; one bounded alternate-model attempt',attempted_model,current,fast,stream)
                 continue
-            logging.getLogger(__name__).warning('Gemini startup timeout; recovery exhausted')
+            logging.getLogger(__name__).warning('Gemini startup timeout model=%s fast=%s stream=%s; recovery exhausted',current,fast,stream)
             raise ProviderError('AI_TIMEOUT', 'The AI service took too long to start. Please retry; your message is kept here.') from None
         except requests.RequestException:
             if response is not None:
