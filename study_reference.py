@@ -41,5 +41,5 @@ def answer(messages,language='en',mode='normal'):
 def compact_payload(payload,messages,language,mode):
     if not short_study(messages,mode):return None
     return {'contents':[payload['contents'][-1]],
-            'systemInstruction':{'parts':[{'text':'Give a short, accurate study explanation in '+{'en':'English','gu':'Gujarati','hi':'Hindi'}.get(language,'English')+'. Include assumptions next to formulas. Do not claim account access, live verification or saved actions.'}]},
+            'systemInstruction':{'parts':[{'text':'Give a short, accurate study explanation. Use the language requested by the user, otherwise '+{'en':'English','gu':'Gujarati','hi':'Hindi'}.get(language,'English')+'. Follow the requested length exactly. For a two-sentence request, return only two short prose sentences: no heading, bullets, extra equation, preface or closing question. Include a formula only when requested or needed; place any scientifically necessary applicability condition briefly in the same sentence. Do not invent assumptions: a balanced chemical equation does not require constant temperature. Do not claim account access, live verification or saved actions.'}]},
             'generationConfig':{'maxOutputTokens':900,'temperature':0.3}}

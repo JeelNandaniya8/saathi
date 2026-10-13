@@ -55,3 +55,33 @@ def test_reference_explanations_and_new_assets_work_without_provider(monkeypatch
     client=backend.app.test_client()
     assert client.get('/account-clock.js').status_code==200
     assert client.get('/study-jobs.js').status_code==200
+
+
+@pytest.mark.parametrize('language,question',[
+ ('en','Explain photosynthesis in two short sentences.'),
+ ('gu','પ્રકાશસંશ્લેષણ બે ટૂંકા વાક્યમાં સમજાવો.'),
+ ('hi','प्रकाश संश्लेषण को दो छोटे वाक्यों में समझाइए।')])
+@pytest.mark.parametrize('mode',['normal','explain'])
+def test_short_generation_keeps_only_current_study_question(monkeypatch,language,question,mode):
+    from types import SimpleNamespace
+    import app as backend
+    sent=[]
+    monkeypatch.setattr(backend,'GEMINI_API_KEY','fixture-key')
+    def send(*args,**kwargs):
+        sent.append((args[3],kwargs['fallback_payload']))
+        return SimpleNamespace(json=lambda:{'candidates':[{'content':{'parts':[{'text':'Study answer.'}]}}]},close=lambda:None)
+    monkeypatch.setattr(backend,'provider_send',send)
+    messages=[dict(role='user',content='Private earlier conversation.'),dict(role='assistant',content='Earlier reply.'),dict(role='user',content=question)]
+    assert backend.generate_gemini_reply(messages,memory_context='Private memory.',language=language,mode=mode)=='Study answer.'
+    primary,fallback=sent[0]
+    assert primary==fallback
+    assert primary['contents']==[dict(role='user',parts=[dict(text=question)])]
+    assert 'Private' not in str(primary)
+    assert primary['generationConfig']['maxOutputTokens']<=900
+
+
+@pytest.mark.parametrize('message',[
+ dict(role='user',content='Explain this from my notes.'),
+ dict(role='user',content='Explain photosynthesis.',attachments=[{'name':'chapter.pdf'}])])
+def test_compact_generation_does_not_discard_requested_context(message):
+    assert study_reference.compact_payload({'contents':[]},[message],'en','normal') is None
