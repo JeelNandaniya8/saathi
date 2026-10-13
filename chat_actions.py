@@ -236,6 +236,12 @@ def action_failure(cur,uid,message,error):
     cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(message['content'],message['id'],uid))
 
 
+def pending_turn(cur,uid,message,turn_content):
+    cur.execute("SELECT role,content FROM messages WHERE user_id=%s AND conversation_id=%s AND id<%s ORDER BY id DESC LIMIT 3",(uid,message.get('conversation_id'),message['id']))
+    rows=list(reversed(cur.fetchall()))
+    return chat_intents.continuation(rows[:-1],turn_content)
+
+
 def authorised_turn(cur,uid,message,turn_content,draft):
     if re.fullmatch(r'(?:confirm reminder|yes[, ]*confirm reminder|હા|હા.*રિમાઇન્ડર|हाँ|हाँ.*रिमाइंडर)[.!]?',turn_content.strip(),re.I):
         cur.execute("SELECT p.draft FROM (SELECT id,user_id FROM messages WHERE user_id=%s AND conversation_id=%s AND id<%s AND role='assistant' ORDER BY id DESC LIMIT 1) m JOIN chat_action_previews p ON p.message_id=m.id AND p.user_id=m.user_id WHERE p.expires_at>NOW()",(uid,message.get('conversation_id'),message['id']))
@@ -243,18 +249,17 @@ def authorised_turn(cur,uid,message,turn_content,draft):
         return bool(preview and validate_action(preview['draft'])==draft)
     if chat_intents.automatic(turn_content,draft['kind'],draft.get('operation','create')):return True
     if draft.get('operation')=='delete':return False
-    cur.execute("SELECT role,content FROM messages WHERE user_id=%s AND conversation_id=%s AND id<%s ORDER BY id DESC LIMIT 3",(uid,message.get('conversation_id'),message['id']))
-    rows=list(reversed(cur.fetchall()))
-    pending=chat_intents.continuation(rows[:-1],turn_content)
+    pending=pending_turn(cur,uid,message,turn_content)
     return bool(pending and chat_intents.automatic(pending,draft['kind'],draft.get('operation','create')))
 
 
-def save_requested(cur, uid, message, turn_content):
+def save_requested(cur, uid, message, turn_content, direct=None):
     """Commit explicit commands with the reply, not a later browser callback."""
     try:draft=proposal(message['content'])
     except ValueError as error:
         if '<SAATHI_ACTION' in message['content']:action_failure(cur,uid,message,error)
-        elif chat_intents.automatic(turn_content,'mindmap') and re.search(r'saved|created|સાચવ|बनाय|सेव',message['content'],re.I):action_failure(cur,uid,message,'No saved mindmap was returned.')
+        elif not direct and (chat_intents.explicit(turn_content) or chat_intents.explicit(pending_turn(cur,uid,message,turn_content))) and not chat_intents.clarification(message['content']):
+            action_failure(cur,uid,message,'Nothing was saved: no valid action was returned.')
         return
     if not authorised_turn(cur,uid,message,turn_content,draft):
         message['content']='Not saved. Review this preview before saving.\n\n'+message['content'][message['content'].index('<SAATHI_ACTION>'):]
@@ -280,7 +285,7 @@ def save_requested(cur, uid, message, turn_content):
 
 
 def load_receipts(cur, uid, messages):
-    candidates={m['id']:m for m in messages if '<SAATHI_ACTION>' in str(m['content'])}
+    candidates={m['id']:m for m in messages if '<SAATHI_ACTION>' in str(m['content']) or (str(m['content']).startswith('Failed:') and '\nRetry when ready.' in str(m['content']))}
     if not candidates:return
     cur.execute('SELECT message_id,kind,resource_id FROM chat_action_receipts WHERE user_id=%s AND message_id=ANY(%s)',(uid,list(candidates)))
     for receipt in cur.fetchall():
@@ -307,7 +312,7 @@ def account_timezone(cur,uid):
 def direct_reply(cur,uid,messages,language='en'):
     if not messages or messages[-1].get('attachments'):return None
     text=str(messages[-1].get('content','')).strip()
-    if chat_intents.automatic(text,'mindmap'):
+    if chat_intents.automatic(text,'mindmap') or chat_intents.automatic(chat_intents.continuation(messages[:-1],text),'mindmap'):
         try:study_tools.check_allowance(cur,uid,'map',pending=True)
         except study_tools.QuotaError as error:return {'reply':str(error)}
     query=chat_intents.command(text)

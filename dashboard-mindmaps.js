@@ -103,13 +103,13 @@ function createNodeEl(container,label,desc,x,y,type,color){
   const titleEl=document.createElement('div');
   titleEl.className='mm-title';
   if(type==='pillar')titleEl.style.color=color;
-  titleEl.textContent=label;
+  if(window.SaathiMarkup)window.SaathiMarkup.inline(titleEl,label);else titleEl.textContent=label;
 
   el.appendChild(titleEl);
   if(desc){
     const descEl=document.createElement('div');
     descEl.className='mm-desc';
-    descEl.textContent=desc;
+    if(window.SaathiMarkup)window.SaathiMarkup.inline(descEl,desc);else descEl.textContent=desc;
     el.appendChild(descEl);
   }
 

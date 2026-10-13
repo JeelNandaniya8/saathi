@@ -18,6 +18,62 @@ def map_data():
 
 
 @pytest.mark.parametrize('stream',[False,True])
+@pytest.mark.parametrize('command,table', [('Make a study plan for 3 days','tasks'),('Make a mindmap of probability','mindmaps'),('Add a daily reading habit','habits')])
+def test_missing_action_never_confirms_success_and_failure_survives_reload(db_app,monkeypatch,stream,command,table):
+    b,c,connect=db_app
+    def generate(*a,**k):
+        yield 'Created and saved. What else would you like?'
+        return {}
+    monkeypatch.setattr(b,'stream_gemini_reply',generate)
+    monkeypatch.setattr(b,'generate_gemini_reply',lambda *a,**k:('Created and saved. What else would you like?',{}))
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    result=send(c,cid,command,stream)['assistant_message']
+    assert result['content'].startswith('Failed:') and 'Created and saved' not in result['content']
+    assert result['action_error'] and not result.get('action_receipt')
+    stored=c.get(f'/api/conversations/{cid}/messages').json['messages'][-1]
+    assert stored['action_error'] and 'Retry when ready.' in stored['content']
+    assert one(connect,'SELECT COUNT(*) AS n FROM '+table)['n']==0
+
+
+@pytest.mark.parametrize('stream',[False,True])
+def test_clarified_mindmap_cannot_claim_save_without_a_record(db_app,monkeypatch,stream):
+    b,c,connect=db_app;replies=iter(['Which chapter should I use?','Your mindmap is ready and saved.'])
+    def generate(*a,**k):
+        yield next(replies)
+        return {}
+    monkeypatch.setattr(b,'stream_gemini_reply',generate)
+    monkeypatch.setattr(b,'generate_gemini_reply',lambda *a,**k:(next(replies),{}))
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    question=send(c,cid,'Make a mindmap of this chapter',stream)['assistant_message']
+    assert question['content']=='Which chapter should I use?' and not question.get('action_error')
+    result=send(c,cid,'Probability',stream)['assistant_message']
+    assert result['content'].startswith('Failed:') and not result.get('action_receipt')
+    assert one(connect,'SELECT COUNT(*) AS n FROM mindmaps')['n']==0
+    assert c.get(f'/api/conversations/{cid}/messages').json['messages'][-1]['action_error']
+
+
+@pytest.mark.parametrize('stream',[False,True])
+def test_clarified_mindmap_checks_quota_before_calling_ai(db_app,monkeypatch,stream):
+    b,c,connect=db_app
+    monkeypatch.setattr(b,'generate_gemini_reply',lambda *a,**k:('Which chapter should I use?',{}))
+    def question(*a,**k):
+        yield 'Which chapter should I use?'
+        return {}
+    monkeypatch.setattr(b,'stream_gemini_reply',question)
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    send(c,cid,'Make a mindmap of this chapter',stream)
+    with connect() as conn:
+        with conn.cursor() as cur:
+            for _ in range(2):cur.execute("INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(1,'Allowance used',%s,NOW())",(json.dumps(map_data()),))
+    def blocked(*a,**k):pytest.fail('Clarification follow-up must precheck quota')
+    monkeypatch.setattr(b,'generate_gemini_reply',blocked);monkeypatch.setattr(b,'stream_gemini_reply',blocked)
+    result=send(c,cid,'Probability',stream)['assistant_message']
+    assert '0 map generations remaining' in result['content'] and 'Asia/Kolkata' in result['content']
+    assert not result.get('action_receipt') and not result.get('action_error')
+    assert one(connect,'SELECT COUNT(*) AS n FROM mindmaps')['n']==2
+
+
+@pytest.mark.parametrize('stream',[False,True])
 def test_today_reads_only_owned_open_tasks_with_exact_local_deadlines(db_app,monkeypatch,stream):
     b,c,connect=db_app
     monkeypatch.setattr(b,'provider_send',lambda *a,**k:pytest.fail('Planner reads must not call AI'))
