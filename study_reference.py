@@ -31,6 +31,8 @@ def answer(messages,language='en',mode='normal'):
     if re.search(r'\b(?:derive|compare|calculate|solve|why|proof)\b|\d\s*(?:kg|N\b|m/s)|શા માટે|સાબિત|गणना|(?:^|\s)क्यों(?:\s|[?।.]|$)',text,re.I):return None
     key='newton' if re.search(r'newton.*(?:second|2nd)|ન્યૂટન.*બીજ|न्यूटन.*दूसर',text,re.I) else 'probability' if re.search(r'(?:probability|સંભાવના|પ્રાયિકતા|प्रायिकता).*(?:formula|સૂત્ર|सूत्र)|(?:formula|સૂત્ર|सूत्र).*(?:probability|સંભાવના|प्रायिकता)',text,re.I) else None
     if not key:return None
+    if re.search(r'\b(?:conditional|bayes|continuous|density|distribution|biased|independent|joint|replacement|relativistic|thermodynamics)\b|variable mass|non.?inertial|શરતી|સતત|સાપેક્ષ|सशर्त|सतत|परिवर्ती',text,re.I):return None
+    if key=='newton' and re.search(r'probability|સંભાવના|प्रायिकता',text,re.I):return None
     source,copy=REFERENCES[key]
     label={'en':'Study reference','gu':'અભ્યાસ સંદર્ભ','hi':'अध्ययन संदर्भ'}.get(language,'Study reference')
     return copy.get(language,copy['en'])+'\n\n['+label+' · NCERT]('+source+')'

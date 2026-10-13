@@ -36,6 +36,8 @@ def test_core_explanation_has_source_and_formula_assumptions(language):
     assert study_reference.answer([dict(role='user',content='Explain the probability formula')],language)
     assert study_reference.answer([dict(role='user',content='Explain Newton’s second law',attachments=[{}])],language) is None
     assert study_reference.answer([dict(role='user',content='Calculate acceleration under Newton’s second law')],language) is None
+    assert study_reference.answer([dict(role='user',content='Explain the conditional probability formula')],language) is None
+    assert study_reference.answer([dict(role='user',content='Explain Newton’s second law for variable mass')],language) is None
     if language=='hi':
         assert 'F_net = ma' in study_reference.answer([dict(role='user',content='न्यूटन के दूसरे नियम को दो वाक्यों में समझाइए।')],language)
         assert study_reference.answer([dict(role='user',content='न्यूटन का दूसरा नियम क्यों लागू होता है?')],language) is None
