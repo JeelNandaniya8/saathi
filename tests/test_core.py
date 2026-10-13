@@ -611,9 +611,21 @@ def test_model_overrides_and_study_reasoning_are_preserved(backend, monkeypatch)
     assert backend.gemini_endpoint("deep_study").endswith("gemini-3.5-flash-lite:generateContent")
     messages = [{"role": "user", "content": "Explain gravity"}]
     assert "thinkingConfig" not in backend.build_gemini_payload(messages, mode="deep_study")["generationConfig"]
-    monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-3-flash-preview")
-    assert "gemini-3-flash-preview" in backend.gemini_endpoint("normal")
+    monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-3.1-pro-preview")
+    assert "gemini-3.1-pro-preview" in backend.gemini_endpoint("normal")
     assert "thinkingConfig" not in backend.build_gemini_payload(messages)["generationConfig"]
+
+
+@pytest.mark.parametrize("model,level", [("gemini-3-flash-preview", "minimal"),
+                                        ("gemini-3.6-flash", "minimal"),
+                                        ("gemini-3.8-flash", "low")])
+def test_fast_flash_thinking_policy_preserves_study_reasoning(backend, monkeypatch, model, level):
+    monkeypatch.setattr(backend, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_FAST_MODEL", model)
+    monkeypatch.setenv("GEMINI_MODEL", model)
+    messages = [{"role": "user", "content": "Explain gravity"}]
+    assert backend.build_gemini_payload(messages)["generationConfig"]["thinkingConfig"] == {"thinkingLevel": level}
+    assert "thinkingConfig" not in backend.build_gemini_payload(messages, mode="deep_study")["generationConfig"]
 
 
 @pytest.mark.parametrize("model", ["gemini-2.5-flash", "gemini-2.5-flash-lite"])

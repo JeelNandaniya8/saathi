@@ -19,6 +19,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  alerts:
+    if: github.repository == 'JeelNandaniya8/saathi' && github.ref == 'refs/heads/main' && vars.CLASSROOM_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Deliver general background alerts (no medication schedules)
+        env:
+          CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
+        run: python3 scripts/send_background_alerts.py
   refresh:
     if: github.repository == 'JeelNandaniya8/saathi' && github.ref == 'refs/heads/main' && vars.CLASSROOM_SYNC_ENABLED == 'true'
     runs-on: ubuntu-latest
@@ -31,8 +43,3 @@ jobs:
         env:
           CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
         run: python3 scripts/sync_classroom.py
-      - name: Deliver general background alerts (no medication schedules)
-        if: always()
-        env:
-          CLASSROOM_SYNC_SECRET: ${{ secrets.CLASSROOM_SYNC_SECRET }}
-        run: python3 scripts/send_background_alerts.py

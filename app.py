@@ -5179,6 +5179,14 @@ def build_gemini_payload(
         "gemini-2.5-flash-lite", "gemini-2.5-flash"
     ):
         generation_config["thinkingConfig"] = {"thinkingBudget": 0}
+    elif selected_mode in FAST_CHAT_MODES:
+        # Exact supported models only; Pro, study modes and unknown overrides
+        # retain their reasoning defaults. Flash-Lite already defaults minimal.
+        model = gemini_model(selected_mode)
+        if model in ("gemini-3-flash-preview", "gemini-3.6-flash"):
+            generation_config["thinkingConfig"] = {"thinkingLevel": "minimal"}
+        elif model == "gemini-3.8-flash":
+            generation_config["thinkingConfig"] = {"thinkingLevel": "low"}
     return {
         "contents": contents,
         "systemInstruction": {"parts": [{"text": system_text}]},

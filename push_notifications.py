@@ -223,6 +223,9 @@ def register(app,b):
         config=configuration()
         if not config['enabled']:return jsonify(error='Background alerts are not configured.'),503
         status=send_push(validate_subscription(row['subscription_json']),{'title':'Saathi test alert','body':'Open Saathi to review your reminders.','url':'/dashboard#reminders'},config)
+        if status in (404,410):
+            remove_device(b,uid,data['subscription_id'])
+            return jsonify(error='This device subscription expired. Reload this page, enable alerts again, then send a new test.'),410
         if not 200<=status<300:return jsonify(error='The push provider did not accept the test. Enable alerts again and retry.'),502
         return jsonify(accepted=True,message='Accepted by the push provider. Check this device; receipt is not confirmed.')
 
