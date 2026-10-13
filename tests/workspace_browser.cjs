@@ -337,7 +337,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.route('**/api/conversations/7/messages?limit=100',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture failure'})}));
    await page.evaluate(()=>selectConversation(7));
    await page.getByRole('button',{name:'Retry loading conversation',exact:true}).waitFor();
-   assert.equal(await page.locator('#chatInput').isDisabled(),true);
+   assert.equal(await page.locator('#chatInput').isDisabled(),false,'Typing remains usable after a history failure');
    assert.equal(await page.locator('#sendButton').isDisabled(),true);
    await page.unroute('**/api/conversations/7/messages?limit=100');
    await page.getByRole('button',{name:'Retry loading conversation',exact:true}).click();

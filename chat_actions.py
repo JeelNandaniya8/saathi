@@ -157,13 +157,13 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
                 if operation=='resume' and next_at<=now:
                     if row['recurrence']=='once':raise ValueError('Choose a future time to resume this one-time reminder.')
                     days=7 if row['recurrence']=='weekly' else 1
-                    step=timedelta(days=days);next_at+=step*((now-next_at)//step+1)
+                    step=timedelta(days=days);next_at=row.get('snoozed_from') or next_at;next_at+=step*((now-next_at)//step+1)
                 cur.execute('UPDATE reminders SET active=%s,next_run_at=%s WHERE id=%s AND user_id=%s RETURNING id',(operation=='resume',next_at,row['id'],uid))
             elif operation=='snooze':
                 if not row['active'] or row['next_run_at']>datetime.now(timezone.utc):
                     raise ValueError('Only a due, active reminder can be snoozed. To change a future schedule, give its new date and time.')
-                cur.execute('UPDATE reminders SET next_run_at=%s,active=TRUE WHERE id=%s AND user_id=%s RETURNING id',(at,row['id'],uid))
-            else:cur.execute('UPDATE reminders SET title=%s,note=%s,next_run_at=%s,recurrence=%s WHERE id=%s AND user_id=%s RETURNING id',(title,text,at,draft['recurrence'],row['id'],uid))
+                cur.execute('UPDATE reminders SET snoozed_from=COALESCE(snoozed_from,next_run_at),next_run_at=%s,active=TRUE WHERE id=%s AND user_id=%s RETURNING id',(at,row['id'],uid))
+            else:cur.execute('UPDATE reminders SET title=%s,note=%s,next_run_at=%s,recurrence=%s,snoozed_from=NULL WHERE id=%s AND user_id=%s RETURNING id',(title,text,at,draft['recurrence'],row['id'],uid))
         elif kind=='memory':
             if operation in {'pause','resume'}:
                 if operation=='resume':validate_action(dict(kind='memory',title=row['label'],text=row['content']))

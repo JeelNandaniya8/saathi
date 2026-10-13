@@ -103,6 +103,27 @@ def test_note_readback_is_exact_and_account_owned(db_app):
     assert c.get('/api/quick-notes/'+str(rid)).status_code==404
 
 
+@pytest.mark.parametrize('recurrence',['daily','weekly'])
+@pytest.mark.parametrize('ack',[False,True])
+def test_snooze_preserves_the_original_repeating_clock(db_app,recurrence,ack):
+    _,c,connect=db_app;original=datetime.now(timezone.utc)-timedelta(minutes=5)
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO reminders(user_id,title,note,next_run_at,recurrence,created_at) VALUES(1,'Recurring revision','',%s,%s,NOW()) RETURNING id",(original,recurrence));rid=cur.fetchone()['id']
+    path='/api/reminders/'+str(rid)
+    assert c.patch(path,json=dict(action='snooze',minutes=30)).status_code==200
+    assert one(connect,'SELECT snoozed_from FROM reminders WHERE id=%s',(rid,))['snoozed_from']==original
+    # Simulate arrival of the snoozed occurrence without moving its repeat anchor.
+    due=datetime.now(timezone.utc)-timedelta(seconds=1)
+    with connect() as conn:
+        with conn.cursor() as cur:cur.execute('UPDATE reminders SET next_run_at=%s WHERE id=%s',(due,rid))
+    result=c.post(path+'/ack',json=dict(scheduled_at=due.isoformat())) if ack else c.patch(path,json=dict(action='complete'))
+    assert result.status_code==200,result.json
+    saved=one(connect,'SELECT next_run_at,snoozed_from FROM reminders WHERE id=%s',(rid,))
+    assert saved['next_run_at']==original+timedelta(days=1 if recurrence=='daily' else 7)
+    assert saved['snoozed_from'] is None
+
+
 @pytest.mark.parametrize('kind',['mock','map'])
 def test_quota_block_starts_no_generation_and_no_job(db_app,monkeypatch,kind):
     b,c,connect=db_app

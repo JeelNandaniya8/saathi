@@ -3610,16 +3610,16 @@ def reminder_detail(reminder_id):
             conn.close()
             return jsonify({"error": "Choose a valid snooze time."}), 400
         cur.execute(
-            "UPDATE reminders SET next_run_at = %s, active = TRUE WHERE id = %s AND user_id = %s RETURNING *",
+            "UPDATE reminders SET snoozed_from = COALESCE(snoozed_from,next_run_at), next_run_at = %s, active = TRUE WHERE id = %s AND user_id = %s RETURNING *",
             (datetime.now(timezone.utc) + timedelta(minutes=minutes), reminder_id, user_id),
         )
     elif action == "complete":
         now = datetime.now(timezone.utc)
         next_run, active = next_reminder_occurrence(
-            reminder["next_run_at"], reminder["recurrence"], now
+            reminder.get("snoozed_from") or reminder["next_run_at"], reminder["recurrence"], now
         )
         cur.execute(
-            "UPDATE reminders SET next_run_at = %s, active = %s WHERE id = %s AND user_id = %s RETURNING *",
+            "UPDATE reminders SET next_run_at = %s, active = %s, snoozed_from = NULL WHERE id = %s AND user_id = %s RETURNING *",
             (next_run, active, reminder_id, user_id),
         )
     elif action == "update":
@@ -3649,7 +3649,7 @@ def reminder_detail(reminder_id):
             """
             UPDATE reminders
             SET title = %s, note = %s, next_run_at = %s, recurrence = %s,
-                active = %s, email_enabled = %s
+                active = %s, email_enabled = %s, snoozed_from = NULL
             WHERE id = %s AND user_id = %s
             RETURNING *
             """,
