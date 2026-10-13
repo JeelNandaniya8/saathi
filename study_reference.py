@@ -28,7 +28,7 @@ def answer(messages,language='en',mode='normal'):
     if re.search(r'Gujarati|[\u0a80-\u0aff]',text,re.I) and not re.search(r'in English',text,re.I):language='gu'
     elif re.search(r'Hindi|[\u0900-\u097f]',text,re.I) and not re.search(r'in English',text,re.I):language='hi'
     # A supplied numerical exercise, derivation or comparison needs an actual answer.
-    if re.search(r'\b(?:derive|compare|calculate|solve|why|proof)\b|\d\s*(?:kg|N\b|m/s)|શા માટે|સાબિત|गणना|क्यों',text,re.I):return None
+    if re.search(r'\b(?:derive|compare|calculate|solve|why|proof)\b|\d\s*(?:kg|N\b|m/s)|શા માટે|સાબિત|गणना|(?:^|\s)क्यों(?:\s|[?।.]|$)',text,re.I):return None
     key='newton' if re.search(r'newton.*(?:second|2nd)|ન્યૂટન.*બીજ|न्यूटन.*दूसर',text,re.I) else 'probability' if re.search(r'(?:probability|સંભાવના|પ્રાયિકતા|प्रायिकता).*(?:formula|સૂત્ર|सूत्र)|(?:formula|સૂત્ર|सूत्र).*(?:probability|સંભાવના|प्रायिकता)',text,re.I) else None
     if not key:return None
     source,copy=REFERENCES[key]
