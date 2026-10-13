@@ -57,12 +57,12 @@ def automatic(text, kind, operation='create'):
 def sources(text):
     text = command(text)
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
-    if not re.search(r'\b(what|how much|show|list|read|use|left|remaining|mark|snooze|pause|resume|edit|update|replace|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|रोक|पूरा|बदल|हटा', text, re.I):
+    if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
         return set()
     patterns = {'tasks':r'work|task|plan|revision|કામ|યોજના|काम|योजना',
                 'reminders':r'remind|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
-                'notes':r'\b(?:read|use|show|what|edit|update|replace|delete|confirm).*\bnotes?\b|નોંધ|नोट',
+                'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|નોંધ|नोट',
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
                 'exams':r'exam|પરીક્ષા|परीक्षा', 'memories':r'memor|remember|birthday|home city|address|યાદ|जन्मदिन|याद'}
     result = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}
