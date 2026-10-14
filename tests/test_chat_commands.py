@@ -15,6 +15,8 @@ def test_task_deadline_uses_account_time_without_ai():
 def test_fact_has_short_label_and_reminder_drops_command_verb():
     assert commands.parse('Remember that I prefer studying Physics with short worked examples')['title']=='Study preference'
     assert commands.parse('Remind me tomorrow at 8 PM to do organic chemistry revision')['title']=='organic chemistry revision'
+    fact=commands.parse('Remember that I prefer short explanations in Gujarati. Save this to memory.')
+    assert fact['text']=='I prefer short explanations in Gujarati' and fact['title']=='Preference: short explanations in Gujarati'
 
 
 @pytest.mark.parametrize('text',[

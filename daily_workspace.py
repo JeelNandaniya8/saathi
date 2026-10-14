@@ -61,7 +61,7 @@ def flashcards(text):
 def mock_revision_rows(uid,test_id,topic,review):
     return [(uid,test_id,item['id'],topic,item['question'],
              item['correct_answer']+': '+item['options'][item['correct_answer']]+'\n\n'+item['explanation'])
-            for item in review if not item['is_correct']]
+            for item in review if item.get('graded',True) and item['is_correct'] is False]
 
 
 def insert_mock_revision(cur,rows):

@@ -1019,7 +1019,7 @@ def join_waitlist():
 def account_page():
     if session.get("user_id") and require_user_id():
         destination = request.args.get("next", "/dashboard")
-        if not re.fullmatch(r"/dashboard(?:#(?:overview|study|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps|healer))?|/chat(?:\?(?:note|conversation)=[1-9]\d*)?", destination):
+        if not re.fullmatch(r"/dashboard(?:\?(?:task|memory|reminder|mindmap)=[1-9]\d*)?(?:#(?:overview|study|tasks|reminders|habits|journal|checkins|memory|family|account|mocktests|mindmaps|healer))?|/chat(?:\?(?:note|conversation)=[1-9]\d*)?", destination):
             destination = "/dashboard"
         return redirect(destination)
     return send_from_directory(".", "account.html")
@@ -1028,7 +1028,7 @@ def account_page():
 @app.route("/dashboard")
 def dashboard_page():
     if not session.get("user_id"):
-        return redirect("/account?next=/dashboard")
+        return redirect("/account?next="+quote(request.full_path.rstrip("?"),safe="")) if request.query_string else redirect("/account?next=/dashboard")
     return send_from_directory(".", "dashboard.html")
 
 
@@ -1609,12 +1609,13 @@ def mock_tests_history():
     cur.execute(
         """
         SELECT m.id, m.topic, m.difficulty, m.question_count, m.time_limit_minutes, m.language, m.created_at,
+               m.questions_json,a.attempt_id,a.answers_json,a.total_questions,
                a.score, a.accuracy_percentage, a.time_taken_seconds, a.created_at AS attempted_at
         FROM mock_tests m
         LEFT JOIN LATERAL (
-            SELECT score, accuracy_percentage, time_taken_seconds, created_at
+            SELECT id AS attempt_id,answers_json,total_questions,score, accuracy_percentage, time_taken_seconds, created_at
             FROM mock_test_attempts
-            WHERE test_id = m.id
+            WHERE test_id = m.id AND user_id=m.user_id
             ORDER BY created_at DESC
             LIMIT 1
         ) a ON true
@@ -1625,6 +1626,13 @@ def mock_tests_history():
         (user_id,),
     )
     rows = cur.fetchall()
+    for row in rows:
+        row['graded_count']=row['question_count'];row['excluded_questions']=0
+        if row['attempt_id']:
+            old=dict(id=row['attempt_id'],answers_json=row['answers_json'],score=row['score'],total_questions=row['total_questions'],accuracy_percentage=row['accuracy_percentage'],time_taken_seconds=row['time_taken_seconds'],created_at=row['attempted_at'])
+            result=study_tools.reconcile_attempt(cur,user_id,row['id'],study_tools.validate_questions(row['questions_json'],quality=False),old)['attempt']
+            row.update(score=result['score'],accuracy_percentage=result['accuracy_percentage'],graded_count=result['total_questions'],excluded_questions=result['excluded_questions'])
+    conn.commit()
     cur.close()
     conn.close()
 
@@ -1636,6 +1644,8 @@ def mock_tests_history():
             "question_count": r["question_count"],
             "time_limit_minutes": r["time_limit_minutes"],
             "score": r["score"],
+            "graded_count": r["graded_count"],
+            "excluded_questions": r["excluded_questions"],
             "accuracy": float(r["accuracy_percentage"]) if r["accuracy_percentage"] is not None else None,
             "attempted_at": r["attempted_at"].isoformat() if r["attempted_at"] else None,
             "language": r["language"],

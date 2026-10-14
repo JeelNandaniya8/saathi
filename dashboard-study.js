@@ -35,7 +35,7 @@ function renderMockTestHistory(){
     diffBadge.textContent=test.difficulty;
     title.append(diffBadge);
     const sub=document.createElement('p');
-    const scoreStr=test.score!=null?`Score: ${test.score}/${test.question_count} (${test.accuracy}%)`:'Not attempted yet';
+    const scoreStr=test.score!=null?`Score: ${test.score}/${test.graded_count??test.question_count} (${test.accuracy}%)${test.excluded_questions?' · '+test.excluded_questions+' not scored':''}`:'Not attempted yet';
     sub.textContent=`${test.question_count} Questions · ${test.time_limit_minutes} mins · ${scoreStr}`;
     const date=document.createElement('small');
     date.textContent=test.attempted_at?`Completed ${formatDate(test.attempted_at)}`:`Created ${formatDate(test.created_at)}`;
@@ -293,9 +293,8 @@ async function submitMockTest(isTimeout=false){
     window.SaathiRecovery?.removeDraft('mock',testId);
     state.lastAttemptResult=res;
     renderTestResults(res);
-    playChime();
-    blastConfetti();
-    toast('Test evaluated successfully! 🎉','success');
+    if(!res.attempt.excluded_questions&&res.review.every(item=>item.answer_verified)){playChime();blastConfetti();}
+    toast(res.attempt.excluded_questions?'Practice reviewed; inconsistent questions were not scored.':'Answers reviewed.','success');
     
     // Refresh history in background
     api('/api/mock-tests/history').then(data=>{
@@ -320,7 +319,7 @@ function renderTestResults(data){
   $('mockTestCreatorBox').style.display='none';
   $('mockTestResultsBox').style.display='block';
   
-  $('resScoreNum').textContent=`${attempt.score}/${attempt.total_questions}`;
+  $('resScoreNum').textContent=attempt.total_questions?`${attempt.score}/${attempt.total_questions}`:'Not scored';
   $('resScorePct').textContent=`${attempt.accuracy_percentage}%`;
   
   const pct=attempt.accuracy_percentage;
@@ -328,12 +327,13 @@ function renderTestResults(data){
   if(pct>=90)title='Strong understanding';
   else if(pct>=70)title='Good progress';
   else if(pct<50)title='A starting point for revision';
+  if(attempt.excluded_questions||review.some(item=>!item.answer_verified))title='Practice review';
   $('resHeroTitle').textContent=title;
   
   const mins=Math.floor(attempt.time_spent_seconds/60);
   const secs=attempt.time_spent_seconds%60;
   const timeStr=`${mins}m ${secs}s`;
-  $('resHeroSub').textContent=`You completed the test in ${timeStr} with ${attempt.accuracy_percentage}% accuracy.`;
+  $('resHeroSub').textContent=`Practice time: ${timeStr}. ${attempt.excluded_questions?attempt.excluded_questions+' inconsistent question(s) excluded; the score covers the remaining questions. ':' '}AI practice; verify important answers with your course material.`;
   
   // Update scorecard preview
   $('previewCandidateName').textContent=$('scorecardIncludeName')?.checked?(state.user?.name||'Student'):'My study session';
@@ -360,12 +360,14 @@ function renderTestResults(data){
     const pill=document.createElement('span');
     let pillClass='unattempted';
     let pillText='Not Attempted';
-    if(item.is_correct){
+    if(item.graded===false){
+      pillText='Not scored · Needs review';
+    }else if(item.is_correct){
       pillClass='correct';
-      pillText='✓ Correct (+1)';
+      pillText=item.answer_verified?'✓ Correct (+1)':'Matches AI key (+1)';
     }else if(item.user_answer){
-      pillClass='wrong';
-      pillText='× Incorrect';
+      pillClass=item.answer_verified?'wrong':'unattempted';
+      pillText=item.answer_verified?'× Incorrect':'Differs from AI key · Check course material';
     }
     pill.className=`review-status-pill ${pillClass}`;
     pill.textContent=pillText;
@@ -379,15 +381,17 @@ function renderTestResults(data){
     answersRow.style.cssText='display:flex;gap:18px;font-size:13px;flex-wrap:wrap;margin-bottom:12px';
     
     const userAns=document.createElement('div');
-    userAns.innerHTML=`<span style="color:var(--muted)">Your Answer:</span> <strong style="color:${item.is_correct?'var(--sage)':'var(--danger)'}">${escapeText(item.user_answer||'None')} (${escapeText(item.options?.[item.user_answer]||'Unanswered')})</strong>`;
+    userAns.innerHTML=`<span style="color:var(--muted)">Your Answer:</span> <strong style="color:${item.graded===false?'var(--muted)':item.is_correct?'var(--sage)':item.answer_verified?'var(--danger)':'var(--muted)'}"></strong>`;
+    SaathiMarkup.render(userAns.querySelector('strong'),(item.user_answer||'None')+' ('+(item.options?.[item.user_answer]||'Unanswered')+')');
     
     const correctAns=document.createElement('div');
-    correctAns.innerHTML=`<span style="color:var(--muted)">Correct Answer:</span> <strong style="color:var(--sage)">${escapeText(item.correct_answer)} (${escapeText(item.options?.[item.correct_answer]||'')})</strong>`;
+    correctAns.innerHTML=`<span style="color:var(--muted)">${item.graded===false?'Needs review':item.answer_verified?'Verified answer':'Expected answer (AI key)'}:</span> <strong style="color:var(--sage)"></strong>`;
+    SaathiMarkup.render(correctAns.querySelector('strong'),item.graded===false?'Excluded from scoring':(item.accepted_answers||[item.correct_answer]).join(' / ')+' ('+(item.options?.[item.correct_answer]||'')+')');
     answersRow.append(userAns,correctAns);
     
     const expBox=document.createElement('div');
     expBox.className='review-explanation';
-    const expHeading=document.createElement('strong');expHeading.textContent='Explanation';const explanation=document.createElement('div');SaathiMarkup.render(explanation,item.explanation||'Review this topic carefully.');expBox.append(expHeading,explanation);
+    const expHeading=document.createElement('strong');expHeading.textContent='Explanation';const explanation=document.createElement('div');SaathiMarkup.render(explanation,item.graded===false?item.quality_note:item.explanation||'Review this topic carefully.');expBox.append(expHeading,explanation);
     
     card.append(head,qPrompt,answersRow,expBox);
     list.append(card);

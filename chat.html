@@ -7,7 +7,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/saathi-icon.svg" type="image/svg+xml">
 <title>Chat · Saathi</title>
-<script src="/theme.js?v=20261014e"></script>
+<script src="/theme.js?v=20261014f"></script>
 <style>
 :root{
   color-scheme:light;
@@ -575,14 +575,14 @@ body.chat-polish{background:var(--paper)}
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
 <script src="/i18n.js?v=20261008e"></script>
-<script src="/workspace-hub.js?v=20261014e"></script>
+<script src="/workspace-hub.js?v=20261014f"></script>
 <script src="/recovery.js?v=20260919"></script>
 <script src="/account-clock.js?v=20261014a"></script>
 <script src="/vendor/katex-0.19.0.min.js" defer></script>
-<script src="/message-format.js?v=20261014e"></script>
-<script src="/study-jobs.js?v=20261014e"></script>
+<script src="/message-format.js?v=20261014f"></script>
+<script src="/study-jobs.js?v=20261014f"></script>
 <script src="/workspace.js?v=20261014c"></script>
-<script src="/chat-actions.js?v=20261014e"></script>
+<script src="/chat-actions.js?v=20261014f"></script>
 <script>
 const state={user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
 const el={
@@ -838,7 +838,7 @@ function messageElement(message,index){
   const article=document.createElement('article'),assistant=message.role==='assistant';article.className='message '+(assistant?'assistant':'user')+(message.failed?' failed':'')+(message.streaming?' streaming':'');article.dataset.messageId=message.id;if(message.streaming)article.setAttribute('aria-live','polite');
   const avatar=document.createElement('div');avatar.className='message-avatar';if(assistant)avatar.textContent='S';else SaathiWorkspace.renderAvatar(avatar,state.user);
   const body=document.createElement('div');body.className='message-body';const name=document.createElement('p');name.className='message-name';name.textContent=assistant?'Saathi':'You';body.append(name);
-  if(assistant&&message.ai_mode&&message.ai_mode!=='normal'){const mode=state.chatModes.find(item=>item.id===message.ai_mode);const badge=document.createElement('span');badge.className='mode-badge';badge.textContent=mode?.label||message.ai_mode.replaceAll('_',' ');body.append(badge)}
+  if(assistant&&!message.action_receipt&&!message.action_error&&message.ai_mode&&message.ai_mode!=='normal'){const mode=state.chatModes.find(item=>item.id===message.ai_mode);const badge=document.createElement('span');badge.className='mode-badge';badge.textContent=mode?.label||message.ai_mode.replaceAll('_',' ');body.append(badge)}
   if(message.attachments?.length){const files=document.createElement('div');files.className='message-attachments';message.attachments.forEach(attachment=>{const link=document.createElement('a');link.className='message-attachment';link.href=attachment.url||'#';if(!attachment.local){link.target='_blank';link.rel='noopener'}else link.addEventListener('click',event=>event.preventDefault());if(attachment.mime_type?.startsWith('image/')){const preview=document.createElement('img');preview.src=attachment.url;preview.alt=attachment.name;preview.loading='lazy';link.append(preview)}else{const icon=document.createElement('span');icon.className='attachment-icon';icon.textContent='PDF';link.append(icon)}const copy=document.createElement('span');copy.className='attachment-copy';const title=document.createElement('b');title.textContent=attachment.name;const detail=document.createElement('small');const extracted=Number(attachment.extracted_page_count)||0;detail.textContent=readableSize(attachment.size_bytes)+(extracted?' · '+extracted+' searchable page'+(extracted===1?'':'s'):'');copy.append(title,detail);link.append(copy);files.append(link)});body.append(files)}
   const experience=assistant?visibleMessage(message):{text:message.content};const content=document.createElement('div');content.className='message-content';if(experience.text){if(assistant&&!message.streaming)renderMarkdown(content,experience.text);else{content.textContent=experience.text;content.classList.add('has-text')}}else if(message.streaming){const stage=document.createElement('span');stage.className='request-stage';stage.setAttribute('role','status');stage.textContent=requestStageText(message.stage||state.requestStage||'waiting');content.append(stage)}else content.hidden=true;body.append(content);if(experience.quiz)body.append(quizCard(experience.quiz,message));if(experience.flash)body.append(flashcardPlayer(experience.flash.cards,message));if(assistant&&!message.streaming){addDisclosures(body,message,index);window.SaathiChatActions?.attach(body,message)};
   if(assistant&&!message.failed&&!message.streaming&&index===state.messages.length-1){const actions=document.createElement('details');actions.className='quick-actions';const followupLabel=document.createElement('summary');followupLabel.textContent=({gu:'આ જવાબ વધુ સમજીએ',hi:'इस जवाब को और समझें'}[state.user?.language]||'Explore this answer');actions.append(followupLabel);[
