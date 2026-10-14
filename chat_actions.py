@@ -172,11 +172,7 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
         else:cur.execute('UPDATE quick_notes SET title=%s,content=%s,version=version+1,updated_at=NOW() WHERE id=%s AND user_id=%s RETURNING id',(title,text,row['id'],uid))
         return cur.fetchone()['id']
     if kind=='plan':
-        first=None
-        for item in draft['items']:
-            resource=apply_draft(cur,uid,item)
-            if first is None:first=resource
-        return first
+        return [apply_draft(cur,uid,item) for item in draft['items']]
     if kind=='mindmap':
         study_tools.check_allowance(cur,uid,'map')
         cur.execute('INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(%s,%s,%s,NOW()) RETURNING id',(uid,title,json.dumps(draft['map'],ensure_ascii=False)))
@@ -201,7 +197,23 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
     return cur.fetchone()['id']
 
 
+def make_receipt(kind,resource):
+    if kind=='plan' and isinstance(resource,list):return dict(kind=kind,resource_id=resource[0],resource_ids=resource)
+    return dict(kind=kind,resource_id=resource)
+
+
+def store_receipt(cur,uid,message_id,receipt):
+    cur.execute('INSERT INTO chat_action_receipts(message_id,user_id,kind,resource_id,resource_ids) VALUES(%s,%s,%s,%s,%s)',
+        (message_id,uid,receipt['kind'],receipt['resource_id'],receipt.get('resource_ids')))
+
+
 def receipt_resource(cur, uid, receipt):
+    if receipt['kind']=='plan':
+        ids=receipt.get('resource_ids') or [receipt['resource_id']]
+        cur.execute('SELECT id,title,completed,due_at FROM tasks WHERE user_id=%s AND id=ANY(%s) ORDER BY id',(uid,ids))
+        items=[dict(row,due_at=row['due_at'].isoformat() if row['due_at'] else None) for row in cur.fetchall()]
+        expected=receipt.get('expected_count',len(ids))
+        return dict(title='Study plan',items=items,count=len(items),expected_count=expected,available=len(items)==expected)
     if receipt['kind']=='reminder':
         cur.execute('SELECT title,next_run_at,active FROM reminders WHERE id=%s AND user_id=%s',(receipt['resource_id'],uid));row=cur.fetchone()
         if not row:return None
@@ -225,11 +237,11 @@ def receipt_resource(cur, uid, receipt):
 
 
 def verify_saved(cur,uid,draft,resource_id):
-    receipt=dict(kind=draft['kind'],resource_id=resource_id)
+    receipt=make_receipt(draft['kind'],resource_id)
     resource=receipt_resource(cur,uid,receipt)
     if draft.get('operation')=='delete':
         if resource is not None:raise ValueError('Deletion could not be verified. Retry.')
-    elif resource is None:raise ValueError('Save could not be read back. Retry.')
+    elif resource is None or resource.get('available') is False:raise ValueError('Save could not be read back. Retry.')
     return resource
 
 
@@ -274,8 +286,8 @@ def save_requested(cur, uid, message, turn_content, direct=None):
     try:
         confirmed=bool(re.fullmatch(r'(?:confirm reminder|yes[, ]*confirm reminder|હા|હા.*રિમાઇન્ડર|हाँ|हाँ.*रिमाइंडर)[.!]?',turn_content.strip(),re.I))
         resource_id=apply_draft(cur,uid,draft,replace_full=bool(re.search(r'\breplace\b',turn_content,re.I)),command_text=None if confirmed else ((pending_turn(cur,uid,message,turn_content)+'\n'+turn_content) if not chat_intents.explicit(turn_content) else turn_content),conversation_id=message.get('conversation_id'),message_id=message['id'])
-        receipt=dict(kind=draft['kind'],resource_id=resource_id)
-        cur.execute('INSERT INTO chat_action_receipts(message_id,user_id,kind,resource_id) VALUES(%s,%s,%s,%s)',(message['id'],uid,draft['kind'],resource_id))
+        receipt=make_receipt(draft['kind'],resource_id)
+        store_receipt(cur,uid,message['id'],receipt)
         message['action_resource']=verify_saved(cur,uid,draft,resource_id)
         message['action_receipt']=receipt
         labels={'note':'Saved to Notes.','memory':'Saved to Memory.','reminder':'Reminder scheduled.','mindmap':'Mindmap created and saved.','plan':'Study plan saved to Planner.','task':'Task saved to Planner.'}
@@ -292,9 +304,12 @@ def save_requested(cur, uid, message, turn_content, direct=None):
 def load_receipts(cur, uid, messages):
     candidates={m['id']:m for m in messages if '<SAATHI_ACTION>' in str(m['content']) or (str(m['content']).startswith('Failed:') and '\nRetry when ready.' in str(m['content']))}
     if not candidates:return
-    cur.execute('SELECT message_id,kind,resource_id FROM chat_action_receipts WHERE user_id=%s AND message_id=ANY(%s)',(uid,list(candidates)))
+    cur.execute('SELECT message_id,kind,resource_id,resource_ids FROM chat_action_receipts WHERE user_id=%s AND message_id=ANY(%s)',(uid,list(candidates)))
     for receipt in cur.fetchall():
-        candidates[receipt['message_id']]['action_receipt']=dict(kind=receipt['kind'],resource_id=receipt['resource_id'])
+        if receipt['kind']=='plan':
+            try:receipt['expected_count']=len(proposal(candidates[receipt['message_id']]['content'])['items'])
+            except ValueError:pass
+        candidates[receipt['message_id']]['action_receipt']=make_receipt(receipt['kind'],receipt.get('resource_ids') if receipt['kind']=='plan' and receipt.get('resource_ids') else receipt['resource_id'])
         try:
             resource=receipt_resource(cur,uid,receipt)
             if resource is None:
@@ -488,11 +503,16 @@ def register(app,b):
                 # Serialise concurrent confirmations; every query is account-owned.
                 cur.execute("SELECT content,conversation_id FROM messages WHERE id=%s AND user_id=%s AND role='assistant' FOR UPDATE",(message_id,uid));message=cur.fetchone()
                 if not message:return jsonify(error='Reply not found.'),404
-                cur.execute('SELECT kind,resource_id FROM chat_action_receipts WHERE message_id=%s AND user_id=%s',(message_id,uid));receipt=cur.fetchone()
+                cur.execute('SELECT kind,resource_id,resource_ids FROM chat_action_receipts WHERE message_id=%s AND user_id=%s',(message_id,uid));receipt=cur.fetchone()
                 if receipt:
+                    if receipt['kind']=='plan':
+                        receipt=make_receipt('plan',receipt.get('resource_ids') or receipt['resource_id'])
+                        try:receipt['expected_count']=len(proposal(message['content'])['items'])
+                        except ValueError:pass
+                    else:receipt=make_receipt(receipt['kind'],receipt['resource_id'])
                     resource=receipt_resource(cur,uid,receipt)
-                    if resource is None and request.method=='POST':return jsonify(error='This saved item is no longer available. Create a new item if needed.'),410
-                    return jsonify(saved=resource is not None,receipt=receipt,resource=resource or dict(available=False))
+                    if (resource is None or resource.get('available') is False) and request.method=='POST':return jsonify(error='This saved item is no longer available. Create a new item if needed.'),410
+                    return jsonify(saved=resource is not None and resource.get('available') is not False,receipt=receipt,resource=resource or dict(available=False))
                 original=proposal(message['content'])
                 if request.method=='GET':return jsonify(action=original,saved=False)
                 data=request.get_json(silent=True)
@@ -509,8 +529,8 @@ def register(app,b):
                 if draft['kind']=='memory' and data.get('memory_consent') is not True:raise ValueError('Confirm that this general memory may be stored and used in future replies.')
                 resource_id=apply_draft(cur,uid,draft,replace_full=not data.get('automatic') or bool(re.search(r'\breplace\b',turn['content'],re.I)),command_text=turn['content'] if data.get('automatic') else None,conversation_id=message['conversation_id'],message_id=message_id);kind=draft['kind']
                 resource=verify_saved(cur,uid,draft,resource_id)
-                cur.execute('INSERT INTO chat_action_receipts(message_id,user_id,kind,resource_id) VALUES(%s,%s,%s,%s)',(message_id,uid,kind,resource_id));conn.commit()
-                receipt=dict(kind=kind,resource_id=resource_id)
+                receipt=make_receipt(kind,resource_id)
+                store_receipt(cur,uid,message_id,receipt);conn.commit()
                 return jsonify(saved=True,receipt=receipt,resource=resource),201
         except ValueError as error:return jsonify(error=str(error)),400
 

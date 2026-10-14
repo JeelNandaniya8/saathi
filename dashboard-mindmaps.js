@@ -66,16 +66,20 @@ function mindmapLayout(root,collapsed=new Set(),heightFor=()=>300){
 }
 function renderMindmapTree(data){
   const svg=$('mmSvg'),nodesLayer=$('mmNodes');svg.replaceChildren();nodesLayer.replaceChildren();if(!data?.root)return;
-  state.mmCollapsed??=new Set();const layout=mindmapLayout(data.root,state.mmCollapsed);state.mmLayout=layout;
+  state.mmCollapsed??=new Set();let layout=mindmapLayout(data.root,state.mmCollapsed);state.mmLayout=layout;
   const stage=$('mmStage');stage.style.minWidth='0';stage.style.minHeight='0';stage.style.width=layout.width+'px';stage.style.height=layout.height+'px';svg.setAttribute('viewBox',`0 0 ${layout.width} ${layout.height}`);
-  for(const [parent,child] of layout.edges)drawBezierCurve(svg,parent.x,parent.y,child.x,child.y,child.node.color||'#4263eb');
   const language=state.user?.language||'en',labels={en:['Expand','Collapse'],gu:['ખોલો','સંકેલો'],hi:['खोलें','समेटें']}[language]||['Expand','Collapse'];
   for(const item of layout.nodes){
     const n=createNodeEl(nodesLayer,item.node.label,item.node.desc,item.x,item.y,item.depth===0?'root':item.depth===1?'pillar':'sub',item.node.color||'#4263eb');n.style.width='320px';n.style.maxWidth='320px';n.style.overflowWrap='anywhere';
     const desc=n.querySelector('.mm-desc');if(desc){desc.style.maxHeight='100px';desc.style.overflow='auto';desc.tabIndex=0}
     if(item.node.children?.length){const toggle=document.createElement('button');toggle.type='button';toggle.className='mini-button';toggle.style.minHeight='44px';toggle.dataset.nodeId=item.node.id;toggle.textContent=state.mmCollapsed.has(item.node.id)?'+':'−';toggle.setAttribute('aria-label',(state.mmCollapsed.has(item.node.id)?labels[0]:labels[1])+' '+item.node.label);toggle.setAttribute('aria-expanded',String(!state.mmCollapsed.has(item.node.id)));toggle.onclick=()=>{state.mmCollapsed.has(item.node.id)?state.mmCollapsed.delete(item.node.id):state.mmCollapsed.add(item.node.id);renderMindmapTree(data);[...nodesLayer.querySelectorAll('button')].find(b=>b.dataset.nodeId===item.node.id)?.focus({preventScroll:true})};n.append(toggle)}
   }
-  const vp=$('mmViewport');vp.tabIndex=0;vp.setAttribute('aria-label',({gu:'માઇન્ડમેપ. સરકાવીને જુઓ; + અને − થી ઝૂમ, 0 થી મૂળ કદ.',hi:'माइंडमैप। स्क्रॉल करके देखें; + और − से ज़ूम, 0 से मूल आकार।'})[language]||'Mindmap. Scroll to pan; plus and minus to zoom, zero to reset.');vp.onkeydown=e=>{if(e.target!==vp)return;if(['+','=','-','0'].includes(e.key)){e.preventDefault();e.key==='0'?resetMindmapZoom():zoomMindmap(e.key==='-'?-.1:.1)}};
+  const elements=[...nodesLayer.children],heights=new Map(layout.nodes.map((item,index)=>[item.node.id,elements[index].offsetHeight]));
+  layout=mindmapLayout(data.root,state.mmCollapsed,node=>heights.get(node.id)||120);state.mmLayout=layout;
+  stage.style.width=layout.width+'px';stage.style.height=layout.height+'px';svg.setAttribute('viewBox',`0 0 ${layout.width} ${layout.height}`);
+  for(let i=0;i<layout.nodes.length;i++){elements[i].style.left=layout.nodes[i].x+'px';elements[i].style.top=layout.nodes[i].y+'px'}
+  for(const [parent,child] of layout.edges)drawBezierCurve(svg,parent.x,parent.y,child.x,child.y,child.node.color||'#4263eb');
+  const vp=$('mmViewport');if(!vp.clientWidth)state.mmPendingMap=data;if(!vp.mmResizeObserver&&window.ResizeObserver){vp.mmResizeObserver=new ResizeObserver(()=>{if(vp.clientWidth&&state.mmPendingMap){const pending=state.mmPendingMap;state.mmPendingMap=null;renderMindmapTree(pending);resetMindmapZoom()}});vp.mmResizeObserver.observe(vp)}vp.tabIndex=0;vp.setAttribute('aria-label',({gu:'માઇન્ડમેપ. સરકાવીને જુઓ; + અને − થી ઝૂમ, 0 થી મૂળ કદ.',hi:'माइंडमैप। स्क्रॉल करके देखें; + और − से ज़ूम, 0 से मूल आकार।'})[language]||'Mindmap. Scroll to pan; plus and minus to zoom, zero to reset.');vp.onkeydown=e=>{if(e.target!==vp)return;if(['+','=','-','0'].includes(e.key)){e.preventDefault();e.key==='0'?resetMindmapZoom():zoomMindmap(e.key==='-'?-.1:.1)}};
   if(!vp.dataset.panBound){vp.dataset.panBound='true';let drag=null;vp.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||e.target.closest('.mm-node'))return;drag={x:e.clientX,y:e.clientY,left:vp.scrollLeft,top:vp.scrollTop};vp.setPointerCapture(e.pointerId)});vp.addEventListener('pointermove',e=>{if(drag){vp.scrollLeft=drag.left+drag.x-e.clientX;vp.scrollTop=drag.top+drag.y-e.clientY}});for(const name of ['pointerup','pointercancel','lostpointercapture'])vp.addEventListener(name,()=>{drag=null})}
   applyMindmapZoom();
 }
@@ -135,7 +139,8 @@ function applyMindmapZoom(){
 }
 
 function renderMindmapsHistory(){
-  window.SaathiJobs?.showAllowance($('mindmapAllowance'),'map',api);
+  window.SaathiJobs?.showAllowance($('mindmapAllowance'),'map',api,value=>{$('mindmapSubmitBtn').disabled=!value||!value.remaining});
+  openLinkedRecord('mindmap');
   const box=$('mindmapsHistoryList');
   if(!box)return;
   box.innerHTML='';
@@ -153,11 +158,12 @@ function renderMindmapsHistory(){
     d.style.gap='12px';
     d.style.padding='14px 18px';
 
-    const dt=m.created_at?new Date(m.created_at).toLocaleDateString():'Recent';
+    const copies=items.filter(item=>item.topic===m.topic),copyLabel=copies.length>1?' · Saved copy '+(copies.length-copies.indexOf(m))+' / '+copies.length:'';
+    const dt=m.created_at?(window.SaathiClock?.format(m.created_at)||new Date(m.created_at).toLocaleString('en-IN')):'Recent';
     d.innerHTML=`
       <div>
         <strong style="font-size:14px;color:var(--ink);display:block">${escapeText(m.topic)}</strong>
-        <small style="color:var(--muted);font-size:12px">Created ${dt}</small>
+        <small style="color:var(--muted);font-size:12px">Created ${dt}${copyLabel}</small>
       </div>
       <button type="button" class="secondary" style="min-height:36px;font-size:12.5px" onclick="loadSavedMindmap(${Number(m.id)})">Open Map →</button>
     `;

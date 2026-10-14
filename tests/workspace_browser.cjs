@@ -490,6 +490,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>document.querySelector('#newChat').click());
    await page.waitForFunction(()=>state.creatingConversation===false&&state.activeId===8);
    assert.equal(requests.filter(p=>p==='/api/conversations').length-beforeCreate,1,'Double-click must create only one conversation');
+   await page.goto(base+'/dashboard#mocktests');await page.waitForFunction(()=>typeof renderTestResults==='function');
+   await page.evaluate(()=>renderTestResults({attempt:{score:1,total_questions:1,accuracy_percentage:100,time_spent_seconds:20,excluded_questions:1,created_at:new Date().toISOString()},review:[{id:1,question:'Dice probability',options:{B:'\\frac{5}{108}',C:'10/216'},user_answer:'C',correct_answer:'B',accepted_answers:['B','C'],graded:true,is_correct:true,answer_verified:true,explanation:'10 equally likely favourable outcomes out of 216.'},{id:2,question:'Unresolved key',options:{A:'First',B:'Second'},user_answer:'B',correct_answer:null,graded:false,is_correct:null,quality_note:'The key and explanation disagree.'}]}));
+   assert.equal(await page.locator('#reviewQuestionsList .review-status-pill.wrong').count(),0);assert.equal(await page.locator('#reviewQuestionsList .review-status-pill.correct').count(),1);assert.match(await page.locator('#reviewQuestionsList').textContent(),/Not scored/);assert.ok(await page.locator('#reviewQuestionsList mfrac').count()>0);assert.equal(await page.locator('#resHeroTitle').textContent(),'Practice review');assert.equal(await page.locator('[onclick="downloadScorecardPng()"]').count(),1);
+   await page.goto(base+'/dashboard?task=1#tasks');await page.waitForFunction(()=>state.linkedResourceHandled?.has('task'));assert.equal(await page.locator('[data-record-kind="task"][data-record-id="1"]').count(),1);assert.equal(await page.evaluate(()=>state.currentView),'tasks');
    await page.goto(base+'/');
    await page.locator('#heroCta').waitFor();
    for(const screen of [320,360,390,768,1280]){
