@@ -80,6 +80,9 @@ class Lease:
         try:
             if not broken:
                 conn.rollback()
+                # A successful rollback also proves transport health. Keep
+                # burst reuse cheap while still pinging after five idle seconds.
+                remember_check(conn)
         except psycopg2.Error:
             broken = True
         finally:

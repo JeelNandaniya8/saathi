@@ -88,3 +88,21 @@ def test_database_busy_is_a_recoverable_http_status(backend,monkeypatch):
     response=client.get('/api/me')
     assert response.status_code==503 and response.headers['Retry-After']=='3'
     assert 'sensitive' not in str(response.json)
+
+
+def test_returned_lease_refreshes_transport_check_but_still_expires_after_idle(monkeypatch):
+    import db_pool
+    from collections import OrderedDict
+    clock = [100]
+    monkeypatch.setattr(db_pool, '_checked', OrderedDict())
+    monkeypatch.setattr(db_pool.time, 'monotonic', lambda: clock[0])
+    class Connection:
+        closed = False
+        def rollback(self): pass
+    class Pool:
+        def putconn(self, conn, close=False): assert not close
+    conn = Connection()
+    db_pool.Lease(Pool(), conn).close()
+    assert db_pool.recently_checked(conn)
+    clock[0] += 6
+    assert not db_pool.recently_checked(conn)

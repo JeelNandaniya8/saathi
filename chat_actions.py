@@ -179,9 +179,13 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
     elif kind=='task':cur.execute('INSERT INTO tasks(user_id,title,details,due_at,priority,created_at,updated_at) VALUES(%s,%s,%s,%s,%s,NOW(),NOW()) RETURNING id',(uid,title,text,at,draft['priority']))
     elif kind=='reminder':cur.execute('INSERT INTO reminders(user_id,title,note,next_run_at,recurrence,created_at,client_id) VALUES(%s,%s,%s,%s,%s,NOW(),%s) RETURNING id',(uid,title,text,at,draft['recurrence'],str(uuid4())))
     elif kind=='note':
-        cur.execute('SELECT id FROM users WHERE id=%s FOR UPDATE',(uid,));cur.execute('SELECT COUNT(*) AS n FROM quick_notes WHERE user_id=%s',(uid,))
-        if cur.fetchone()['n']>=100:raise ValueError('Remove a note before adding another; the limit is 100.')
-        cur.execute('INSERT INTO quick_notes(user_id,client_id,title,content) VALUES(%s,%s,%s,%s) RETURNING id',(uid,str(uuid4()),title,text))
+        # Take the same account lock as Notes before the count's snapshot;
+        # concurrent chat/workspace creates must still share the 100-note cap.
+        cur.execute('SELECT id FROM users WHERE id=%s FOR UPDATE',(uid,))
+        cur.execute('INSERT INTO quick_notes(user_id,client_id,title,content) SELECT %s,%s,%s,%s WHERE (SELECT COUNT(*) FROM quick_notes WHERE user_id=%s)<100 RETURNING id',(uid,str(uuid4()),title,text,uid))
+        created=cur.fetchone()
+        if not created:raise ValueError('Remove a note before adding another; the limit is 100.')
+        return created['id']
     elif kind=='habit':cur.execute('INSERT INTO habits(user_id,name,frequency,created_at,updated_at) VALUES(%s,%s,%s,NOW(),NOW()) RETURNING id',(uid,title,draft['recurrence']))
     elif kind=='checkin':cur.execute('INSERT INTO check_ins(user_id,mood,energy,note,created_at) VALUES(%s,%s,%s,%s,NOW()) RETURNING id',(uid,draft['mood'],draft['energy'],text))
     elif kind=='journal':cur.execute('INSERT INTO journal_entries(user_id,title,content,entry_date,created_at,updated_at) VALUES(%s,%s,%s,%s,NOW(),NOW()) RETURNING id',(uid,title,text,draft['entry_date']))
@@ -283,22 +287,27 @@ def save_requested(cur, uid, message, turn_content, direct=None):
         cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(message['content'],message['id'],uid))
         return
     cur.execute('SAVEPOINT automatic_chat_action')
+    released=False
     try:
         confirmed=bool(re.fullmatch(r'(?:confirm reminder|yes[, ]*confirm reminder|હા|હા.*રિમાઇન્ડર|हाँ|हाँ.*रिमाइंडर)[.!]?',turn_content.strip(),re.I))
         resource_id=apply_draft(cur,uid,draft,replace_full=bool(re.search(r'\breplace\b',turn_content,re.I)),command_text=None if confirmed else ((pending_turn(cur,uid,message,turn_content)+'\n'+turn_content) if not chat_intents.explicit(turn_content) else turn_content),conversation_id=message.get('conversation_id'),message_id=message['id'])
         receipt=make_receipt(draft['kind'],resource_id)
-        store_receipt(cur,uid,message['id'],receipt)
         message['action_resource']=verify_saved(cur,uid,draft,resource_id)
-        message['action_receipt']=receipt
         labels={'note':'Saved to Notes.','memory':'Saved to Memory.','reminder':'Reminder scheduled.','mindmap':'Mindmap created and saved.','plan':'Study plan saved to Planner.','task':'Task saved to Planner.'}
         operation=draft.get('operation','create')
         prefix=labels.get(draft['kind'],'Saved.') if operation=='create' else {'delete':'Deleted.','pause':'Paused.','resume':'Resumed.','snooze':'Reminder snoozed.','complete':'Marked done.','edit':'Updated.'}[operation]
         message['content']=prefix+'\n\n'+message['content'][message['content'].index('<SAATHI_ACTION>'):]
-        cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(message['content'],message['id'],uid))
+        # Read-back above stays a separate query. Only its verified success may
+        # store a receipt; send these dependent writes in one database round trip.
+        cur.execute('INSERT INTO chat_action_receipts(message_id,user_id,kind,resource_id,resource_ids) VALUES(%s,%s,%s,%s,%s); UPDATE messages SET content=%s WHERE id=%s AND user_id=%s; RELEASE SAVEPOINT automatic_chat_action',
+            (message['id'],uid,receipt['kind'],receipt['resource_id'],receipt.get('resource_ids'),message['content'],message['id'],uid))
+        released=True
+        message['action_receipt']=receipt
     except ValueError as error:
         cur.execute('ROLLBACK TO SAVEPOINT automatic_chat_action')
         action_failure(cur,uid,message,error)
-    finally:cur.execute('RELEASE SAVEPOINT automatic_chat_action')
+    finally:
+        if not released:cur.execute('RELEASE SAVEPOINT automatic_chat_action')
 
 
 def load_receipts(cur, uid, messages):

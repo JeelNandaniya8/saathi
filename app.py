@@ -475,41 +475,41 @@ def rate_limit_key(identifier):
     return hashlib.sha256(raw).hexdigest()
 
 
-def consume_rate_limit(action, identifier, limit, window_minutes):
+def consume_rate_limit(action, identifier, limit, window_minutes, connection=None):
     """Database-backed limiter that works across all Gunicorn workers."""
     now = datetime.now(timezone.utc)
     since = now - timedelta(minutes=window_minutes)
     identifier_hash = rate_limit_key(identifier)
-    conn = get_db()
+    conn = connection if connection is not None else get_db()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM request_attempts
-        WHERE action = %s AND identifier_hash = %s AND created_at >= %s
-        """,
-        (action, identifier_hash, since),
-    )
-    count = cur.fetchone()["count"]
-    if count >= limit:
+    try:
+        cur.execute(
+            """
+            INSERT INTO request_attempts (action, identifier_hash, created_at)
+            SELECT %s, %s, %s
+            WHERE (SELECT COUNT(*) FROM request_attempts
+                   WHERE action = %s AND identifier_hash = %s AND created_at >= %s) < %s
+            RETURNING id
+            """,
+            (action, identifier_hash, now, action, identifier_hash, since, limit),
+        )
+        allowed = cur.fetchone() is not None
+        if allowed and secrets.randbelow(50) == 0:
+            cur.execute("DELETE FROM request_attempts WHERE created_at < %s", (now - timedelta(days=2),))
+        # Persist the attempt even if the following stream is stopped. Chat
+        # lends its read-only preparation connection instead of opening another
+        # TLS connection while holding the first lease.
+        conn.commit()
+        return allowed
+    finally:
         cur.close()
-        conn.close()
-        return False
-    cur.execute(
-        "INSERT INTO request_attempts (action, identifier_hash, created_at) VALUES (%s, %s, %s)",
-        (action, identifier_hash, now),
-    )
-    if secrets.randbelow(50) == 0:
-        cur.execute("DELETE FROM request_attempts WHERE created_at < %s", (now - timedelta(days=2),))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return True
+        if connection is None:
+            conn.close()
 
 
-def limited(action, identity, limit, minutes):
+def limited(action, identity, limit, minutes, connection=None):
     identifier = f"{request.remote_addr or 'unknown'}:{identity}"
-    if consume_rate_limit(action, identifier, limit, minutes):
+    if consume_rate_limit(action, identifier, limit, minutes, connection):
         return None
     return jsonify({
         "error": f"Too many attempts. Please wait {minutes} minutes and try again."
@@ -2354,9 +2354,27 @@ def make_attachment_conversation_title(mode, attachments):
     return make_conversation_title(f"{prefix} · {first_name}{extra}" if prefix else f"{first_name}{extra}")
 
 
-def owned_conversation(cur, conversation_id, user_id):
+def owned_conversation(cur, conversation_id, user_id, lock=False):
     cur.execute(
+        ("SELECT pg_advisory_xact_lock(%s); " if lock else "") +
         "SELECT * FROM conversations WHERE id = %s AND user_id = %s",
+        ((730000000000 + user_id,) if lock else ()) + (conversation_id, user_id),
+    )
+    return cur.fetchone()
+
+
+def chat_conversation_snapshot(cur, conversation_id, user_id):
+    """Fetch the owned conversation and its bounded history in one round trip."""
+    cur.execute(
+        """
+        SELECT c.*, COALESCE((
+            SELECT jsonb_agg(recent ORDER BY recent.id)
+            FROM (SELECT id, role, content, created_at FROM messages
+                  WHERE conversation_id = c.id AND user_id = c.user_id
+                  ORDER BY id DESC LIMIT 29) recent
+        ), '[]'::jsonb) AS recent_messages
+        FROM conversations c WHERE c.id = %s AND c.user_id = %s
+        """,
         (conversation_id, user_id),
     )
     return cur.fetchone()
@@ -2396,6 +2414,33 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     }
 
 
+def insert_local_exchange(cur, user_id, conversation_id, content, reply, request_id, now):
+    """Store both local turns together; actions still require separate read-back."""
+    cur.execute(
+        """
+        WITH user_turn AS (
+            INSERT INTO messages (user_id, conversation_id, role, content,
+                                  created_at, ai_mode, client_request_id)
+            VALUES (%s, %s, 'user', %s, %s, 'normal', %s)
+            RETURNING id, role, content, created_at, ai_mode, memory_labels,
+                      feedback, file_only, source_pages
+        ), assistant_turn AS (
+            INSERT INTO messages (user_id, conversation_id, role, content,
+                                  created_at, ai_mode, client_request_id, memory_labels)
+            SELECT %s, %s, 'assistant', %s, %s, 'normal', %s, '[]'::jsonb FROM user_turn
+            RETURNING id, role, content, created_at, ai_mode, memory_labels,
+                      feedback, file_only, source_pages
+        )
+        SELECT * FROM user_turn UNION ALL SELECT * FROM assistant_turn
+        """,
+        (user_id, conversation_id, content, now, request_id,
+         user_id, conversation_id, reply, now, request_id),
+    )
+    rows = cur.fetchall()
+    return (next(row for row in rows if row['role'] == 'user'),
+            next(row for row in rows if row['role'] == 'assistant'))
+
+
 def persist_streamed_exchange(
     user_id, conversation_id, conversation, content, user_wrote_content, mode,
     request_id, attachments, reply, ai_usage, memory_labels, entitlement,
@@ -2411,12 +2456,13 @@ def persist_streamed_exchange(
     conn = get_db()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT pg_advisory_xact_lock(%s)", (730000000000 + user_id,))
-        locked_conversation = owned_conversation(cur, conversation_id, user_id)
+        locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True)
         if not locked_conversation:
             raise RuntimeError("This conversation is no longer available.")
         existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
         if existing:
+            if existing['user_message']['content'] != content:
+                raise RuntimeError('That message request was already used. Try again.')
             existing["attachment_usage"] = attachment_usage_payload(
                 cur, user_id, entitlement, now
             )
@@ -2427,18 +2473,24 @@ def persist_streamed_exchange(
             if used_today + len(attachments) > entitlement["attachments_per_day"]:
                 raise RuntimeError("You have reached today's attachment limit. Try again tomorrow.")
 
-        cur.execute(
-            """
-            INSERT INTO messages (
-                user_id, conversation_id, role, content, created_at, ai_mode,
-                client_request_id, file_only
+        local_pair = direct and not attachments
+        if local_pair:
+            user_message, assistant_message = insert_local_exchange(
+                cur, user_id, conversation_id, content, reply, request_id, now
             )
-            VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
-            RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
-            """,
-            (user_id, conversation_id, content, now, mode, request_id, file_only),
-        )
-        user_message = cur.fetchone()
+        else:
+            cur.execute(
+                """
+                INSERT INTO messages (
+                    user_id, conversation_id, role, content, created_at, ai_mode,
+                    client_request_id, file_only
+                )
+                VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
+                RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
+                """,
+                (user_id, conversation_id, content, now, mode, request_id, file_only),
+            )
+            user_message = cur.fetchone()
         saved_attachments = []
         for attachment in attachments:
             cur.execute(
@@ -2477,22 +2529,23 @@ def persist_streamed_exchange(
                 )
 
         source_pages = cited_source_pages(reply, attachments, content, mode)
-        cur.execute(
-            """
-            INSERT INTO messages (
-                user_id, conversation_id, role, content, created_at, ai_mode,
-                client_request_id, memory_labels, source_pages
+        if not local_pair:
+            cur.execute(
+                """
+                INSERT INTO messages (
+                    user_id, conversation_id, role, content, created_at, ai_mode,
+                    client_request_id, memory_labels, source_pages
+                )
+                VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+                RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
+                          file_only, source_pages
+                """,
+                (
+                    user_id, conversation_id, reply, now, mode, request_id,
+                    psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
+                ),
             )
-            VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
-            RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
-                      file_only, source_pages
-            """,
-            (
-                user_id, conversation_id, reply, now, mode, request_id,
-                psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
-            ),
-        )
-        assistant_message = cur.fetchone()
+            assistant_message = cur.fetchone()
         assistant_message["conversation_id"] = conversation_id
         chat_actions.stage_preview(cur, user_id, assistant_message, direct)
         chat_actions.save_requested(cur, user_id, assistant_message, content, direct)
@@ -2664,7 +2717,8 @@ def conversation_messages(conversation_id):
 
     conn = get_db()
     cur = conn.cursor()
-    conversation = owned_conversation(cur, conversation_id, user_id)
+    conversation = (chat_conversation_snapshot(cur, conversation_id, user_id)
+                    if request.method == 'POST' else owned_conversation(cur, conversation_id, user_id))
     if not conversation:
         cur.close()
         conn.close()
@@ -2776,7 +2830,7 @@ def conversation_messages(conversation_id):
         conn.close()
         return jsonify(existing)
 
-    limit_response = limited("chat_message", str(user_id), 30, 5)
+    limit_response = limited("chat_message", str(user_id), 30, 5, conn)
     if limit_response:
         cur.close()
         conn.close()
@@ -2792,17 +2846,7 @@ def conversation_messages(conversation_id):
             conn.close()
             return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
 
-    cur.execute(
-        """
-        SELECT id, role, content, created_at
-        FROM messages
-        WHERE conversation_id = %s AND user_id = %s
-        ORDER BY id DESC
-        LIMIT 29
-        """,
-        (conversation_id, user_id),
-    )
-    recent = list(reversed(cur.fetchall()))
+    recent = conversation.pop('recent_messages')
     pending_scope = chat_intents.continuation(recent, content)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
     language = load_user_language(user_id, cur)
@@ -2831,6 +2875,16 @@ def conversation_messages(conversation_id):
         app.logger.exception("Saathi conversation reply failed")
         return jsonify({"error": "Something went wrong while preparing the reply."}), 500
 
+    if direct:
+        try:
+            return jsonify(persist_streamed_exchange(
+                user_id, conversation_id, conversation, content, user_wrote_content,
+                mode, request_id, attachments, reply, ai_usage, memory_labels,
+                entitlement, is_first_user_message, file_only, direct,
+            ))
+        except RuntimeError as error:
+            return jsonify(error=str(error)), (404 if str(error) == 'This conversation is no longer available.' else 409)
+
     now = datetime.now(timezone.utc)
     if is_first_user_message:
         new_title = (
@@ -2842,15 +2896,10 @@ def conversation_messages(conversation_id):
         new_title = conversation["title"]
     conn = get_db()
     cur = conn.cursor()
-    if not owned_conversation(cur, conversation_id, user_id):
-        cur.close()
-        conn.close()
-        return jsonify({"error": "This conversation is no longer available."}), 404
     # Serialize final writes per user. This closes the small race where two
     # simultaneous uploads can both pass the daily quota check or a cancelled
     # request can finish while the browser retries it.
-    cur.execute("SELECT pg_advisory_xact_lock(%s)", (730000000000 + user_id,))
-    locked_conversation = owned_conversation(cur, conversation_id, user_id)
+    locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True)
     if not locked_conversation:
         conn.rollback()
         cur.close()
@@ -2858,6 +2907,11 @@ def conversation_messages(conversation_id):
         return jsonify({"error": "This conversation is no longer available."}), 404
     existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
     if existing:
+        if existing['user_message']['content'] != content:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return jsonify(error='That message request was already used. Try again.'), 409
         existing["attachment_usage"] = attachment_usage_payload(
             cur, user_id, entitlement, now
         )
@@ -2984,7 +3038,7 @@ def stream_conversation_message(conversation_id):
 
     conn = get_db()
     cur = conn.cursor()
-    conversation = owned_conversation(cur, conversation_id, user_id)
+    conversation = chat_conversation_snapshot(cur, conversation_id, user_id)
     if not conversation:
         cur.close()
         conn.close()
@@ -3035,6 +3089,10 @@ def stream_conversation_message(conversation_id):
 
     existing = completed_chat_request(cur, conversation, user_id, request_id)
     if existing:
+        if existing['user_message']['content'] != content:
+            cur.close()
+            conn.close()
+            return jsonify(error='That message request was already used. Try again.'), 409
         existing["attachment_usage"] = attachment_usage_payload(cur, user_id, entitlement)
         cur.close()
         conn.close()
@@ -3043,7 +3101,7 @@ def stream_conversation_message(conversation_id):
             content_type="application/x-ndjson; charset=utf-8",
             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
         )
-    limit_response = limited("chat_stream", str(user_id), 30, 5)
+    limit_response = limited("chat_stream", str(user_id), 30, 5, conn)
     if limit_response:
         cur.close()
         conn.close()
@@ -3057,17 +3115,7 @@ def stream_conversation_message(conversation_id):
             cur.close()
             conn.close()
             return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
-    cur.execute(
-        """
-        SELECT id, role, content, created_at
-        FROM messages
-        WHERE conversation_id = %s AND user_id = %s
-        ORDER BY id DESC
-        LIMIT 29
-        """,
-        (conversation_id, user_id),
-    )
-    recent = list(reversed(cur.fetchall()))
+    recent = conversation.pop('recent_messages')
     pending_scope = chat_intents.continuation(recent, content)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
     # Reuse this connection for context, then release it before streaming.
