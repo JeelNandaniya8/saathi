@@ -80,6 +80,8 @@ vm.runInContext(source.slice(source.indexOf('async function loadWorkspaceSection
 // Execute the actual next-path expression, including hostile redirect inputs.
 const accountSource=fs.readFileSync('account.html','utf8');
 const destinationCode=accountSource.slice(accountSource.indexOf('const params='),accountSource.indexOf(';let pendingEmail'));
-for(const [next,expected] of [['/dashboard#tasks','/dashboard#tasks'],['/dashboard#memory','/dashboard#memory'],['/chat','/chat'],['https://example.test','/dashboard'],['//example.test','/dashboard'],['/dashboard#unknown','/dashboard'],['/chat?next=evil','/dashboard']]){
+for(const [next,expected] of [['/dashboard#tasks','/dashboard#tasks'],['/dashboard#memory','/dashboard#memory'],['/chat','/chat'],['/chat?note=3','/chat?note=3'],['/chat?conversation=7','/chat?conversation=7'],['https://example.test','/dashboard'],['//example.test','/dashboard'],['/dashboard#unknown','/dashboard'],['/chat?next=evil','/dashboard']]){
  const sandbox={URLSearchParams,location:{search:'?next='+encodeURIComponent(next)}};vm.createContext(sandbox);vm.runInContext(destinationCode,sandbox);assert.equal(vm.runInContext('destination',sandbox),expected);
 }
+
+const returnContext={URLSearchParams,location:{search:'?next=/dashboard',hash:'#reminders'}};vm.createContext(returnContext);vm.runInContext(destinationCode,returnContext);assert.equal(vm.runInContext('destination',returnContext),'/dashboard#reminders');

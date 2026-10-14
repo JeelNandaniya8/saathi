@@ -121,7 +121,7 @@ def test_one_request_context_does_not_change_persistent_permissions(db_app):
         with conn.cursor() as cur:
             cur.execute("INSERT INTO tasks(user_id,title,details,priority,created_at,updated_at) VALUES(1,'My task','','medium',NOW(),NOW())")
             text,labels=actions.workspace_context(cur,1,'How much work is left?')
-            assert 'My task' in text and 'Shared tasks' in labels
+            assert 'My task' in text and 'Requested tasks for this reply' in labels
             assert 'notes: not shared with chat' in text
             text,_=actions.workspace_context(cur,1,'Hello')
             assert 'My task' not in text

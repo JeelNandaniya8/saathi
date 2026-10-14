@@ -11,7 +11,8 @@
     document.documentElement.style.colorScheme=theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#101622':'#f4f6fb');
     document.querySelectorAll('[data-theme-toggle]').forEach(button=>{
-      const label=theme==='dark'?'Switch to light mode':'Switch to dark mode';
+      const labels=({gu:['હળવો દેખાવ પસંદ કરો','ઘેરો દેખાવ પસંદ કરો'],hi:['हल्का रंग चुनें','गहरा रंग चुनें']}[document.documentElement.lang]||['Switch to light mode','Switch to dark mode']);
+      const label=labels[theme==='dark'?0:1];
       button.setAttribute('aria-label',label);button.setAttribute('aria-pressed',String(theme==='dark'));button.title=label;
       if(button.hasAttribute('data-theme-label'))button.textContent=theme==='dark'?'Light appearance':'Dark appearance';
     });
@@ -21,6 +22,7 @@
   media.addEventListener('change',()=>{if(!choice)refresh()});
   window.addEventListener('storage',event=>{if(event.key==='saathi-theme'){choice=['light','dark'].includes(event.newValue)?event.newValue:null;refresh()}});
   document.addEventListener('DOMContentLoaded',()=>{refresh();document.querySelectorAll('[data-theme-action]').forEach(button=>button.addEventListener('click',window.SaathiTheme.toggle))});
+  if(window.MutationObserver)new MutationObserver(refresh).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
   refresh();
 })();
 

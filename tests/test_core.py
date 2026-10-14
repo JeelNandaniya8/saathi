@@ -243,7 +243,7 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
 
 @pytest.mark.parametrize(
     ("path", "destination"),
-    (("/chat", "/account?next=/chat"), ("/dashboard", "/account?next=/dashboard")),
+    (("/chat", "/account?next=%2Fchat"), ("/dashboard", "/account?next=/dashboard")),
 )
 def test_private_pages_redirect_before_rendering_when_logged_out(backend, path, destination):
     response = backend.app.test_client().get(path)
@@ -670,7 +670,7 @@ def test_context_reuses_cursor_without_closing_it(backend, monkeypatch):
 
     monkeypatch.setattr(backend, "get_db", lambda: pytest.fail("No extra connection"))
     cursor = Cursor()
-    assert backend.load_active_memory_bundle(7, cursor)[1] == ["Language"]
+    assert backend.load_active_memory_bundle(7, cursor)[1] == ["Memory: Language"]
     assert backend.load_user_language(7, cursor) == "gu"
     assert "active = TRUE" in calls[0][0]
     assert all(params == (7,) for _, params in calls)

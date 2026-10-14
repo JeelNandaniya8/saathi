@@ -10,7 +10,7 @@ MONTHS.update({name.lower(): n for n, name in enumerate(calendar.month_abbr) if 
 
 
 def fact(text):
-    value = re.sub(r'^(?:please\s+)?remember\s+(?:that\s+)?', '', text, flags=re.I)
+    value = re.sub(r'^(?:please\s+)?remember\s+(?:that\s+)?|^(?:યાદ રાખો?|યાદ રાખજે)\s*(?:કે\s*)?|^(?:याद रख(?:ो|ें)?|याद रखना)\s*(?:कि\s*)?', '', text, flags=re.I)
     birthday = re.search(r'(?:my birthday is|મારો જન્મદિવસ|मेरा जन्मदिन)\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)', value, re.I)
     if birthday and birthday[2].lower() in MONTHS:
         month, day = MONTHS[birthday[2].lower()], int(birthday[1])
@@ -22,7 +22,8 @@ def fact(text):
         return {'kind': 'memory', 'title': 'Home city', 'text': 'Home city: ' + city[1].strip()}
     value = re.split(r'\s+(?:Save this personal fact|This is a demo audit fact)\b', value, flags=re.I)[0].strip(' .')
     if value:
-        return {'kind': 'memory', 'title': value.splitlines()[0][:60], 'text': value}
+        label='Study preference' if re.search(r'prefer.*(?:study|studying|learn)|(?:study|learning).*prefer',value,re.I) else 'Preference' if re.search(r'\bprefer\b',value,re.I) else 'Exam detail' if re.search(r'\bexam\b',value,re.I) else 'Personal detail'
+        return {'kind': 'memory', 'title': label, 'text': value}
 
 
 def note(text):
@@ -76,6 +77,7 @@ def reminder(text, zone, now=None):
     title = topic[-1].strip(' .')
     title = re.sub(r'^(?:today|tomorrow|every day|daily|weekly)\s*(?:to|about|for)?\s*', '', title, flags=re.I)
     title = re.sub(r'^(?:to|about|for)\s+', '', title, flags=re.I)
+    title = re.sub(r'^do\s+', '', title, flags=re.I)
     if not title:
         before=re.search(r'\b(?:to|about|for)\s+(.+?)\s*$',text[:clock.start()],re.I)
         if before:title=before[1].strip()
@@ -85,14 +87,42 @@ def reminder(text, zone, now=None):
             'confirm_time': when.strftime('%d %B %Y, %I:%M %p') + ' · ' + zone}
 
 
+def task(text,zone,now=None):
+    match=re.match(r'^(?:please\s+)?(?:add|create|save)\s+(?:a\s+)?task\b[. :]*\s*(.*)',text,re.I|re.S)
+    if not match:return None
+    value=match[1].strip()
+    fields=dict((k.lower(),v.strip()) for k,v in re.findall(r'(?:^|[;\n])\s*(title|details|content|due|priority)\s*:\s*([^;\n]+)',value,re.I))
+    if fields:
+        title=fields.get('title','');details=fields.get('details',fields.get('content',''));due=fields.get('due');priority=fields.get('priority','medium').lower()
+    else:
+        value=re.sub(r'^(?:titled|called|named|to)\s+','',value,flags=re.I)
+        parts=re.split(r'\s+(?:due\s*:?\s*|for\s+|on\s+)(?=today\b|tomorrow\b|\d{4}-)',value,maxsplit=1,flags=re.I)
+        title=parts[0].strip(' .');details='';due=parts[1] if len(parts)>1 else None;priority='medium'
+        if not due and re.search(r'\b(?:today|tomorrow)\b.*\bat\b',title,re.I):return {'question':'What is the task title and deadline? For example: Add a task titled Revise physics due tomorrow at 7 PM.'}
+    if not title:return {'question':'What task should I save? Include its title and optional deadline.'}
+    at=None
+    if due:
+        try:
+            at=datetime.fromisoformat(due.replace('Z','+00:00'))
+            if at.tzinfo is None:at=at.replace(tzinfo=ZoneInfo(zone))
+            at=at.isoformat()
+        except ValueError:
+            schedule=reminder('Remind me '+due+' to '+title,zone,now)
+            if 'question' in schedule:return schedule
+            at=schedule['at']
+    return dict(kind='task',title=title,text=details,at=at,priority=priority)
+
+
 def parse(text, zone='Asia/Kolkata', now=None):
     text = chat_intents.command(text)
     if not text:
         return None
+    literal_task=task(text,zone,now)
+    if literal_task is not None:return literal_task
+    if chat_intents.automatic(text, 'memory') and re.match(r'^(?:please\s+)?remember\b|^my birthday is\b|^i live in\b|^મારો જન્મદિવસ|^હું|^યાદ રાખ|^मेरा जन्मदिन|^मैं|^याद रख',text,re.I):
+        return fact(text)
     if chat_intents.automatic(text, 'note'):
         return note(text)
-    if chat_intents.automatic(text, 'memory'):
-        return fact(text)
     if chat_intents.automatic(text, 'reminder') and re.match(r'^(?:please\s+)?remind\s+me\b', text, re.I):
         return reminder(text, zone, now)
     return None

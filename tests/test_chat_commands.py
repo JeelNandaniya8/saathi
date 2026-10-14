@@ -4,6 +4,18 @@ import chat_commands as commands
 import study_reference
 
 
+def test_task_deadline_uses_account_time_without_ai():
+    now=datetime(2026,10,13,20,0,tzinfo=timezone.utc)
+    draft=commands.parse('Add a task titled Revise physics due tomorrow at 7 PM','Asia/Kolkata',now)
+    assert draft['title']=='Revise physics' and draft['at']=='2026-10-15T19:00:00+05:30'
+    assert commands.parse('Add a task. Title: Read chapter; Details: Five questions')['text']=='Five questions'
+
+
+def test_fact_has_short_label_and_reminder_drops_command_verb():
+    assert commands.parse('Remember that I prefer studying Physics with short worked examples')['title']=='Study preference'
+    assert commands.parse('Remind me tomorrow at 8 PM to do organic chemistry revision')['title']=='organic chemistry revision'
+
+
 @pytest.mark.parametrize('text',[
  'Save this as a private note titled Audit probability: P(E) = favourable / total',
  'Save a note titled "Audit probability" with content P(E) = favourable / total',

@@ -117,15 +117,15 @@ function createNodeEl(container,label,desc,x,y,type,color){
 }
 
 function zoomMindmap(delta){
-  state.mmZoom=Math.min(2.0,Math.max(0.5,+(state.mmZoom+delta).toFixed(2)));
+  state.mmZoom=Math.min(2.0,Math.max(0.01,+(state.mmZoom+delta).toFixed(2)));
   applyMindmapZoom();
 }
 
 function resetMindmapZoom(){
-  state.mmZoom=1.0;
+  const vp=$('mmViewport'),layout=state.mmLayout||{width:1400,height:900};
+  state.mmZoom=Math.min(1,Math.max(0.01,(vp.clientWidth-16)/layout.width),Math.max(0.01,(vp.clientHeight-16)/layout.height));
   applyMindmapZoom();
-  const vp=$('mmViewport');
-  vp.scrollLeft=0;vp.scrollTop=Math.max(0,(state.mmLayout?.height||900)/2-vp.clientHeight/2);
+  vp.scrollLeft=0;vp.scrollTop=0;
 }
 
 function applyMindmapZoom(){
@@ -135,6 +135,7 @@ function applyMindmapZoom(){
 }
 
 function renderMindmapsHistory(){
+  window.SaathiJobs?.showAllowance($('mindmapAllowance'),'map',api);
   const box=$('mindmapsHistoryList');
   if(!box)return;
   box.innerHTML='';
