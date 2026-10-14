@@ -480,7 +480,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok((await page.locator('#confirmed-chat-memory').innerText()).includes('Ahmedabad <script>'));
    assert.equal(await page.evaluate(()=>window.injected),undefined);
    assert.equal(actionSaves,actionWrites,'Server-confirmed actions must not be executed again by the browser');
-   assert.equal(await page.locator('#confirmed-chat-memory a').getAttribute('href'),'/dashboard#memory');
+   assert.equal(await page.locator('#confirmed-chat-memory a').getAttribute('href'),'/dashboard?memory=12#memory');
    await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{\"kind\":\"task\"}</SAATHI_ACTION>';renderConversations()});
    assert.ok(!(await page.locator('#history').textContent()).includes('SAATHI_ACTION'),'Sidebar previews must hide action metadata');
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
