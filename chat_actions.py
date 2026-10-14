@@ -213,7 +213,11 @@ def receipt_resource(cur, uid, receipt):
         fields={'note':'id,title,version','memory':'id,label AS title,active','task':'id,title,completed,due_at','plan':'id,title,completed,due_at','habit':'id,name AS title,active','journal':'id,title,entry_date','checkin':'id,mood,energy'}[receipt['kind']]
         cur.execute('SELECT '+fields+' FROM '+table+' WHERE id=%s AND user_id=%s',(receipt['resource_id'],uid))
         row=cur.fetchone()
-        return dict(row) if row else None
+        if not row:return None
+        resource=dict(row)
+        for field in ('due_at','entry_date'):
+            if resource.get(field) is not None:resource[field]=resource[field].isoformat()
+        return resource
     cur.execute('SELECT topic,data_json FROM mindmaps WHERE id=%s AND user_id=%s',(receipt['resource_id'],uid));row=cur.fetchone()
     if not row:return None
     data=json.loads(row['data_json']) if isinstance(row['data_json'],str) else row['data_json']

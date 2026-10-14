@@ -68,7 +68,7 @@ def test_future_snooze_and_dateless_reschedule_never_change_a_record(db_app,monk
     b,c,connect=db_app;future=datetime.now(timezone.utc)+timedelta(days=2)
     monkeypatch.setattr(b,'provider_send',lambda *a,**k:pytest.fail('Reminder controls are local'))
     r=c.post('/api/reminders',json=dict(title='Exact future reminder',next_run_at=future.isoformat(),recurrence='once',email_enabled=False))
-    rid=r.json()['reminder']['id'];cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    rid=r.json['reminder']['id'];cid=c.post('/api/conversations',json={}).json['conversation']['id']
     for text in ['Snooze my Exact future reminder 30 minutes','Reschedule my Exact future reminder to 8 PM']:
         answer=send(c,cid,text,stream)['assistant_message']
         assert not answer.get('action_receipt') and '<SAATHI_ACTION>' not in answer['content']

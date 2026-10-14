@@ -9,6 +9,7 @@ def test_task_deadline_uses_account_time_without_ai():
     draft=commands.parse('Add a task titled Revise physics due tomorrow at 7 PM','Asia/Kolkata',now)
     assert draft['title']=='Revise physics' and draft['at']=='2026-10-15T19:00:00+05:30'
     assert commands.parse('Add a task. Title: Read chapter; Details: Five questions')['text']=='Five questions'
+    assert commands.parse('Add a task: Revise fractions. No deadline. Show the save preview.')['title']=='Revise fractions'
 
 
 def test_fact_has_short_label_and_reminder_drops_command_verb():

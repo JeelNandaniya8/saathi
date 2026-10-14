@@ -96,6 +96,8 @@ def task(text,zone,now=None):
         title=fields.get('title','');details=fields.get('details',fields.get('content',''));due=fields.get('due');priority=fields.get('priority','medium').lower()
     else:
         value=re.sub(r'^(?:titled|called|named|to)\s+','',value,flags=re.I)
+        value=re.sub(r'[.;]\s*Show (?:the )?(?:save )?preview[.!]?\s*$','',value,flags=re.I)
+        value=re.sub(r'[.;]\s*No deadline[.!]?\s*$','',value,flags=re.I)
         parts=re.split(r'\s+(?:due\s*:?\s*|for\s+|on\s+)(?=today\b|tomorrow\b|\d{4}-)',value,maxsplit=1,flags=re.I)
         title=parts[0].strip(' .');details='';due=parts[1] if len(parts)>1 else None;priority='medium'
         if not due and re.search(r'\b(?:today|tomorrow)\b.*\bat\b',title,re.I):return {'question':'What is the task title and deadline? For example: Add a task titled Revise physics due tomorrow at 7 PM.'}
