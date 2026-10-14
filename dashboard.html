@@ -156,7 +156,7 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 
 /* ── Visual Mindmap Studio & Referral ────────────────────────── */
 .mindmap-viewport-wrapper{position:relative;border:1.5px solid var(--line);border-radius:24px;background:var(--paper);overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.04);margin-top:20px}
-.mindmap-toolbar{position:absolute;top:16px;right:16px;z-index:20;display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.mindmap-toolbar{position:relative;top:auto;right:auto;width:fit-content;max-width:calc(100% - 24px);margin:12px 12px 12px auto;z-index:20;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:6px 10px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
 .mindmap-toolbar button{min-height:36px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:720;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:all .15s}
 .mindmap-toolbar button:hover{background:var(--canvas);border-color:var(--accent);transform:translateY(-1px)}
 .mindmap-viewport{width:100%;min-height:560px;height:65vh;overflow:auto;position:relative;cursor:grab;background:radial-gradient(var(--line) 1.2px,transparent 1.2px) 0 0/24px 24px}
