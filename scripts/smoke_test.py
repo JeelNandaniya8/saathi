@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-EXPECTED_RELEASE = "2026-10-03-chat-loading-recovery"
+EXPECTED_RELEASE = "2026-10-14-direct-save-latency"
 
 
 def fetch(base_url, path, timeout):
