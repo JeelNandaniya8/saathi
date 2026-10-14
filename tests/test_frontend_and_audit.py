@@ -45,7 +45,7 @@ def test_dashboard_has_real_daily_tools_and_localised_navigation():
 def test_account_return_path_is_restricted_to_private_pages():
     text = (ROOT / "account.html").read_text(encoding="utf-8")
     assert "destination=/^" in text
-    assert ".test(params.get('next')||'')" in text
+    assert ".test(target)" in text
     assert "location.replace(destination)" in text
 
 
@@ -325,7 +325,7 @@ def test_chat_experience_features_are_real_and_safely_rendered():
         "window.openVoiceCall=",
         "SpeechRecognition||window.webkitSpeechRecognition",
         "speechSynthesis",
-        "Shared "+"'+labels.length+'"+" saved ",
+        "Sources read when this reply was created: ",
         " · exact page not confirmed",
         "/feedback",
     ):

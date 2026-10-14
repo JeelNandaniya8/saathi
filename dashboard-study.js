@@ -10,6 +10,7 @@ function restoreMockDraft(){
   state.activeTestIndex=Number.isInteger(draft.index)?Math.max(0,Math.min(draft.index,ids.size-1)):0;
 }
 function renderMockTestHistory(){
+  window.SaathiJobs?.showAllowance($('mockAllowance'),'mock',api);
   const box=$('mockTestHistoryList');
   if(!box)return;
   box.replaceChildren();

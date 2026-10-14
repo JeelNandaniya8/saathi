@@ -2,6 +2,12 @@ import pytest
 import chat_intents as intents
 
 
+def test_study_words_do_not_implicitly_share_tasks():
+    for text in ['Show a worked example','Make a study plan for 3 days','Generate a revision plan for probability']:
+        assert 'tasks' not in intents.sources(text)
+    assert intents.automatic('Reschedule my walk reminder to tomorrow at 8 PM','reminder','edit')
+
+
 @pytest.mark.parametrize('text,kind', [
     ('My birthday is 1st January','memory'), ('I live in Ahmedabad','memory'),
     ('Remember that my maths exam is on 15 November','memory'),

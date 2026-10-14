@@ -301,6 +301,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
    await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:String.raw`Overview \(\frac{1}{2}\)`,children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
    assert.equal(await page.locator('.mm-node').count(),25);
+   const mapFit=await page.evaluate(()=>({scale:state.mmZoom,w:state.mmLayout.width*state.mmZoom,h:state.mmLayout.height*state.mmZoom,vw:document.querySelector('#mmViewport').clientWidth,vh:document.querySelector('#mmViewport').clientHeight}));assert.ok(mapFit.scale<1&&mapFit.w<=mapFit.vw&&mapFit.h<=mapFit.vh,'Opening a map fits its full hierarchy');
    assert.equal(await page.locator('.mm-desc mfrac').count(),1);
    await page.getByRole('button',{name:'Collapse Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),20);
    await page.getByRole('button',{name:'Expand Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),25);
@@ -369,12 +370,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     await route.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({type:'error',error:'Fixture finished'})+'\n'});
    });
    await page.locator('#sendButton').click();
-   await page.locator('.thinking-dots').waitFor();
+   await page.locator('.request-stage').waitFor();assert.match(await page.locator('.request-stage').textContent(),/AI/);assert.equal(await page.locator('.thinking-dots').count(),0);
    assert.equal(await page.locator('#uploadStatus').isVisible(),false,'Text replies must not show upload status');
    assert.equal(await page.locator('.upload-progress').isVisible(),false,'No stray progress line');
    await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
-   releaseReply();
-   await page.locator('.message.failed').waitFor();
+   await page.locator('#chatInput').fill('Draft while waiting');await page.locator('#sendButton').click();
+   await page.locator('.message.failed').waitFor();assert.equal(await page.locator('#chatInput').inputValue(),'Draft while waiting','Stop preserves a newer draft');releaseReply();
    await page.evaluate(()=>SaathiI18n.setLanguage('en'));
    await page.getByRole('button',{name:'Tools',exact:true}).click();
    let toolsDialog=page.getByRole('dialog',{name:'Tools',exact:true});
@@ -402,6 +403,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    const inlineTest=page.getByRole('dialog',{name:'Mock Test',exact:true});
    await inlineTest.getByLabel('Topic',{exact:true}).fill('Fractions');
    assert.equal(inlineGenerations,0,'Opening a tool never spends an AI call');
+   await inlineTest.getByText('2 mock tests remaining · Resets 2026-10-15, 05:30 AM · Asia/Kolkata',{exact:true}).waitFor();
    await inlineTest.getByRole('button',{name:'Generate and save',exact:true}).click();
    await inlineTest.getByText('Fixture creation failed',{exact:true}).first().waitFor();
    assert.equal(await inlineTest.getByLabel('Topic',{exact:true}).inputValue(),'Fractions');
@@ -452,10 +454,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.getByRole('button',{name:'Chat context',exact:true}).click();
    let chatContext=page.getByRole('dialog',{name:'Chat context',exact:true});
    assert.equal(await chatContext.getByLabel('Planner tasks',{exact:true}).isChecked(),false);
-   assert.equal(await chatContext.getByLabel('Saved notes',{exact:true}).isChecked(),false);
-   await chatContext.getByLabel('Saved notes',{exact:true}).check();
+   assert.equal(await chatContext.getByLabel('Saved notes',{exact:true}).count(),0);
    await chatContext.getByLabel('Planner tasks',{exact:true}).check();await chatContext.getByRole('button',{name:'Save',exact:true}).click();
-   await chatContext.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(contextPrefs.tasks,true);assert.equal(contextPrefs.notes,true);assert.equal(contextPrefs.classroom,false);
+   await chatContext.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(contextPrefs.tasks,true);assert.equal(contextPrefs.notes,undefined);assert.equal(contextPrefs.classroom,false);
    await chatContext.getByRole('button',{name:'Close',exact:true}).click();
    await page.evaluate(()=>{const box=document.createElement('div');document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:999,content:'Review this <SAATHI_ACTION>{"kind":"task"}</SAATHI_ACTION>'})});
    await page.getByRole('button',{name:'Review save preview',exact:true}).click();
@@ -474,7 +475,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('#failed-markerless-action').getByRole('button',{name:'Review save preview',exact:true}).count(),0);
    const actionWrites=actionSaves;
    await page.evaluate(()=>{const box=document.createElement('div');box.id='confirmed-chat-memory';document.querySelector('#messageList').append(box);SaathiChatActions.attach(box,{id:998,auto_action:true,action_receipt:{kind:'memory',resource_id:12},content:'Details prepared. <SAATHI_ACTION>{"kind":"memory","title":"Home city","text":"Ahmedabad <script>window.injected=true</script>"}</SAATHI_ACTION>'})});
-   await page.locator('#confirmed-chat-memory').getByText('Saved to Memory',{exact:true}).waitFor();
+   await page.locator('#confirmed-chat-memory').getByText('Saved · Memory',{exact:true}).waitFor();
    await page.locator('#confirmed-chat-memory summary').click();
    assert.ok((await page.locator('#confirmed-chat-memory').innerText()).includes('Ahmedabad <script>'));
    assert.equal(await page.evaluate(()=>window.injected),undefined);
@@ -502,9 +503,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('[data-lang="gu"]').click();
    assert.equal(await page.locator('#how h2').textContent(),'પહેલી મિનિટથી ઉપયોગી.');assert.equal(await page.locator('#pricing .section-head h2').textContent(),'મફતમાં શરૂ કરો. વધારાનાં સાધનો ઉપલબ્ધ થાય ત્યારે upgrade કરો.');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
+   assert.match(await page.locator('#heroH1').textContent(),/થોડી સ્પષ્ટતા/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathiનું ડેશબોર્ડ અને reminderનું પૂર્વાવલોકન');assert.match(await page.locator('[data-theme-toggle]').first().getAttribute('aria-label'),/દેખાવ/);
    await page.locator('[data-lang="hi"]').click();
    assert.equal(await page.locator('#how h2').textContent(),'पहले मिनट से उपयोगी।');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
+   assert.match(await page.locator('#heroH1').textContent(),/थोड़ी स्पष्टता/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathi डैशबोर्ड और रिमाइंडर का पूर्वावलोकन');
    await page.emulateMedia({reducedMotion:'reduce'});
    assert.equal(await page.locator('.reveal').first().evaluate(el=>getComputedStyle(el).opacity),'1','Reduced motion keeps marketing content visible');
    assert.deepEqual(errors,[],'No uncaught errors in real pages');

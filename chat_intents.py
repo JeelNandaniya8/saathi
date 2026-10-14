@@ -25,7 +25,9 @@ def mode(text, selected='normal'):
 
 def automatic(text, kind, operation='create'):
     text = command(text)
-    if not text or re.search(r'\b(?:example|hypothetical|pretend|quoted)\b|ઉદાહરણ|उदाहरण', text, re.I):
+    # Literal field values are data, not permission to operate another feature.
+    text=re.split(r'\b(?:title|content|details)\s*:|\b(?:titled|named|called)\s+',text,maxsplit=1,flags=re.I)[0]
+    if not text or re.search(r'^(?:example\b|for example\b|here is an example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)', text, re.I):
         return False
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे',text,re.I):
         return False
@@ -34,14 +36,14 @@ def automatic(text, kind, operation='create'):
     mutations={'pause':r'\bpause\b|રોક|रोक', 'resume':r'\bresume\b|ફરી ચાલુ|फिर चालू',
                'snooze':r'\bsnooze\b|મોકૂફ|સ્નૂઝ|स्नूज़',
                'complete':r'\b(?:done|complete|completed|finished)\b|પૂર્ણ|પૂરું|पूरा',
-               'edit':r'\b(?:edit|update|change|replace|rename)\b|ફેરફાર|બદલ|बदल'}
+               'edit':r'\b(?:edit|update|change|replace|rename|reschedule)\b|ફેરફાર|બદલ|बदल'}
     if operation in mutations and not re.search(mutations[operation],text,re.I):return False
-    if operation=='create' and re.search(r'^(?:please\s+|can you\s+|could you\s+|yes[, ]+)*(?:pause|resume|snooze|mark|edit|update|change|replace|delete|confirm)\b',text,re.I):return False
+    if operation=='create' and re.search(r'^(?:please\s+|can you\s+|could you\s+|yes[, ]+)*(?:pause|resume|snooze|mark|edit|update|change|replace|reschedule|delete|confirm)\b',text,re.I):return False
     if operation == 'delete' and not re.search(r'^(?:yes[, ]+delete|confirm.*delet|હા.*કાઢ|हाँ.*हटा)', text, re.I):
         return False
     if kind == 'memory' and re.search(r'^(?:my birthday is\b|i live in\b|મારો જન્મદિવસ|હું.*રહું|मेरा जन्मदिन|मैं.*रहता|मैं.*रहती)', text, re.I):
         return operation == 'create'
-    verbs = r'^(?:(?:please|can you|could you|will you|i want you to|yes[, ]*|so[, ]*|okay[, ]*)\s*)*(?:save|remember|remind|add|create|make|put|turn|mark|snooze|pause|resume|edit|update|replace|change|delete|confirm)\b|સાચવ|યાદ રાખ|યાદ કરાવ|ઉમેર|બનાવ|પૂર્ણ|મોકૂફ|રોક|ફેરફાર|કાઢ|सेव|याद रख|याद दिला|जोड़|बनाओ|पूरा|स्नूज़|रोक|बदल|हटा'
+    verbs = r'^(?:(?:please|can you|could you|will you|i want you to|yes[, ]*|so[, ]*|okay[, ]*)\s*)*(?:save|remember|remind|add|create|make|put|turn|mark|snooze|pause|resume|edit|update|replace|change|reschedule|delete|confirm)\b|સાચવ|યાદ રાખ|યાદ કરાવ|ઉમેર|બનાવ|પૂર્ણ|મોકૂફ|રોક|ફેરફાર|કાઢ|सेव|याद रख|याद दिला|जोड़|बनाओ|पूरा|स्नूज़|रोक|बदल|हटा'
     if not re.search(verbs, text, re.I):
         return False
     if kind == 'task' and operation == 'complete' and re.search(r'^(?:please\s+)?mark\s+.+\s+(?:as\s+)?(?:done|complete|completed|finished)[.!]?$',text,re.I):
@@ -59,15 +61,16 @@ def automatic(text, kind, operation='create'):
 def sources(text):
     text = command(text)
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
-    if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
+    if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|reschedule|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
         return set()
-    patterns = {'tasks':r'work|task|plan|revision|કામ|યોજના|काम|योजना',
+    patterns = {'tasks':r'\b(?:work|tasks?|planner|my plan)\b|કામ|મારી.*યોજના|काम|मेरी.*योजना',
                 'reminders':r'remind|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
-                'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ).*નોંધ|નોંધ.*(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ)|(?:पढ़|दिखा|सारांश|बदल|हटा).*नोट|नोट.*(?:पढ़|दिखा|सारांश|बदल|हटा)',
+                'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|reschedule|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ).*નોંધ|નોંધ.*(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ)|(?:पढ़|दिखा|सारांश|बदल|हटा).*नोट|नोट.*(?:पढ़|दिखा|सारांश|बदल|हटा)',
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
                 'exams':r'exam|પરીક્ષા|परीक्षा', 'memories':r'memor|remember|birthday|home city|address|યાદ|जन्मदिन|याद'}
     result = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}
+    if any(automatic(text,'task',op) for op in ('edit','complete','delete')):result.add('tasks')
     if re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending).*\btoday\b|(?:આજ|आज).*(?:બાકી|बाकी)',text,re.I):result.add('tasks')
     if re.search(r'activity today|આજ.*પ્રવૃત્તિ|आज.*गतिविधि', text, re.I):
         result.update(('tasks', 'reminders', 'habits'))
