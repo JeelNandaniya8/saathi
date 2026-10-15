@@ -55,7 +55,8 @@ def flashcards(text):
     block=re.search(r'\[FLASHCARDS\]([\s\S]*?)\[/FLASHCARDS\]',str(text),re.I)
     if not block:return []
     pattern=r'Front:\s*([\s\S]*?)\n\s*Back:\s*([\s\S]*?)(?=\n\s*---\s*\n|\n\s*Front:|$)'
-    return [(front.strip()[:4000],back.strip()[:6000]) for front,back in re.findall(pattern,block[1],re.I) if front.strip() and back.strip()][:12]
+    strip=lambda value:re.sub(r'^(?:\s*---[ \t]*\n)+|(?:\n[ \t]*---[ \t]*)+\s*$','',value).strip()
+    return [(strip(front)[:4000],strip(back)[:6000]) for front,back in re.findall(pattern,block[1],re.I) if strip(front) and strip(back)][:12]
 
 
 def mock_revision_rows(uid,test_id,topic,review):

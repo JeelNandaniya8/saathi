@@ -84,7 +84,8 @@ def test_streaming_grounding_and_saved_study_controls_are_wired():
         "Answer from file only",
         "/study-progress",
         "Saved flashcards",
-        "Reply stopped or timed out",
+        "Reply stopped.",
+        "Reply timed out.",
         "aria-busy",
     ):
         assert marker in text

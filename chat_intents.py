@@ -9,8 +9,29 @@ def command(text):
     return text
 
 
+def study_output(text):
+    """Identify the requested study output, separately from workspace mutations."""
+    text = command(text)
+    converted = re.search(r'\b(?:turn|convert|transform)\b.+?\binto\s+(.+)', text, re.I | re.S)
+    created = re.match(r'^(?:(?:please|can you|could you)\s+)*(?:make|create|generate|give|prepare)\s+(.+)', text, re.I | re.S)
+    target = (converted or created)
+    target = re.split(r'\b(?:from|using|about|for|on)\b|[.;\n]', target[1], maxsplit=1, flags=re.I)[0] if target else ''
+    if re.search(r'\b(?:task|note|reminder|memory|habit|journal|plan|mind\s*map)\b', target, re.I):return None
+    for pattern, mode in [(r'flash\s*cards?|ફ્લેશકાર્ડ|फ्लैशकार्ड', 'flashcards'), (r'\bquiz\b', 'quiz')]:
+        if re.search(pattern, target, re.I):return mode
+    if re.search(r'બનાવ|बनाओ', text) and re.search(r'ફ્લેશકાર્ડ|फ्लैशकार्ड', text):return 'flashcards'
+    return None
+
+
+def source_query(text):
+    # A negative clause does not grant a one-reply exception to stored policy.
+    return re.sub(r"\b(?:exclude|excluding|except|do not|don't|without|avoid|no)\b[^.;\n]*(?:[.;\n]|$)", '', command(text), flags=re.I)
+
+
 def mode(text, selected='normal'):
     text = command(text)
+    study = study_output(text)
+    if study:return study
     fallback='normal' if sources(text) or any(automatic(text,k) for k in ('task','reminder','note','memory','habit','journal','checkin')) else selected
     if not re.search(r'\b(make|create|turn|generate|summari[sz]e|explain|give|prepare)\b|બનાવ|સારાંશ|સમજાવ|बनाओ|सारांश|समझाओ', text, re.I):
         return fallback
@@ -29,6 +50,7 @@ def automatic(text, kind, operation='create'):
     text=re.split(r'\b(?:title|content|details)\s*:|\b(?:titled|named|called)\s+',text,maxsplit=1,flags=re.I)[0]
     if not text or re.search(r'^(?:example\b|for example\b|here is an example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)', text, re.I):
         return False
+    if study_output(text):return False
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे',text,re.I):
         return False
     if re.search(r'\bpreview\b|\bdraft\b|review before|do not save|don.t save|without saving|પૂર્વાવલોકન|अभी सेव मत',text,re.I):
@@ -59,12 +81,12 @@ def automatic(text, kind, operation='create'):
 
 
 def sources(text):
-    text = command(text)
+    text = source_query(text)
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
     if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|reschedule|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
         return set()
     patterns = {'tasks':r'\b(?:work|tasks?|planner|my plan)\b|કામ|મારી.*યોજના|काम|मेरी.*योजना',
-                'reminders':r'remind|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
+                'reminders':r'\bremind(?:er)?s?\b|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
                 'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|reschedule|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ).*નોંધ|નોંધ.*(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ)|(?:पढ़|दिखा|सारांश|बदल|हटा).*नोट|नोट.*(?:पढ़|दिखा|सारांश|बदल|हटा)',
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
@@ -82,9 +104,11 @@ def continuation(recent, answer):
     answer=command(answer)
     if not answer or re.search(r'^(?:no(?: thanks)?[.!]?$|cancel\b|stop\b|never ?mind\b|not now\b|ના[.!]?$|नहीं[.!]?$|रद्द)',answer,re.I):return ''
     if explicit(answer):return ''
+    if study_output(answer) or re.match(r'^(?:(?:please|can you|could you)\s+)*(?:turn|convert|transform|make|create|generate|give|prepare|show|list|read|use|explain|summari[sz]e|what|why|how)\b',answer,re.I):return ''
     if len(recent)<2 or recent[-1].get('role')!='assistant' or recent[-2].get('role')!='user':return ''
     question=str(recent[-1].get('content',''))
-    if '<SAATHI_ACTION>' in question or not re.search(r'\?|which|what time|કયો|કેટલા|कब|कौन',question,re.I):return ''
+    question=re.sub(r'(?<=\?)\s+(?:For example|Example:|Include |જેમ કે|उदाहरण).*$', '', question, flags=re.I|re.S)
+    if '<SAATHI_ACTION>' in question or not clarification(question):return ''
     return command(recent[-2].get('content'))
 
 

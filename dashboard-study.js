@@ -13,10 +13,11 @@ function renderMockTestHistory(){
   window.SaathiJobs?.showAllowance($('mockAllowance'),'mock',api);
   const box=$('mockTestHistoryList');
   if(!box)return;
+  state.mockJobsStop?.();
   box.replaceChildren();
-  if(window.SaathiJobs){const jobs=document.createElement('div');box.append(jobs);SaathiJobs.render(jobs,{kind:'mock',api,open:(_result,job)=>quickStartFromHistory({id:job.result_id}),retry:request=>{for(const [key,id] of Object.entries({topic:'testTopic',difficulty:'testDifficulty',question_count:'testCount',time_limit_minutes:'testTimeLimit',language:'testLanguage'}))if($(id))$(id).value=request[key];return generateMockTest()}})}
+  if(window.SaathiJobs){const jobs=document.createElement('div');box.append(jobs);state.mockJobsStop=SaathiJobs.render(jobs,{kind:'mock',api,visible:job=>job.status!=='ready'||!state.mockTests.some(test=>Number(test.id)===Number(job.result_id)),open:(_result,job)=>quickStartFromHistory({id:job.result_id}),retry:request=>{for(const [key,id] of Object.entries({topic:'testTopic',difficulty:'testDifficulty',question_count:'testCount',time_limit_minutes:'testTimeLimit',language:'testLanguage'}))if($(id))$(id).value=request[key];return generateMockTest()}})}
   if(!state.mockTests||!state.mockTests.length){
-    box.append(emptyNode('No tests completed yet. Start your first mock test above!'));
+    box.append(emptyNode(state.mockHistoryError||(!state.mockHistoryReady?'Loading saved mock tests…':'No tests completed yet. Start your first mock test above!')));
     return;
   }
   state.mockTests.forEach(test=>{
@@ -298,7 +299,7 @@ async function submitMockTest(isTimeout=false){
     
     // Refresh history in background
     api('/api/mock-tests/history').then(data=>{
-      state.mockTests=data.tests||[];
+      state.mockTests=data.tests||[];state.mockHistoryReady=true;state.mockHistoryError=null;
       renderMockTestHistory();
     }).catch(()=>{});
   }catch(error){

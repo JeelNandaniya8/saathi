@@ -48,3 +48,7 @@ def test_care_move_preserves_wall_clock_across_dst():
     moved=daily.moved_due(due,now,ZoneInfo('America/New_York'))
     assert moved==datetime(2026,3,8,14,tzinfo=timezone.utc)
     assert moved.astimezone(ZoneInfo('America/New_York')).hour==10
+
+
+def test_flashcards_remove_only_structural_separators():
+    assert daily.flashcards("[FLASHCARDS]\nFront: What is x-y?\n---\nBack: A difference.\n---\nFront: DNA?\nBack: Genetic material.\n[/FLASHCARDS]")==[("What is x-y?","A difference."),("DNA?","Genetic material.")]
