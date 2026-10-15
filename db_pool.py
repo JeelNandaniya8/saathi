@@ -116,9 +116,14 @@ def connect(dsn):
         # round trips on every checkout during a burst of authenticated requests.
         # This caches only transport health, never user/session authorization.
         if not recently_checked(conn):
-            with conn.cursor() as cur:
-                cur.execute('SELECT 1')
-            conn.rollback()
+            # Probe outside a transaction so an idle checkout needs no
+            # extra ROLLBACK round trip. Application writes stay transactional.
+            conn.autocommit = True
+            try:
+                with conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+            finally:
+                conn.autocommit = False
             remember_check(conn)
         return Lease(pool, conn)
     except psycopg2.Error:
