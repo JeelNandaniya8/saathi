@@ -34,8 +34,11 @@ def test_context_snapshot_is_one_read_with_current_policy_and_scoped_data(db_app
                 return result
     off=dict.fromkeys(actions.SOURCES,False)
     assert c.patch('/api/chat-context',json=off).status_code==200
+    for category,field,value in [('study','goal','OWN_STUDY_PROFILE'),('care','allergies','OWN_CARE_PROFILE')]:
+        assert c.put('/api/personal-context/'+category+'/'+field,json=dict(value=value,version=0,confirmed=True,use_in_ai=True)).status_code==200
     context,labels=read('Explain conditional probability with examples')
     assert 'OWN_ACTIVE' in context and 'America/Los_Angeles' in context
+    assert 'OWN_STUDY_PROFILE' in context and 'Profile: goal' in labels and 'OWN_CARE_PROFILE' not in context
     assert all(value not in context for value in ['OWN_TASK','OWN_NOTE','OWN_PAUSED','OTHER_'])
     assert 'Shared tasks' not in labels
     shared=dict(off,tasks=True,notes=True)
@@ -47,6 +50,11 @@ def test_context_snapshot_is_one_read_with_current_policy_and_scoped_data(db_app
     assert c.patch('/api/chat-context',json=off).status_code==200
     context,labels=read('Explain conditional probability with examples')
     assert 'OWN_TASK' not in context and 'OWN_NOTE' not in context
+    assert c.post('/api/personal-context/revoke',json={}).status_code==200
+    assert 'OWN_STUDY_PROFILE' not in read('Explain conditional probability with examples')[0]
+    with connect() as conn:
+        with conn.cursor() as cur:cur.execute("UPDATE personal_context_fields SET use_in_ai=TRUE,reviewed_at=NOW()-INTERVAL '91 days' WHERE user_id=1")
+    assert 'OWN_STUDY_PROFILE' not in read('Explain conditional probability with examples')[0]
     with connect() as conn:
         with conn.cursor() as cur:
             snapshot=actions.context_snapshot(cur,1,'Hello')
