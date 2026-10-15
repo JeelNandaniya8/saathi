@@ -484,6 +484,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.evaluate(()=>window.injected),undefined);
    assert.equal(actionSaves,actionWrites,'Server-confirmed actions must not be executed again by the browser');
    assert.equal(await page.locator('#confirmed-chat-memory a').getAttribute('href'),'/dashboard?memory=12#memory');
+   const reminderStatus=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);const past=new Date(Date.now()-86400000).toISOString(),future=new Date(Date.now()+86400000).toISOString(),message={id:990,content:'Reminder saved. <SAATHI_ACTION>'+JSON.stringify({kind:'reminder',title:'Revision',at:past})+'</SAATHI_ACTION>',action_receipt:{kind:'reminder',resource_id:90},action_resource:{title:'Revision',active:true,at:past}};SaathiChatActions.attach(box,message);const overdue=box.textContent;box.replaceChildren();message.action_resource.at=future;SaathiChatActions.attach(box,message);const rescheduled=box.textContent;box.remove();return{overdue,rescheduled}});assert.ok(reminderStatus.overdue.includes('Overdue'));assert.ok(reminderStatus.rescheduled.includes('Scheduled')&&!reminderStatus.rescheduled.includes('Overdue'),'Receipt status uses the current saved schedule');
    await page.evaluate(plan=>{state.messages.push({id:992,role:'assistant',created_at:new Date().toISOString(),auto_action:true,action_error:'Automatic save was not authorised.',content:'Failed: Automatic save was not authorised.\nRetry when ready.\n<SAATHI_ACTION>'+JSON.stringify(plan)+'</SAATHI_ACTION>'});renderMessages()},chatPlan);
    assert.equal(chatPlanSaves,0,'An unsaved preview must wait for user confirmation');
    const planMessage=page.locator('.message[data-message-id="992"]');
@@ -518,10 +519,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('#heroLogin').getAttribute('href'),'/account?tab=login');
    }
    await page.locator('[data-lang="gu"]').click();
+   await page.waitForFunction(()=>document.getElementById('navCta').textContent==='Saathi ખોલો →');
    assert.equal(await page.locator('#how h2').textContent(),'પહેલી મિનિટથી ઉપયોગી.');assert.equal(await page.locator('#pricing .section-head h2').textContent(),'મફતમાં શરૂ કરો. વધારાનાં સાધનો ઉપલબ્ધ થાય ત્યારે upgrade કરો.');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
    assert.match(await page.locator('#heroH1').textContent(),/થોડી સ્પષ્ટતા/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathiનું ડેશબોર્ડ અને reminderનું પૂર્વાવલોકન');assert.match(await page.locator('[data-theme-toggle]').first().getAttribute('aria-label'),/દેખાવ/);
    await page.locator('[data-lang="hi"]').click();
+   assert.equal(await page.locator('#navCta').textContent(),'Saathi खोलें →');
    assert.equal(await page.locator('#how h2').textContent(),'पहले मिनट से उपयोगी।');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
    assert.match(await page.locator('#heroH1').textContent(),/थोड़ी स्पष्टता/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathi डैशबोर्ड और रिमाइंडर का पूर्वावलोकन');
