@@ -7,7 +7,7 @@ import billing
 import study_tools
 from datetime import date, datetime, timezone, timedelta, time
 from uuid import uuid4
-from flask import jsonify, request
+from flask import g, has_request_context, jsonify, request
 from contextlib import contextmanager
 from zoneinfo import ZoneInfo
 
@@ -364,6 +364,8 @@ def proposal(content, historical=False):
 
 
 def account_timezone(cur,uid):
+    profile=getattr(g,'authenticated_user_profile',None) if has_request_context() and getattr(g,'authenticated_user_id',None)==uid else None
+    if profile is not None and 'workspace_timezone' in profile:return profile['workspace_timezone']
     cur.execute('SELECT timezone FROM workspace_preferences WHERE user_id=%s',(uid,))
     row=cur.fetchone()
     return row['timezone'] if row else 'Asia/Kolkata'

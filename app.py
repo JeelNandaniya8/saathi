@@ -3560,7 +3560,7 @@ def require_user_id():
         return None
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language, COALESCE((SELECT timezone FROM workspace_preferences WHERE user_id=users.id),'Asia/Kolkata') AS workspace_timezone FROM users WHERE id = %s", (user_id,))
     user = cur.fetchone()
     cur.close()
     conn.close()
