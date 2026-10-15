@@ -98,3 +98,31 @@ def test_fast_note_insert_keeps_limit_and_failure_receipt_honest(db_app, stream)
     assert result['content'].startswith('Failed:') and not result.get('action_receipt')
     assert one(connect, 'SELECT COUNT(*) AS n FROM quick_notes')['n'] == 100
     assert one(connect, 'SELECT COUNT(*) AS n FROM chat_action_receipts')['n'] == 0
+
+
+
+def test_idle_health_probe_keeps_real_database_writes_transactional(db_app, monkeypatch):
+    from collections import OrderedDict
+    import db_pool
+    from psycopg2.extensions import TRANSACTION_STATUS_IDLE, TRANSACTION_STATUS_INTRANS
+
+    monkeypatch.setattr(db_pool, '_pool', None)
+    monkeypatch.setattr(db_pool, '_identity', None)
+    monkeypatch.setattr(db_pool, '_checked', OrderedDict())
+    lease = db_pool.connect(os.environ['TEST_DATABASE_URL'])
+    pool = db_pool._pool
+    try:
+        assert not lease.autocommit
+        assert lease.get_transaction_status() == TRANSACTION_STATUS_IDLE
+        cur = lease.cursor()
+        cur.execute('CREATE TEMP TABLE idle_probe_rollback (value INTEGER)')
+        lease.commit()
+        cur.execute('INSERT INTO idle_probe_rollback VALUES (1)')
+        assert lease.get_transaction_status() == TRANSACTION_STATUS_INTRANS
+        lease.rollback()
+        cur.execute('SELECT COUNT(*) AS n FROM idle_probe_rollback')
+        assert cur.fetchone()['n'] == 0
+        cur.close()
+    finally:
+        lease.close()
+        pool.closeall()

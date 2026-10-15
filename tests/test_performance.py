@@ -108,3 +108,70 @@ def test_returned_lease_refreshes_transport_check_but_still_expires_after_idle(m
     assert db_pool.recently_checked(conn)
     clock[0] += 6
     assert not db_pool.recently_checked(conn)
+
+
+
+@pytest.mark.parametrize('fail_ping', [False, True])
+def test_idle_pool_probe_avoids_rollback_and_restores_write_transactions(monkeypatch, fail_ping):
+    import os
+    from collections import OrderedDict
+    import db_pool
+    import psycopg2
+
+    clock = [100]
+    monkeypatch.setattr(db_pool.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(db_pool, '_checked', OrderedDict())
+
+    class Connection:
+        closed = False
+        autocommit = False
+        def __init__(self, fail=False):
+            self.fail = fail
+            self.pings = self.rollbacks = 0
+        def cursor(self): return Cursor(self)
+        def rollback(self):
+            assert not self.autocommit
+            self.rollbacks += 1
+
+    class Cursor:
+        def __init__(self, conn): self.conn = conn
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def execute(self, sql):
+            assert sql == 'SELECT 1' and self.conn.autocommit
+            self.conn.pings += 1
+            if self.conn.fail:
+                raise psycopg2.OperationalError('stale connection')
+
+    first, replacement = Connection(fail_ping), Connection()
+    class Pool:
+        def __init__(self):
+            self.available = [first, replacement]
+            self.discarded = []
+        def getconn(self): return self.available.pop(0)
+        def putconn(self, conn, close=False):
+            if close: self.discarded.append(conn)
+            else: self.available.insert(0, conn)
+
+    pool = Pool()
+    monkeypatch.setattr(db_pool, '_pool', pool)
+    monkeypatch.setattr(db_pool, '_identity', (os.getpid(), 'test-idle-probe'))
+    lease = db_pool.connect('test-idle-probe')
+    active = replacement if fail_ping else first
+    assert lease._conn is active and not lease.autocommit
+    assert first.pings == 1 and first.rollbacks == 0
+    assert not first.autocommit
+    assert pool.discarded == ([first] if fail_ping else [])
+    lease.close()
+    assert active.rollbacks == 1
+
+    # Burst reuse stays cheap; an expired check probes again before any writes.
+    pings = active.pings
+    lease = db_pool.connect('test-idle-probe')
+    assert active.pings == pings and not lease.autocommit
+    lease.close()
+    clock[0] += 6
+    lease = db_pool.connect('test-idle-probe')
+    assert active.pings == pings + 1 and not lease.autocommit
+    assert active.rollbacks == 2
+    lease.close()
