@@ -12,9 +12,9 @@ pytestmark = pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'), reason=
 
 @pytest.mark.parametrize('stream', [False, True])
 @pytest.mark.parametrize('command,table,budget', [
-    ('Save a note. Title: Fast note; Content: Private probability checklist', 'quick_notes', 14),
-    ('Remember that I prefer Physics with worked examples', 'memories', 13),
-    ('Add a task. Title: Fast task; Details: Revise; Due: 2026-11-03T09:00:00+05:30', 'tasks', 14),
+    ('Save a note. Title: Fast note; Content: Private probability checklist', 'quick_notes', 10),
+    ('Remember that I prefer Physics with worked examples', 'memories', 10),
+    ('Add a task. Title: Fast task; Details: Revise; Due: 2026-11-03T09:00:00+05:30', 'tasks', 11),
 ])
 def test_direct_saves_use_one_lease_at_a_time_and_bounded_round_trips(db_app, monkeypatch, stream, command, table, budget):
     b, client, connect = db_app
