@@ -11,7 +11,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
   for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
-   let inlineSaved=null,inlineJobs=[];
+   let inlineSaved=null,inlineJobs=[],cardCorrections=0;
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
    const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
@@ -22,7 +22,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     const pathname=url.pathname;requests.push(pathname);
     if(pathname==='/dashboard-mindmaps.js'&&failMindmaps){failMindmaps=false;return route.abort()}
     if(pathname.startsWith('/api/')){
-     let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();
+     let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();if(pathname==='/api/conversations'&&method==='POST')assert.ok(route.request().headers()['x-csrf-token'],'New chat waits for session readiness');
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
      if(pathname==='/api/conversations/7/messages'){if(chatProfilePending)historyWhileProfilePending=true;await new Promise(resolve=>setTimeout(resolve,850))}
      if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}};assert.ok(body().job_id);const {job_id,...input}=body();inlineJobs.unshift({id:job_id,kind:'mock',request:input,status:status===503?'failed':'ready',result_id:status===503?null:53,error:status===503?'Fixture creation failed':null});if(data.test)inlineSaved=data.test}
@@ -67,7 +67,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
       data={session:focus};
      }else if(pathname==='/api/focus/1'){
       const action=body().action;focus={...focus,status:action==='pause'?'paused':action==='resume'?'running':'cancelled',version:focus.version+1};data={session:focus};
-     }else if(pathname==='/api/conversations'&&method==='POST'){await new Promise(resolve=>setTimeout(resolve,350));data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};}
+     }else if(pathname==='/api/messages/991/flashcards/0'){assert.equal(method,'PATCH');assert.equal(body().expected_back,'5′→3′');assert.equal(body().back,'3′→5′');cardCorrections++;data={content:'[FLASHCARDS]\nFront: Template reading?\nBack: 3′→5′\n[/FLASHCARDS]',study_progress:{kind:'flashcards',progress:{corrected_indices:[0],review_indices:[0],known_indices:[]}}}}
+     else if(pathname==='/api/conversations'&&method==='POST'){await new Promise(resolve=>setTimeout(resolve,350));data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};}
      else if(pathname==='/api/conversations')data={conversations:[{id:7,title:'Search',preview:'Search',updated_at:original.created_at,is_archived:false}]};
      else if(pathname==='/api/conversations/7/messages')data={messages:[original,answer],has_more:false,conversation:{id:7,title:'Search'}};
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
@@ -319,12 +320,19 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('tasks'));
    await page.locator('#tasks').getByRole('button',{name:'Completed',exact:true}).click();
    await page.locator('#tasks .item.done').waitFor();
+   await page.addInitScript(()=>addEventListener('DOMContentLoaded',()=>document.getElementById('newChat')?.click()));
    await page.goto(base+'/chat?conversation=7');
    await page.waitForFunction(()=>!document.querySelector('#chatInput').disabled);await page.locator('#chatInput').fill('Draft typed while history loads');assert.equal(await page.locator('#sendButton').isDisabled(),true,'Send waits for consistent saved history');
    await page.locator('.message.user').waitFor();assert.equal(await page.locator('#chatInput').inputValue(),'Draft typed while history loads');await page.locator('#chatInput').fill('');
    assert.equal(historyWhileProfilePending,true,'History should load concurrently with the profile');
    const math=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);SaathiMarkup.render(box,"## Study\n- First\n- Second\n\n\\(P(E)=\\frac{1}{\\sqrt{4}}\\)\n\\[\\frac{a+b}{c}\\]\nBare: \\frac{x}{y}\n`\\frac{x}{y}`\n<img src=x onerror=alert(1)>\n\\(\\href{javascript:alert(1)}{x}\\)\n\n```js\nconst x = 1;\n```");const result={fractionFont:parseFloat(getComputedStyle(box.querySelector('mfrac').closest('.math-inline')).fontSize),fractions:box.querySelectorAll('mfrac').length,roots:box.querySelectorAll('msqrt').length,heading:box.querySelector('h2')?.textContent,list:box.querySelectorAll('li').length,code:box.querySelector('pre code')?.textContent,unsafe:box.querySelectorAll('img,script,a[href^="javascript:"]').length};box.remove();return result});
    const formatting=await page.evaluate(()=>{const box=document.createElement('div');SaathiMarkup.render(box,'#### Recall\n\n---\n###### Details');return{head:box.querySelector('h4')?.textContent,detail:box.querySelector('h6')?.textContent,rules:box.querySelectorAll('hr').length,front:parseFlashcards('[FLASHCARDS]\nFront: DNA question?\n---\nBack: Answer\n[/FLASHCARDS]').cards[0].front}});assert.deepEqual(formatting,{head:'Recall',detail:'Details',rules:1,front:'DNA question?'});
+   const table=await page.evaluate(()=>{const box=document.createElement('div');SaathiMarkup.render(box,'| Formula | Meaning |\n| --- | --- |\n| $P(A|B)=\\frac{P(A\\cap B)}{P(B)}$ | Conditional |\n| \\(P(A|B)\\) | `a|b` |');return{columns:[...box.querySelectorAll('tbody tr')].map(row=>row.children.length),formulas:box.querySelectorAll('math').length,raw:box.textContent.includes('$'),errors:box.querySelectorAll('.math-error').length}});assert.deepEqual(table,{columns:[2,2],formulas:2,raw:false,errors:0});
+   const failedCard=await page.evaluate(()=>visibleMessage({failed:true,content:'[FLASHCARDS]\nFront: Wrong?\nBack: Wrong.\n[/FLASHCARDS]'}));assert.ok(!failedCard.flash,'A failed generation must not look like saved cards');
+   await page.evaluate(()=>{state.messages.push({id:991,role:'assistant',content:'[FLASHCARDS]\nFront: Template reading?\nBack: 5′→3′\n[/FLASHCARDS]',study_progress:{kind:'flashcards',progress:{known_indices:[0]}}});renderMessages()});
+   await page.getByRole('button',{name:'Correct card',exact:true}).click();await page.getByLabel('Back',{exact:true}).fill('3′→5′');await page.getByRole('button',{name:'Save correction',exact:true}).click();await page.getByText('Corrected by you',{exact:false}).waitFor();assert.equal(cardCorrections,1);
+   await page.getByRole('button',{name:'Reveal flashcard answer',exact:true}).click();assert.match(await page.locator('.flashcard-text').textContent(),/3′→5′/);
+   await page.evaluate(()=>{state.messages=state.messages.filter(message=>message.id!==991);renderMessages()});
    assert.ok(math.fractionFont>=20,'Inline fractions stay readable within dense text');assert.equal(math.fractions,3);assert.equal(math.roots,1);assert.equal(math.heading,'Study');assert.equal(math.list,2);assert.equal(math.code,'const x = 1;');assert.equal(math.unsafe,0);
    await page.evaluate(()=>{const host=document.createElement('div');host.id='audit-note-link';document.body.append(host);SaathiChatActions.attach(host,{id:996,role:'assistant',content:'Saved to Notes. <SAATHI_ACTION>{"kind":"note","title":"Search","text":"Search"}</SAATHI_ACTION>',action_receipt:{kind:'note',resource_id:3},action_resource:{id:3}})});
    await page.locator('#audit-note-link a').click();await page.waitForFunction(()=>document.querySelector('[data-qn="content"]')?.value==='Search');assert.equal(await page.locator('[data-qn="content"]').inputValue(),'Search');assert.equal(new URL(page.url()).pathname,'/chat','Exact note opens without navigating to Today');await page.locator('[data-qn="close"]').click();await page.locator('#audit-note-link').evaluate(node=>node.remove());

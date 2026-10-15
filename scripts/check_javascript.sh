@@ -47,3 +47,4 @@ node --check study-jobs.js
 node tests/account_clock.cjs
 
 node --check message-format.js
+node tests/math_tables.cjs

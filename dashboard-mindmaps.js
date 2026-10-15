@@ -172,7 +172,6 @@ function renderMindmapsHistory(){
 }
 
 async function loadSavedMindmap(id){
-  toast('Loading mindmap…','info');
   try{
     const res=await api(`/api/mindmaps/${id}`);
     if(res.mindmap){

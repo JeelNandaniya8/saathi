@@ -397,17 +397,31 @@ def direct_reply(cur,uid,messages,language='en'):
     if not messages or messages[-1].get('attachments'):return None
     text=str(messages[-1].get('content','')).strip()
     pending=chat_intents.continuation(messages[:-1],text)
+    reference=None
+    reminder_text=pending+'\n'+text if pending and chat_intents.automatic(pending,'reminder') else text
+    if re.match(r'^(?:please\s+)?remind me (?:about|to (?:review|revise)) (?:this|that|it)(?=\s|[.!?,]|$)',reminder_text,re.I):
+        source_index=len(messages)-(4 if pending else 2)
+        source=messages[source_index] if source_index>=0 else {}
+        quote=MARKER.sub('',str(source.get('content',''))).strip()
+        if source.get('role')!='assistant' or not quote or chat_intents.clarification(quote) or quote.startswith(('Failed:','Not saved.')):
+            return {'reply':'Which topic should I remind you about? Include the subject and the date and time.'}
+        quote=re.sub(r'[*#`\[\]]','',quote).strip()
+        reference=dict(title=quote.splitlines()[0][:160],text='From your chat: '+quote[:470])
+        # Parse only the user's schedule. The quoted source cannot supply dates
+        # or commands; it becomes inspectable reminder content after parsing.
+        text=reminder_text+' to review this chat'
     if pending and any(chat_intents.automatic(pending,'reminder',op) for op in ('edit','snooze','pause','resume')):text=pending+'\n'+text
     zone=account_timezone(cur,uid) if any(chat_intents.automatic(text,k) for k in ('reminder','task')) else 'Asia/Kolkata'
     draft=chat_commands.parse(text,zone)
     if draft is not None:
         if 'question' in draft:return {'reply':draft['question']}
+        if reference:draft.update(reference)
         confirm_time=draft.pop('confirm_time',None)
         try:draft=validate_action(draft)
         except ValueError as error:return {'reply':str(error),'error':str(error)}
         if confirm_time:
             labels={'en':'Confirm reminder','gu':'હા રિમાઇન્ડર','hi':'हाँ रिमाइंडर'}
-            return {'reply':draft['title']+'\n'+confirm_time+'\nReply “'+labels.get(language,labels['en'])+'” to set this schedule. Background alerts are separate.', 'preview':draft}
+            return {'reply':draft['title']+'\n'+(draft['text']+'\n' if reference else '')+confirm_time+'\nReply “'+labels.get(language,labels['en'])+'” to set this schedule. Background alerts are separate.', 'preview':draft}
         return {'reply':'Saving…\n\n<SAATHI_ACTION>'+json.dumps(draft,ensure_ascii=False)+'</SAATHI_ACTION>'}
     if chat_intents.automatic(text,'mindmap') or chat_intents.automatic(chat_intents.continuation(messages[:-1],text),'mindmap'):
         try:study_tools.check_allowance(cur,uid,'map',pending=True)

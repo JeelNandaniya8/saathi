@@ -71,6 +71,7 @@
   async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.content.focus()}
   async function openNote(id){
     if(!state.user||state.busy)return;buildDialog();if(!dialog.open)dialog.showModal();if(!canSwitch())return;
+    ui.search.value='';renderList();
     const sequence=++noteOpenSequence;ui.title.disabled=ui.content.disabled=ui.save.disabled=true;status('Opening the saved note…');
     try{const result=await state.api('/api/quick-notes/'+id);if(sequence!==noteOpenSequence||!canSwitch()||!dialog.open)return;
       if(result.note?.id!==id)throw Error('The requested note could not be verified. Retry.');
