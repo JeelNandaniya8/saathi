@@ -10,7 +10,7 @@ function restoreMockDraft(){
   state.activeTestIndex=Number.isInteger(draft.index)?Math.max(0,Math.min(draft.index,ids.size-1)):0;
 }
 function renderMockTestHistory(){
-  window.SaathiJobs?.showAllowance($('mockAllowance'),'mock',api);
+  window.SaathiJobs?.showAllowance($('mockAllowance'),'mock',api,allowance=>{state.mockRemaining=allowance.remaining;if($('testSubmitBtn'))$('testSubmitBtn').disabled=state.testGenerating||allowance.remaining<=0});
   const box=$('mockTestHistoryList');
   if(!box)return;
   state.mockJobsStop?.();
@@ -121,7 +121,7 @@ async function generateMockTest(event){
     }
     toast(error.message,'error');
   }finally{
-    state.testGenerating=false;btn.disabled=false;
+    state.testGenerating=false;btn.disabled=state.mockRemaining===0;
     btn.textContent=originalText;
   }
 }

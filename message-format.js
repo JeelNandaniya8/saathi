@@ -4,7 +4,7 @@ function math(target,tex,block=false){
   target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-block';target.style.verticalAlign='middle';target.style.fontSize=/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'max(1.3em, 21px)':'max(1.15em, 18px)';target.style.lineHeight='1.65';target.style.paddingBlock='3px';
   target.setAttribute('aria-label',tex);target.dataset.math=tex;target.dataset.display=String(block);
   if(!window.katex){target.textContent=tex;return}
-  try{if(!window.katex)throw Error('Math renderer unavailable');window.katex.render(tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}
+  try{if(!window.katex)throw Error('Math renderer unavailable');window.katex.render(!block&&/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'\\displaystyle '+tex:tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}
   catch(error){target.replaceChildren(document.createTextNode(tex));target.title='Formula could not be rendered';target.classList.add('math-error')}
 }
 function appendInline(target,text){
@@ -28,7 +28,11 @@ function markdownBlockStart(lines,index){
   const line=lines[index]||'',next=lines[index+1]||'';
   return !line.trim()||/^\s*```/.test(line)||/^#{1,6}\s+/.test(line)||/^\s*[-*+]\s+/.test(line)||/^\s*\d+[.)]\s+/.test(line)||/^\s*>\s?/.test(line)||/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)||(line.includes('|')&&/^\s*\|?\s*:?-{3,}/.test(next));
 }
-function tableCells(line){return line.trim().replace(/^\||\|$/g,'').split('|').map(cell=>cell.trim())}
+function tableCells(line){
+  // Markdown separators belong outside math, code and escaped literal bars.
+  const tokens=[],protectedLine=line.replace(/`[^`\n]+`|\\\[[^\n]*?\\\]|\\\([^\n]*?\\\)|\$\$[^\n]*?\$\$|\$[^$\n]+\$|\\\||\bP\([^\n)]*\|[^\n)]*\)/g,value=>'\u0000'+(tokens.push(value)-1)+'\u0000');
+  return protectedLine.trim().replace(/^\||\|$/g,'').split('|').map(cell=>cell.trim().replace(/\u0000(\d+)\u0000/g,(_,index)=>tokens[Number(index)]))
+}
 function renderMarkdown(target,text){
   target.replaceChildren();const lines=String(text||'').replace(/\r\n?/g,'\n').split('\n');let index=0;
   while(index<lines.length){const line=lines[index];if(!line.trim()){index++;continue}

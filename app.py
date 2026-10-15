@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-15-idle-check-latency"
+RELEASE_ID = "2026-10-15-evening-audit"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2064,6 +2064,11 @@ def study_kind_for_reply(mode, reply):
     return None
 
 
+def validate_study_reply(mode,reply,file_only=False):
+    if not file_only and study_kind_for_reply(mode,reply)=='flashcards' and study_reference.flashcard_direction_error(daily_workspace.flashcards(reply)):
+        raise ProviderError('AI_ACCURACY','These flashcards contain a DNA direction error and were not saved. DNA polymerase reads the template 3′→5′ and extends new DNA 5′→3′. Check your textbook and retry.')
+
+
 def create_study_progress(cur, user_id, conversation_id, message_id, mode, reply, now):
     kind = study_kind_for_reply(mode, reply)
     if not kind:
@@ -2453,6 +2458,7 @@ def persist_streamed_exchange(
     request_id, attachments, reply, ai_usage, memory_labels, entitlement,
     is_first_user_message, file_only, direct=None,
 ):
+    validate_study_reply(mode,reply,file_only)
     now = datetime.now(timezone.utc)
     new_title = (
         make_conversation_title(content)
@@ -2881,6 +2887,7 @@ def conversation_messages(conversation_id):
             reply, ai_usage = direct['reply'], {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
         else:
             reply, ai_usage = generate_gemini_reply(context, memory_context, language, mode, include_usage=True, file_only=file_only)
+        validate_study_reply(mode,reply,file_only)
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
     except Exception:
@@ -3267,6 +3274,7 @@ def regenerate_conversation_reply(conversation_id):
         context[-1]["attachments"] = stored_attachments
     memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True)
     def save_reply(reply, ai_usage):
+        validate_study_reply(mode,reply,file_only)
         conn = get_db()
         cur = conn.cursor()
         try:
@@ -3447,6 +3455,63 @@ def message_feedback(message_id):
     return jsonify({"message_id": updated["id"], "feedback": updated["feedback"]})
 
 
+@app.patch('/api/messages/<int:message_id>/flashcards/<int:card_index>')
+def correct_flashcard(message_id,card_index):
+    user_id=require_user_id()
+    if not user_id:return jsonify(error='Please log in first.',login_required=True),401
+    limit_response=limited('flashcard_correction',str(user_id),30,5)
+    if limit_response:return limit_response
+    data=request.get_json(silent=True)
+    if not isinstance(data,dict):return jsonify(error='Provide the original and corrected card.'),400
+    for field,limit in [('front',4000),('back',6000),('expected_front',4000),('expected_back',6000)]:
+        if not isinstance(data.get(field),str) or not data[field].strip() or len(data[field])>limit:
+            return jsonify(error='Keep both sides of the card within their text limits.'),400
+    if any(re.search(r'\[/?FLASHCARDS\]|<SAATHI_ACTION|(?:^|\n)\s*(?:Front|Back):',data[field],re.I) for field in ('front','back')):
+        return jsonify(error='Use plain card text without flashcard control markers.'),400
+    front,back=data['front'].strip(),data['back'].strip()
+    conn=get_db();cur=conn.cursor()
+    try:
+        cur.execute("""SELECT m.content,p.progress FROM messages m JOIN study_progress p
+            ON p.message_id=m.id AND p.user_id=m.user_id
+            WHERE m.id=%s AND m.user_id=%s AND m.role='assistant' AND p.kind='flashcards'
+            FOR UPDATE OF m,p""",(message_id,user_id))
+        row=cur.fetchone()
+        if not row:return jsonify(error='Saved flashcards not found.'),404
+        cards=daily_workspace.flashcards(row['content'])
+        if not 0<=card_index<len(cards):return jsonify(error='Flashcard not found.'),404
+        original=(data['expected_front'],data['expected_back'])
+        if cards[card_index] not in (original,(front,back)):
+            return jsonify(error='This card changed. Reload it before editing.'),409
+        if cards[card_index]==(front,back) and card_index in (row['progress'] or {}).get('corrected_indices',[]):
+            return jsonify(content=row['content'],study_progress=dict(kind='flashcards',progress=row['progress']),replayed=True)
+        cards[card_index]=(front,back)
+        block='[FLASHCARDS]\n'+'\n---\n'.join('Front: '+a+'\nBack: '+b for a,b in cards)+'\n[/FLASHCARDS]'
+        content=re.sub(r'\[FLASHCARDS\][\s\S]*?\[/FLASHCARDS\]',lambda _:block,row['content'],count=1,flags=re.I)
+        progress=row['progress'] or {}
+        progress={**progress,'corrected_indices':sorted(set(progress.get('corrected_indices',[]))|{card_index}),
+                  'known_indices':[i for i in progress.get('known_indices',[]) if i!=card_index],
+                  'review_indices':sorted(set(progress.get('review_indices',[]))|{card_index})}
+        cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(content,message_id,user_id))
+        cur.execute('UPDATE study_progress SET progress=%s,updated_at=NOW() WHERE message_id=%s AND user_id=%s',
+                    (psycopg2.extras.Json(progress),message_id,user_id))
+        cur.execute('UPDATE revision_items SET front=%s,back=%s,repetitions=0,next_review_at=NOW(),version=version+1 WHERE message_id=%s AND item_index=%s AND user_id=%s',
+                    (front,back,message_id,card_index,user_id))
+        # A separate read verifies the source and every existing revision copy.
+        cur.execute("""SELECT m.content,p.progress,NOT EXISTS(SELECT 1 FROM revision_items
+            WHERE message_id=m.id AND user_id=m.user_id AND item_index=%s AND (front<>%s OR back<>%s)) AS copies_match
+            FROM messages m JOIN study_progress p ON p.message_id=m.id AND p.user_id=m.user_id
+            WHERE m.id=%s AND m.user_id=%s""",(card_index,front,back,message_id,user_id))
+        verified=cur.fetchone()
+        if not verified or verified['content']!=content or verified['progress']!=progress or not verified['copies_match']:
+            raise RuntimeError('The correction could not be verified. Retry.')
+        conn.commit()
+        return jsonify(content=verified['content'],study_progress=dict(kind='flashcards',progress=verified['progress']))
+    except Exception:
+        conn.rollback();raise
+    finally:
+        cur.close();conn.close()
+
+
 @app.route("/api/messages/<int:message_id>/study-progress", methods=["PATCH"])
 def update_study_progress(message_id):
     user_id = require_user_id()
@@ -3507,7 +3572,7 @@ def update_study_progress(message_id):
     cur.execute(
         """
         UPDATE study_progress
-        SET progress = %s, updated_at = %s
+        SET progress = (progress - 'current_index' - 'known_indices' - 'review_indices') || %s::jsonb, updated_at = %s
         WHERE message_id = %s AND user_id = %s
         RETURNING kind, progress
         """,
@@ -5286,6 +5351,7 @@ def build_gemini_payload(
     selected_mode = normalise_chat_mode(mode)
     mode_details = CHAT_MODES[selected_mode]
     system_text = SYSTEM_PROMPT
+    if selected_mode=='flashcards' and not file_only:system_text+=study_reference.flashcard_grounding(messages)
     if memory_context:
         system_text += "\n\nUSER-CONTROLLED MEMORY\n" + memory_context
     language_names = {"en": "English", "gu": "Gujarati", "hi": "Hindi"}

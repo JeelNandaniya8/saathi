@@ -77,6 +77,7 @@ def reminder(text, zone, now=None):
             return {'question': 'That time has passed in ' + zone + '. Which future date should I use?'}
     topic = re.split(r'\s+(?:to|about|for)\s+', text[clock.end():].strip(), maxsplit=1, flags=re.I)
     title = topic[-1].strip(' .')
+    title = re.sub(r'^(?:IST|UTC|GMT)(?:[+-]\d{1,2}(?::\d{2})?)?\b\s*', '', title, flags=re.I)
     title = re.sub(r'^(?:today|tomorrow|every day|daily|weekly)\s*(?:to|about|for)?\s*', '', title, flags=re.I)
     title = re.sub(r'^(?:to|about|for)\s+', '', title, flags=re.I)
     title = re.sub(r'^do\s+', '', title, flags=re.I)

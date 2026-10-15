@@ -2,6 +2,38 @@
 import re
 import chat_intents
 
+DNA_SOURCE='https://sathee.iitk.ac.in/te/sathee-neet/ncert-books/neet-ncert-books/neet-nb-bio-12/bio-12-chapter-6-molecular-basis-of-inheritance/'
+
+
+def flashcard_grounding(messages):
+    recent=' '.join(str(m.get('content','')) for m in messages[-2:])
+    if not re.search(r'\bDNA\b|replication|polymerase',recent,re.I):return ''
+    return ('\nNCERT replication reference: DNA polymerase extends a new strand 5-prime to 3-prime '
+            'and reads its template 3-prime to 5-prime. A template drawn 5-prime to 3-prime '
+            'can support discontinuous replication; its drawn polarity is not the reading direction. Source: '+DNA_SOURCE)
+
+
+def flashcard_direction_error(cards):
+    """Catch the audited, explicit direction reversal; not a general fact checker."""
+    if not re.search(r'dna|replication|polymerase',' '.join(a+' '+b for a,b in cards),re.I):return False
+    def normalise(value):
+        value=re.sub(r"['′’`^{}$*]",'',value.casefold())
+        value=value.replace('\\rightarrow','to').replace('\\to','to')
+        return re.sub(r'([35])\s*(?:→|->|\bto\b|[-–])\s*([35])',r'\1to\2',value)
+    for front,back in cards:
+        question,answer=normalise(front),normalise(back)
+        if re.search(r'ribosom|translat',question+' '+answer):continue
+        if not re.search(r'dna|polymerase|template',question+' '+answer):continue
+        # Explicitly negated claims and polarity diagrams are not assertions
+        # that the polymerase reads in that direction.
+        if re.search(r'\b(?:not|never|incorrect|false)\b',answer):continue
+        template_question=bool(re.search(r'template.*(?:read|travers)|(?:read|travers).*template',question))
+        direct_answer=re.match(r'(?:the (?:reading )?direction is\s*)?(?:from\s*)?5to3\b',answer)
+        wrong_read=re.search(r'(?:template(?: strand)? (?:is )?(?:read|traversed)|polymerase (?:reads|traverses|moves along) (?:the )?template(?: strand)?)\s*(?:in (?:the )?(?:direction )?)?(?:from\s*)?5to3\b',answer)
+        wrong_growth=re.search(r'(?:dna (?:is )?synthesi[sz]ed|new (?:dna )?strand (?:grows|is synthesi[sz]ed))\s*(?:in (?:the )?(?:direction )?)?(?:from\s*)?3to5\b',answer)
+        if (template_question and direct_answer) or wrong_read or wrong_growth:return True
+    return False
+
 REFERENCES = {
  'newton': ('https://ncert.nic.in/textbook/pdf/keph104.pdf', {
   'en': 'Newton’s second law says that net force equals the rate of change of momentum; for constant mass in an inertial frame, F_net = ma. For the same mass, a larger net force produces a larger acceleration in the force’s direction.',
