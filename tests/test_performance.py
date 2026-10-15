@@ -35,7 +35,7 @@ def test_user_context_is_reused_only_in_same_authenticated_request(backend, monk
     class Cursor:
         def __init__(self): self.calls = []
         def execute(self, sql, args): self.calls.append((sql, args))
-        def fetchone(self): return {'session_version': 3, 'plan': 'free', 'plan_status': None, 'subscription_end_at': None, 'language': 'gu'}
+        def fetchone(self): return {'session_version': 3, 'plan': 'free', 'plan_status': None, 'subscription_end_at': None, 'language': 'gu', 'workspace_timezone':'Asia/Kolkata'}
         def close(self): pass
     cur = Cursor()
     class Conn:
@@ -47,6 +47,8 @@ def test_user_context_is_reused_only_in_same_authenticated_request(backend, monk
         assert backend.require_user_id() == 7
         assert backend.active_plan_entitlement(cur, 7)[0] == 'free'
         assert backend.load_user_language(7, cur) == 'gu'
+        import chat_actions
+        assert chat_actions.account_timezone(cur,7)=='Asia/Kolkata'
         assert len(cur.calls) == 1
     with backend.app.test_request_context('/api/me'):
         backend.session.update(user_id=7, session_version=2)

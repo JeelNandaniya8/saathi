@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-15-audit-routing"
+RELEASE_ID = "2026-10-15-context-latency"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2293,9 +2293,9 @@ def attachment_usage_today(cur, user_id, now=None):
     return int(cur.fetchone()["count"])
 
 
-def attachment_usage_payload(cur, user_id, entitlement, now=None):
+def attachment_usage_payload(cur, user_id, entitlement, now=None, used_today=None):
     now = now or datetime.now(timezone.utc)
-    used_today = attachment_usage_today(cur, user_id, now)
+    if used_today is None:used_today = attachment_usage_today(cur, user_id, now)
     return {
         "reset_at": (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
         "used_today": used_today,
@@ -2354,28 +2354,37 @@ def make_attachment_conversation_title(mode, attachments):
     return make_conversation_title(f"{prefix} · {first_name}{extra}" if prefix else f"{first_name}{extra}")
 
 
-def owned_conversation(cur, conversation_id, user_id, lock=False):
+REQUEST_LOOKUP_COLUMNS = """
+    COALESCE((SELECT jsonb_agg(turn ORDER BY turn.id) FROM (
+        SELECT id,role,content,created_at,ai_mode,client_request_id,memory_labels,feedback,file_only,source_pages
+        FROM messages WHERE conversation_id=c.id AND user_id=c.user_id AND client_request_id=%s
+        ORDER BY id
+    ) turn),'[]'::jsonb) AS completed_request_rows, %s::text AS lookup_request_id
+"""
+
+
+def owned_conversation(cur, conversation_id, user_id, lock=False, request_id=None):
+    lookup=', '+REQUEST_LOOKUP_COLUMNS if request_id is not None else ''
     cur.execute(
         ("SELECT pg_advisory_xact_lock(%s); " if lock else "") +
-        "SELECT * FROM conversations WHERE id = %s AND user_id = %s",
-        ((730000000000 + user_id,) if lock else ()) + (conversation_id, user_id),
+        "SELECT c.*"+lookup+" FROM conversations c WHERE c.id=%s AND c.user_id=%s",
+        ((730000000000+user_id,) if lock else ()) +
+        ((request_id,request_id) if request_id is not None else ()) + (conversation_id,user_id),
     )
     return cur.fetchone()
 
 
-def chat_conversation_snapshot(cur, conversation_id, user_id):
-    """Fetch the owned conversation and its bounded history in one round trip."""
+def chat_conversation_snapshot(cur, conversation_id, user_id, request_id=None):
+    """Read owned history and this retry key in the same fresh database snapshot."""
     cur.execute(
         """
         SELECT c.*, COALESCE((
             SELECT jsonb_agg(recent ORDER BY recent.id)
-            FROM (SELECT id, role, content, created_at FROM messages
-                  WHERE conversation_id = c.id AND user_id = c.user_id
-                  ORDER BY id DESC LIMIT 29) recent
-        ), '[]'::jsonb) AS recent_messages
-        FROM conversations c WHERE c.id = %s AND c.user_id = %s
-        """,
-        (conversation_id, user_id),
+            FROM (SELECT id,role,content,created_at FROM messages
+                  WHERE conversation_id=c.id AND user_id=c.user_id ORDER BY id DESC LIMIT 29) recent
+        ),'[]'::jsonb) AS recent_messages, """+REQUEST_LOOKUP_COLUMNS+"""
+        FROM conversations c WHERE c.id=%s AND c.user_id=%s
+        """,(request_id,request_id,conversation_id,user_id),
     )
     return cur.fetchone()
 
@@ -2384,17 +2393,15 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     """Return a previously committed request so client retries stay idempotent."""
     if not request_id:
         return None
-    cur.execute(
-        """
-        SELECT id, role, content, created_at, ai_mode, client_request_id,
-               memory_labels, feedback, file_only, source_pages
-        FROM messages
-        WHERE conversation_id = %s AND user_id = %s AND client_request_id = %s
-        ORDER BY id ASC
-        """,
-        (conversation["id"], user_id, request_id),
-    )
-    rows = cur.fetchall()
+    if conversation.get('lookup_request_id')==request_id and 'completed_request_rows' in conversation:
+        rows=[dict(row,created_at=datetime.fromisoformat(row['created_at'])) for row in conversation['completed_request_rows']]
+    else:
+        cur.execute(
+            """SELECT id,role,content,created_at,ai_mode,client_request_id,memory_labels,feedback,file_only,source_pages
+               FROM messages WHERE conversation_id=%s AND user_id=%s AND client_request_id=%s ORDER BY id""",
+            (conversation["id"],user_id,request_id),
+        )
+        rows=cur.fetchall()
     user_message = next((row for row in rows if row["role"] == "user"), None)
     assistant_message = next((row for row in rows if row["role"] == "assistant"), None)
     if not user_message or not assistant_message:
@@ -2456,7 +2463,7 @@ def persist_streamed_exchange(
     conn = get_db()
     cur = conn.cursor()
     try:
-        locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True)
+        locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True, request_id=request_id)
         if not locked_conversation:
             raise RuntimeError("This conversation is no longer available.")
         existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
@@ -2554,18 +2561,19 @@ def persist_streamed_exchange(
         )
         cur.execute(
             """
-            UPDATE conversations
-            SET title = %s, updated_at = %s
-            WHERE id = %s AND user_id = %s
-            RETURNING *
+            WITH updated AS (
+                UPDATE conversations SET title=%s,updated_at=%s WHERE id=%s AND user_id=%s RETURNING *
+            )
+            SELECT updated.*, (SELECT COUNT(*) FROM chat_attachments
+                WHERE user_id=%s AND created_at>=%s) AS attachment_used_today FROM updated
             """,
-            (new_title, now, conversation_id, user_id),
+            (new_title, now, conversation_id, user_id, user_id, now.replace(hour=0,minute=0,second=0,microsecond=0)),
         )
         updated_conversation = cur.fetchone()
         record_ai_usage(
             cur, user_id, conversation_id, mode, len(attachments), ai_usage, now
         )
-        attachment_usage = attachment_usage_payload(cur, user_id, entitlement, now)
+        attachment_usage = attachment_usage_payload(cur, user_id, entitlement, now, used_today=updated_conversation.pop('attachment_used_today'))
         conn.commit()
         return {
             "conversation": conversation_to_dict(updated_conversation),
@@ -2715,9 +2723,18 @@ def conversation_messages(conversation_id):
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
 
+    data,uploaded_files={},[]
+    if request.method=='POST':
+        if request.mimetype == "multipart/form-data":
+            data = request.form
+            uploaded_files = request.files.getlist("attachments")
+        else:
+            data = request.get_json(force=True, silent=True) or {}
+            uploaded_files = []
+    snapshot_key=str(data.get('request_id') or '').strip() or None
     conn = get_db()
     cur = conn.cursor()
-    conversation = (chat_conversation_snapshot(cur, conversation_id, user_id)
+    conversation = (chat_conversation_snapshot(cur, conversation_id, user_id, snapshot_key)
                     if request.method == 'POST' else owned_conversation(cur, conversation_id, user_id))
     if not conversation:
         cur.close()
@@ -2772,12 +2789,6 @@ def conversation_messages(conversation_id):
             "next_before_id": next_before_id,
         })
 
-    if request.mimetype == "multipart/form-data":
-        data = request.form
-        uploaded_files = request.files.getlist("attachments")
-    else:
-        data = request.get_json(force=True, silent=True) or {}
-        uploaded_files = []
 
     mode = chat_intents.mode(data.get("content"), normalise_chat_mode(data.get("mode")))
     request_id = str(data.get("request_id") or "").strip() or None
@@ -2900,7 +2911,7 @@ def conversation_messages(conversation_id):
     # Serialize final writes per user. This closes the small race where two
     # simultaneous uploads can both pass the daily quota check or a cancelled
     # request can finish while the browser retries it.
-    locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True)
+    locked_conversation = owned_conversation(cur, conversation_id, user_id, lock=True, request_id=request_id)
     if not locked_conversation:
         conn.rollback()
         cur.close()
@@ -3037,20 +3048,21 @@ def stream_conversation_message(conversation_id):
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
 
-    conn = get_db()
-    cur = conn.cursor()
-    conversation = chat_conversation_snapshot(cur, conversation_id, user_id)
-    if not conversation:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Conversation not found."}), 404
-
     if request.mimetype == "multipart/form-data":
         data = request.form
         uploaded_files = request.files.getlist("attachments")
     else:
         data = request.get_json(force=True, silent=True) or {}
         uploaded_files = []
+    snapshot_key=str(data.get('request_id') or '').strip() or None
+    conn = get_db()
+    cur = conn.cursor()
+    conversation = chat_conversation_snapshot(cur, conversation_id, user_id, snapshot_key)
+    if not conversation:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Conversation not found."}), 404
+
     mode = chat_intents.mode(data.get("content"), normalise_chat_mode(data.get("mode")))
     request_id = str(data.get("request_id") or "").strip() or None
     if request_id and not CLIENT_REQUEST_ID_RE.fullmatch(request_id):
@@ -3548,7 +3560,7 @@ def require_user_id():
         return None
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language, COALESCE((SELECT timezone FROM workspace_preferences WHERE user_id=users.id),'Asia/Kolkata') AS workspace_timezone FROM users WHERE id = %s", (user_id,))
     user = cur.fetchone()
     cur.close()
     conn.close()
@@ -4077,20 +4089,21 @@ def load_active_memory_bundle(user_id, cur=None, mode="normal", include_workspac
     if conn is not None:
         cur = conn.cursor()
     try:
-        cur.execute(
-            """
-            SELECT label, content FROM memories
-            WHERE user_id = %s AND active = TRUE
-            ORDER BY updated_at DESC LIMIT 20
-            """,
-            (user_id,),
-        )
-        rows = cur.fetchall()
-        workspace_text, workspace_labels = chat_actions.workspace_context(cur, user_id, turn_content) if include_workspace else ("", [])
         profile_text, profile_labels = "", []
-        if mode in personal_context.PROFILE_MODES:
-            cur.execute("SELECT category,field,value,source,use_in_ai,reviewed_at FROM personal_context_fields WHERE user_id=%s AND use_in_ai=TRUE AND reviewed_at>=NOW()-INTERVAL '90 days'", (user_id,))
-            profile_text, profile_labels = personal_context.context_rows(cur.fetchall(), mode)
+        if include_workspace:
+            category='care' if mode=='healer' else 'study' if mode in personal_context.PROFILE_MODES else None
+            snapshot=chat_actions.context_snapshot(cur,user_id,turn_content,with_memory=True,profile_category=category)
+            rows=snapshot['base_memories']
+            workspace_text,workspace_labels=chat_actions.workspace_context(cur,user_id,turn_content,snapshot=snapshot)
+            profile_rows=[dict(row,reviewed_at=datetime.fromisoformat(row['reviewed_at'])) for row in snapshot['profile_fields']]
+            profile_text,profile_labels=personal_context.context_rows(profile_rows,mode)
+        else:
+            cur.execute("SELECT label,content FROM memories WHERE user_id=%s AND active = TRUE ORDER BY updated_at DESC LIMIT 20",(user_id,))
+            rows=cur.fetchall()
+            workspace_text,workspace_labels="",[]
+            if mode in personal_context.PROFILE_MODES:
+                cur.execute("SELECT category,field,value,source,use_in_ai,reviewed_at FROM personal_context_fields WHERE user_id=%s AND use_in_ai=TRUE AND reviewed_at>=NOW()-INTERVAL '90 days'", (user_id,))
+                profile_text,profile_labels=personal_context.context_rows(cur.fetchall(),mode)
     finally:
         if conn is not None:
             cur.close()

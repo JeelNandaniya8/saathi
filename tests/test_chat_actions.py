@@ -19,13 +19,13 @@ def test_context_queries_only_explicit_permissions():
     class Cursor:
         def __init__(self,permissions):self.permissions=permissions;self.queries=[]
         def execute(self,q,p):self.queries.append((q,p))
-        def fetchone(self):return self.permissions if len(self.queries)==1 else {'timezone':'Asia/Kolkata'}
-        def fetchall(self):return [{'title':'My own task'}]
+        def fetchone(self):return {'permissions':self.permissions,'timezone':'Asia/Kolkata',
+                                  'sources':{key:([{'title':'My own task'}] if self.permissions.get(key) else None) for key in actions.SOURCES}}
     cur=Cursor({});text,labels=actions.workspace_context(cur,7)
-    assert len(cur.queries)==2 and not labels and 'tasks: not shared' in text
+    assert len(cur.queries)==1 and not labels and 'tasks: not shared' in text
     cur=Cursor({'tasks':True});text,labels=actions.workspace_context(cur,7)
-    assert len(cur.queries)==3 and labels==['Shared tasks'] and 'My own task' in text
-    assert all(p==(7,) for _,p in cur.queries)
+    assert len(cur.queries)==1 and labels==['Shared tasks'] and 'My own task' in text
+    assert cur.queries[0][1]['uid']==7
 
 
 def test_hindi_gujarati_names_and_no_symbols():
