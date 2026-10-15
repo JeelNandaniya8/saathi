@@ -12,8 +12,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let inlineSaved=null,inlineJobs=[];
-   let actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
+   let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}];
+   const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',timezone:'Asia/Kolkata',language});
    page.on('pageerror',error=>errors.push(error.message));
    await page.route('**/*',async route=>{
@@ -31,6 +32,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/mock-tests/53/submit'){inlineSubmits++;assert.equal(body().answers['1'],'A');data={attempt:{score:1,total_questions:5},review:[{id:1,question:'Fixture question 1',user_answer:'A',correct_answer:'A',explanation:'Literal <script>unsafe</script> explanation'}]}}
      else if(pathname==='/api/mindmaps/generate')data={mindmap:{id:62,topic:body().topic,data:{summary:'Saved map summary',root:{label:'Chat map root',desc:'Topic-specific explanation',children:[{label:'Chat map branch',desc:'Actual detail <script>unsafe</script>',children:[]}]}}}};
      else if(pathname==='/api/chat-context'){if(method==='PATCH')contextPrefs=body();data={permissions:contextPrefs}}
+     else if(pathname==='/api/chat-actions/992'){if(method==='POST'){assert.equal(body().automatic,undefined);assert.equal(body().confirmed,true);chatPlanSaves++}data=chatPlanSaves?{saved:true,receipt:{kind:'plan',resource_id:10,resource_ids:[10,11]},resource:{count:2,items:chatPlan.items.map((item,index)=>({id:10+index,title:item.title,due_at:item.at,completed:false}))},content:'Study plan saved to Planner.\n<SAATHI_ACTION>'+JSON.stringify(chatPlan)+'</SAATHI_ACTION>'}:{saved:false,action:chatPlan}}
      else if(pathname==='/api/chat-actions/999'){if(method==='POST'){assert.equal(body().confirmed,true);assert.equal(body().action.title,'Edited chat task');actionSaves++;data={saved:true,receipt:{kind:'task',resource_id:9}}}else data=actionSaves?{saved:true,receipt:{kind:'task',resource_id:9}}:{saved:false,action:{kind:'task',title:'Chat task',text:'User requested details',at:null,priority:'medium',recurrence:'once'}}}
      else if(pathname==='/api/me')data={user:user(),csrf_token:'fixture',chat_modes:[{id:'normal',label:'Normal',description:'A balanced everyday reply'},{id:'quiz',label:'Quiz',description:'Practice questions'}],chat_attachments:{enabled:true,per_message:3,max_bytes:8388608,total_max_bytes:8388608,remaining_today:5}};
      else if(pathname==='/api/preferences'){language=body().language;data={user:user()}}
@@ -321,8 +323,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.waitForFunction(()=>!document.querySelector('#chatInput').disabled);await page.locator('#chatInput').fill('Draft typed while history loads');assert.equal(await page.locator('#sendButton').isDisabled(),true,'Send waits for consistent saved history');
    await page.locator('.message.user').waitFor();assert.equal(await page.locator('#chatInput').inputValue(),'Draft typed while history loads');await page.locator('#chatInput').fill('');
    assert.equal(historyWhileProfilePending,true,'History should load concurrently with the profile');
-   const math=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);SaathiMarkup.render(box,"## Study\n- First\n- Second\n\n\\(P(E)=\\frac{1}{\\sqrt{4}}\\)\n\\[\\frac{a+b}{c}\\]\nBare: \\frac{x}{y}\n`\\frac{x}{y}`\n<img src=x onerror=alert(1)>\n\\(\\href{javascript:alert(1)}{x}\\)\n\n```js\nconst x = 1;\n```");const result={fractions:box.querySelectorAll('mfrac').length,roots:box.querySelectorAll('msqrt').length,heading:box.querySelector('h2')?.textContent,list:box.querySelectorAll('li').length,code:box.querySelector('pre code')?.textContent,unsafe:box.querySelectorAll('img,script,a[href^="javascript:"]').length};box.remove();return result});
-   assert.equal(math.fractions,3);assert.equal(math.roots,1);assert.equal(math.heading,'Study');assert.equal(math.list,2);assert.equal(math.code,'const x = 1;');assert.equal(math.unsafe,0);
+   const math=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);SaathiMarkup.render(box,"## Study\n- First\n- Second\n\n\\(P(E)=\\frac{1}{\\sqrt{4}}\\)\n\\[\\frac{a+b}{c}\\]\nBare: \\frac{x}{y}\n`\\frac{x}{y}`\n<img src=x onerror=alert(1)>\n\\(\\href{javascript:alert(1)}{x}\\)\n\n```js\nconst x = 1;\n```");const result={fractionFont:parseFloat(getComputedStyle(box.querySelector('mfrac').closest('.math-inline')).fontSize),fractions:box.querySelectorAll('mfrac').length,roots:box.querySelectorAll('msqrt').length,heading:box.querySelector('h2')?.textContent,list:box.querySelectorAll('li').length,code:box.querySelector('pre code')?.textContent,unsafe:box.querySelectorAll('img,script,a[href^="javascript:"]').length};box.remove();return result});
+   const formatting=await page.evaluate(()=>{const box=document.createElement('div');SaathiMarkup.render(box,'#### Recall\n\n---\n###### Details');return{head:box.querySelector('h4')?.textContent,detail:box.querySelector('h6')?.textContent,rules:box.querySelectorAll('hr').length,front:parseFlashcards('[FLASHCARDS]\nFront: DNA question?\n---\nBack: Answer\n[/FLASHCARDS]').cards[0].front}});assert.deepEqual(formatting,{head:'Recall',detail:'Details',rules:1,front:'DNA question?'});
+   assert.ok(math.fractionFont>=20,'Inline fractions stay readable within dense text');assert.equal(math.fractions,3);assert.equal(math.roots,1);assert.equal(math.heading,'Study');assert.equal(math.list,2);assert.equal(math.code,'const x = 1;');assert.equal(math.unsafe,0);
    await page.evaluate(()=>{const host=document.createElement('div');host.id='audit-note-link';document.body.append(host);SaathiChatActions.attach(host,{id:996,role:'assistant',content:'Saved to Notes. <SAATHI_ACTION>{"kind":"note","title":"Search","text":"Search"}</SAATHI_ACTION>',action_receipt:{kind:'note',resource_id:3},action_resource:{id:3}})});
    await page.locator('#audit-note-link a').click();await page.waitForFunction(()=>document.querySelector('[data-qn="content"]')?.value==='Search');assert.equal(await page.locator('[data-qn="content"]').inputValue(),'Search');assert.equal(new URL(page.url()).pathname,'/chat','Exact note opens without navigating to Today');await page.locator('[data-qn="close"]').click();await page.locator('#audit-note-link').evaluate(node=>node.remove());
 
@@ -481,6 +484,18 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.evaluate(()=>window.injected),undefined);
    assert.equal(actionSaves,actionWrites,'Server-confirmed actions must not be executed again by the browser');
    assert.equal(await page.locator('#confirmed-chat-memory a').getAttribute('href'),'/dashboard?memory=12#memory');
+   const reminderStatus=await page.evaluate(()=>{const box=document.createElement('div');document.body.append(box);const past=new Date(Date.now()-86400000).toISOString(),future=new Date(Date.now()+86400000).toISOString(),message={id:990,content:'Reminder saved. <SAATHI_ACTION>'+JSON.stringify({kind:'reminder',title:'Revision',at:past})+'</SAATHI_ACTION>',action_receipt:{kind:'reminder',resource_id:90},action_resource:{title:'Revision',active:true,at:past}};SaathiChatActions.attach(box,message);const overdue=box.textContent;box.replaceChildren();message.action_resource.at=future;SaathiChatActions.attach(box,message);const rescheduled=box.textContent;box.remove();return{overdue,rescheduled}});assert.ok(reminderStatus.overdue.includes('Overdue'));assert.ok(reminderStatus.rescheduled.includes('Scheduled')&&!reminderStatus.rescheduled.includes('Overdue'),'Receipt status uses the current saved schedule');
+   await page.evaluate(plan=>{state.messages.push({id:992,role:'assistant',created_at:new Date().toISOString(),auto_action:true,action_error:'Automatic save was not authorised.',content:'Failed: Automatic save was not authorised.\nRetry when ready.\n<SAATHI_ACTION>'+JSON.stringify(plan)+'</SAATHI_ACTION>'});renderMessages()},chatPlan);
+   assert.equal(chatPlanSaves,0,'An unsaved preview must wait for user confirmation');
+   const planMessage=page.locator('.message[data-message-id="992"]');
+   await planMessage.getByRole('button',{name:'Review save preview',exact:true}).click();
+   actionDialog=page.getByRole('dialog',{name:'Review before saving',exact:true});
+   await actionDialog.getByLabel('Title',{exact:true}).waitFor();
+   const planPreview=await actionDialog.innerText();assert.ok(planPreview.includes('Asia/Kolkata')&&planPreview.includes('17')&&planPreview.includes('18'));assert.equal((planPreview.match(/15 minutes/g)||[]).length,2);
+   await actionDialog.getByRole('button',{name:'Save',exact:true}).click();await actionDialog.getByText('Saved to your account',{exact:true}).waitFor();
+   assert.equal(chatPlanSaves,1);assert.ok(!(await planMessage.innerText()).includes('Failed'));assert.ok(!(await planMessage.innerText()).includes('Not saved'));assert.equal(await planMessage.getByRole('button',{name:'Retry',exact:true}).count(),0);
+   assert.equal(await page.evaluate(()=>state.messages.find(message=>message.id===992).action_error),undefined);
+   await actionDialog.getByRole('button',{name:'Close',exact:true}).click();
    await page.evaluate(()=>{state.conversations[0].preview='Ready to review <SAATHI_ACTION>{\"kind\":\"task\"}</SAATHI_ACTION>';renderConversations()});
    assert.ok(!(await page.locator('#history').textContent()).includes('SAATHI_ACTION'),'Sidebar previews must hide action metadata');
    const beforeCreate=requests.filter(p=>p==='/api/conversations').length;
@@ -505,10 +520,12 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('#heroLogin').getAttribute('href'),'/account?tab=login');
    }
    await page.locator('[data-lang="gu"]').click();
+   await page.waitForFunction(()=>document.getElementById('navCta').textContent==='Saathi ખોલો →');
    assert.equal(await page.locator('#how h2').textContent(),'પહેલી મિનિટથી ઉપયોગી.');assert.equal(await page.locator('#pricing .section-head h2').textContent(),'મફતમાં શરૂ કરો. વધારાનાં સાધનો ઉપલબ્ધ થાય ત્યારે upgrade કરો.');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('લૉગ'));
    assert.match(await page.locator('#heroH1').textContent(),/થોડી સ્પષ્ટતા/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathiનું ડેશબોર્ડ અને reminderનું પૂર્વાવલોકન');assert.match(await page.locator('[data-theme-toggle]').first().getAttribute('aria-label'),/દેખાવ/);
    await page.locator('[data-lang="hi"]').click();
+   assert.equal(await page.locator('#navCta').textContent(),'Saathi खोलें →');
    assert.equal(await page.locator('#how h2').textContent(),'पहले मिनट से उपयोगी।');
    assert.ok((await page.locator('#heroLogin').textContent()).includes('लॉग'));
    assert.match(await page.locator('#heroH1').textContent(),/थोड़ी स्पष्टता/);assert.equal(await page.locator('.hero-stage').getAttribute('aria-label'),'Saathi डैशबोर्ड और रिमाइंडर का पूर्वावलोकन');

@@ -180,7 +180,7 @@ function applyLang(lang){
   const h1=document.getElementById('heroH1');if(h1)h1.innerHTML=data.h1;
   const sub=document.getElementById('heroSub');if(sub)sub.textContent=data.sub;
   const heroCta=document.getElementById('heroCta');if(heroCta&&!currentUser)heroCta.textContent=data.heroCta;
-  const navCta=document.getElementById('navCta');if(navCta&&!currentUser)navCta.textContent=data.navCta;
+  const navCta=document.getElementById('navCta');if(navCta)navCta.textContent=currentUser?({gu:'Saathi ખોલો →',hi:'Saathi खोलें →'}[lang]||'Open Saathi →'):data.navCta;
   const seeWorks=document.getElementById('heroSeeWorks');if(seeWorks)seeWorks.textContent=data.seeWorks;
   const greeting=document.getElementById('demoGreeting');if(greeting&&!conversation.length)greeting.textContent=data.greeting;
   const subTitle=document.getElementById('chatSub');if(subTitle)subTitle.textContent=data.chatSub;
@@ -212,7 +212,7 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
 
 function toggleMenu(){const menu=document.getElementById('mobileMenu'),button=document.getElementById('menuButton'),open=menu.classList.toggle('open');menu.setAttribute('aria-hidden',String(!open));button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Close menu':'Open menu')}
 function goAccount(plan){window.location.href='/account?plan='+encodeURIComponent(plan)}
-async function checkSession(){try{const response=await fetch('/api/me',{credentials:'include'});const data=await response.json();currentUser=data.user||null;if(currentUser){const button=document.getElementById('navCta');if(button){button.textContent='Open Saathi →';button.onclick=()=>window.location.href='/chat'}}}catch(error){console.error('Session check failed',error)}}
+async function checkSession(){try{const response=await fetch('/api/me',{credentials:'include'});const data=await response.json();currentUser=data.user||null;if(currentUser){const button=document.getElementById('navCta');if(button){button.textContent=({gu:'Saathi ખોલો →',hi:'Saathi खोलें →'}[currentLang]||'Open Saathi →');button.onclick=()=>window.location.href='/chat'}}}catch(error){console.error('Session check failed',error)}}
 
 async function openChat(){
   if(!currentUser){

@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-14-direct-save-latency"
+RELEASE_ID = "2026-10-15-audit-routing"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2848,6 +2848,7 @@ def conversation_messages(conversation_id):
 
     recent = conversation.pop('recent_messages')
     pending_scope = chat_intents.continuation(recent, content)
+    if pending_scope:mode=chat_intents.mode(pending_scope,mode)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
     language = load_user_language(user_id, cur)
     direct = None if file_only else chat_actions.direct_reply(cur, user_id, recent + [{"role":"user","content":content,"attachments":attachments}], language)
@@ -3117,6 +3118,7 @@ def stream_conversation_message(conversation_id):
             return jsonify(error=str(allowance['remaining_today'])+' uploads remaining. Resets '+reset+' · '+zone, attachment_usage=allowance), 429
     recent = conversation.pop('recent_messages')
     pending_scope = chat_intents.continuation(recent, content)
+    if pending_scope:mode=chat_intents.mode(pending_scope,mode)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
     # Reuse this connection for context, then release it before streaming.
     try:
@@ -4802,7 +4804,7 @@ def overview():
     cur.execute(
         """
         SELECT * FROM reminders
-        WHERE user_id = %s AND active = TRUE
+        WHERE user_id = %s AND active = TRUE AND next_run_at > NOW()
         ORDER BY next_run_at ASC LIMIT 1
         """,
         (user_id,),
@@ -5458,6 +5460,8 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
                 if first_text_ms is None:
                     first_text_ms = round((monotonic() - started) * 1000)
                 yield text
+        if finish_reason == "MAX_TOKENS":
+            raise ProviderError("AI_LENGTH", "Reply reached its length limit. Use Continue reply to finish from the received text; this partial reply is not saved.")
         if finish_reason != "STOP":
             raise RuntimeError("The reply stopped before it was complete. Please retry or ask a shorter question.")
         outcome = "complete"

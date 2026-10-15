@@ -154,3 +154,18 @@ def test_broken_stream_cannot_be_saved_as_a_complete_reply(monkeypatch):
     assert next(stream)=='ગુજરાતીમાં'
     with pytest.raises(RuntimeError,match='before it was complete'):next(stream)
     assert closed==[True]
+
+
+def test_length_limited_reply_offers_an_explicit_continuation(monkeypatch):
+    b=importlib.import_module('app');closed=[]
+    class Response:
+        def iter_lines(self,**kwargs):
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"#### First section"}]},"finishReason":"MAX_TOKENS"}]}'
+        def close(self):closed.append(True)
+    monkeypatch.setattr(b,'GEMINI_API_KEY','local-test-key')
+    monkeypatch.setattr(b,'provider_send',lambda *a,**k:Response())
+    stream=b.stream_gemini_reply([{'role':'user','content':'Explain DNA replication'}])
+    assert next(stream)=='#### First section'
+    with pytest.raises(b.ProviderError) as failure:next(stream)
+    assert failure.value.code=='AI_LENGTH' and 'Continue reply' in str(failure.value)
+    assert closed==[True]

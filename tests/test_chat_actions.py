@@ -51,3 +51,31 @@ def test_explicit_commands_work_without_provider_and_keep_ambiguity():
     assert actions.local_reply([dict(role='user',content='Add task: Read')],'') is None
     assert actions.local_reply([dict(role='user',content='Add task: Read',attachments=[{}])],context) is None
     assert actions.local_reply([dict(role='user',content='Add task: Read')],context,file_only=True) is None
+
+
+def test_task_date_filters_use_account_midnights_and_explicit_exclusions():
+    from datetime import date
+    now=datetime(2026,10,15,1,tzinfo=timezone.utc)
+    for query in ['What remains today?','Show unfinished tasks for 2026-10-15','What work is left on 15 October 2026?','આજે કેટલાં કામ બાકી છે?','आज कितना काम बाकी है?']:
+        start,end,day=actions.task_date_filter(query,'Asia/Kolkata',now)
+        assert day==date(2026,10,15)
+        assert start.astimezone(timezone.utc)==datetime(2026,10,14,18,30,tzinfo=timezone.utc)
+        assert end-start==timedelta(days=1)
+    start,end,day=actions.task_date_filter('What remains today? Exclude overdue tasks from 2026-10-14.','Asia/Kolkata',now)
+    assert start.astimezone(timezone.utc)==now and day==date(2026,10,15)
+    assert actions.task_date_filter('What remains today including overdue tasks?','Asia/Kolkata',now)[0] is None
+    assert actions.task_date_filter('What unfinished tasks remain?','Asia/Kolkata',now)==(None,None,None)
+    assert actions.task_date_filter('What remains today?','America/Los_Angeles',now)[2]==date(2026,10,14)
+    for query in ['Tasks on 2026-02-30','Tasks on 2026-10-15 and 2026-10-16']:
+        with pytest.raises(ValueError):actions.task_date_filter(query,'Asia/Kolkata',now)
+
+
+def test_duration_is_preserved_in_plan_details_and_historical_receipts_remain_readable():
+    item=actions.validate_action(dict(kind='task',title='DNA recall',text='Active recall',duration_minutes=15))
+    assert item['duration_minutes']==15 and item['text']=='Active recall\nDuration: 15 minutes'
+    assert actions.validate_action(item)==item
+    for minutes in [0,1441,True,'15']:
+        with pytest.raises(ValueError):actions.validate_action(dict(kind='task',title='Recall',duration_minutes=minutes))
+    content='<SAATHI_ACTION>{"kind":"reminder","title":"Old revision","at":"2026-01-01T10:00:00Z"}</SAATHI_ACTION>'
+    with pytest.raises(ValueError):actions.proposal(content)
+    assert actions.saved_content(actions.proposal(content,historical=True)).startswith('Reminder saved.')

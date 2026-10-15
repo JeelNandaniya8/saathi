@@ -81,17 +81,17 @@ def test_today_reads_only_owned_open_tasks_with_exact_local_deadlines(db_app,mon
     day=datetime.now(ZoneInfo('Asia/Kolkata')).replace(hour=17,minute=0,second=0,microsecond=0)
     with connect() as conn:
         with conn.cursor() as cur:
-            for uid,title,due,done in [(1,'Probability revision',day,False),(1,'Chemistry recap',day-timedelta(hours=2),False),(1,'Read formulas',None,False),(1,'Future task',day+timedelta(days=1),False),(1,'Completed task',day,True),(2,'Other account task',day,False)]:
+            for uid,title,due,done in [(1,'Probability revision',day,False),(1,'Chemistry recap',day-timedelta(hours=2),False),(1,'Read formulas',None,False),(1,'Yesterday task',day-timedelta(days=1),False),(1,'Future task',day+timedelta(days=1),False),(1,'Completed task',day,True),(2,'Other account task',day,False)]:
                 cur.execute("INSERT INTO tasks(user_id,title,details,due_at,completed,priority,created_at,updated_at) VALUES(%s,%s,'',%s,%s,'medium',NOW(),NOW())",(uid,title,due,done))
     cid=c.post('/api/conversations',json={}).json['conversation']['id']
     text=send(c,cid,'What remains today?',stream)['assistant_message']['content']
-    assert text.startswith('3 unfinished Planner tasks')
-    for title in ['Probability revision','Chemistry recap','Read formulas']:assert text.count(title)==1
+    assert text.startswith('2 unfinished Planner tasks')
+    for title in ['Probability revision','Chemistry recap']:assert text.count(title)==1
     assert '05:00 PM' in text and '03:00 PM' in text and 'Asia/Kolkata' in text
-    assert all(title not in text for title in ['Future task','Completed task','Other account task'])
+    assert all(title not in text for title in ['Read formulas','Yesterday task','Future task','Completed task','Other account task'])
     with connect() as conn:
         with conn.cursor() as cur:cur.execute('UPDATE tasks SET completed=TRUE WHERE user_id=1')
-    assert 'No saved Planner tasks' in send(c,cid,'What remains today?',stream)['assistant_message']['content']
+    assert 'No unfinished Planner tasks for this date.' in send(c,cid,'What remains today?',stream)['assistant_message']['content']
 
 
 @pytest.mark.parametrize('valid',[False,True])

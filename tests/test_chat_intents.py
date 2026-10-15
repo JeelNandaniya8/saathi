@@ -92,3 +92,30 @@ def test_clarification_questions_can_request_missing_details(question):
 @pytest.mark.parametrize('claim',['Saved. What else?','Which chapter? I saved it.','Which subject have I created a plan for?','કયા વિષય માટે સાચવ્યું?','क्या मैंने सेव कर दिया?'])
 def test_success_claim_is_not_a_clarification(claim):
     assert not intents.clarification(claim)
+
+
+@pytest.mark.parametrize('text', [
+    'Turn this into 2 flashcards for revision',
+    'Convert the DNA explanation into two flashcards',
+    'Make 2 flashcards about my revision plan',
+    'આમાંથી બે ફ્લેશકાર્ડ બનાવો', 'इससे दो फ्लैशकार्ड बनाओ'])
+def test_study_conversion_does_not_authorise_workspace_writes(text):
+    assert intents.mode(text)=='flashcards'
+    assert not intents.explicit(text)
+
+
+def test_new_study_request_does_not_inherit_an_unfinished_reminder():
+    recent=[dict(role='user',content='Remind me about this'),
+            dict(role='assistant',content='What date and time should I use?')]
+    for text in ['Turn this into 2 flashcards for revision','Make flashcards about DNA','Explain DNA replication']:
+        assert intents.continuation(recent,text)==''
+        assert 'reminders' not in intents.sources(text)
+    assert intents.continuation(recent,'Tomorrow at 8 PM')==recent[0]['content']
+    assert intents.sources('Read my notes. Do not use reminders.')=={'notes'}
+    assert intents.sources('Make flashcards about DNA without reminders')==set()
+
+
+def test_an_answer_after_a_completed_reply_is_not_a_clarification():
+    recent=[dict(role='user',content='Read my reminders'),
+            dict(role='assistant',content='Your next reminder is tomorrow. What else would you like?')]
+    assert intents.continuation(recent,'DNA replication')==''
