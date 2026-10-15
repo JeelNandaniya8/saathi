@@ -82,7 +82,7 @@ def test_plan_manual_save_reconciles_persisted_status_and_is_idempotent(db_app,p
     assert stored['action_receipt']['kind']=='plan' and not stored.get('action_error')
     assert stored['content'].startswith('Study plan saved to Planner.')
     assert one(connect,'SELECT COUNT(*) AS n FROM tasks')['n']==2
-    assert one(connect,"SELECT COUNT(*) AS n FROM tasks WHERE details LIKE '%Duration: 15 minutes'")['n']==2
+    assert one(connect,"SELECT COUNT(*) AS n FROM tasks WHERE details LIKE %s",('%Duration: 15 minutes',))['n']==2
     assert one(connect,'SELECT content FROM messages WHERE id=%s',(mid,))['content']==response.json['content']
 
 
