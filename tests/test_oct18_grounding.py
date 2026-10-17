@@ -28,6 +28,11 @@ def test_comma_filename_is_exact_when_multiple_pdfs_are_present():
         [pdf('lesson, physics.pdf'), pdf('other.pdf')]) == [dict(name='lesson, physics.pdf', page=1)]
 
 
+def test_ambiguous_duplicate_filenames_do_not_get_a_verified_source_link():
+    assert app.cited_source_pages('Claim [same.pdf, Page 1]',
+        [pdf('same.pdf', 'First document'), pdf('SAME.pdf', 'Different document')]) == []
+
+
 def test_file_only_sends_latest_file_and_question_without_prior_sources(monkeypatch):
     monkeypatch.setattr(app, 'GEMINI_API_KEY', 'fixture-key')
     messages = [

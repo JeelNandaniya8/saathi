@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-17-live-followup"
+RELEASE_ID = "2026-10-18-grounding"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2199,10 +2199,8 @@ def cited_source_pages(reply, attachments, query="", mode="normal"):
     named_citation = re.compile(r"\[([^\]\n]+),\s*Page\s+(\d+)\]", re.I)
     for name, page_text in named_citation.findall(str(reply)):
         page = int(page_text)
-        matched = next(
-            (item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()),
-            None,
-        )
+        matches = [item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()]
+        matched = matches[0] if len(matches) == 1 else None
         if matched and page in allowed_pages.get(str(matched.get("name") or "").lower(), set()):
             key = (matched["name"], page)
             if key not in seen:
