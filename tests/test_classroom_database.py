@@ -46,6 +46,9 @@ def test_selected_courses_sync_duplicate_update_missing_and_planner(db_app,confi
     def pages(token,path,key,params):
         if path=='courses':
             assert params['studentId']=='me';return [{'id':'course1','name':'English'},{'id':'course2','name':'Other'}]
+        if key=='studentSubmissions':
+            assert path=='courses/course1/courseWork/-/studentSubmissions' and params['userId']=='me'
+            return [{'courseWorkId':r['id'],'state':'NEW'} for r in items]
         assert path=='courses/course1/courseWork';return list(items)
     monkeypatch.setattr(cc,'list_pages',pages)
     courses=c.get('/api/classroom/courses?refresh=1').json
@@ -110,6 +113,7 @@ def test_failed_full_sync_keeps_previous_imports(db_app,configured,monkeypatch):
             cur.execute("INSERT INTO classroom_assignments(user_id,course_id,external_id,title) VALUES(1,'one','old','Retained')")
     def pages(token,path,key,params):
         if path.endswith('two/courseWork'):raise cc.ProviderError('quota')
+        if key=='studentSubmissions':return [{'courseWorkId':'new','state':'NEW'}]
         return [{'id':'new','title':'New'}]
     monkeypatch.setattr(cc,'list_pages',pages)
     assert c.post('/api/classroom/sync',json={'confirmed':True}).status_code==503
@@ -121,6 +125,7 @@ def test_failed_full_sync_keeps_previous_imports(db_app,configured,monkeypatch):
 def selected_setup(c,monkeypatch):
     connect(c)
     def pages(token,path,key,params):
+        if key=='studentSubmissions':return [{'courseWorkId':'work','state':'NEW'}]
         return [{'id':'course1','name':'English'}] if path=='courses' else [{'id':'work','title':'Essay','description':'Original instruction'}]
     monkeypatch.setattr(cc,'list_pages',pages)
     courses=c.get('/api/classroom/courses?refresh=1').json

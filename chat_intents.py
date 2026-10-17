@@ -28,6 +28,33 @@ def source_query(text):
     return re.sub(r"\b(?:exclude|excluding|except|do not|don't|without|avoid|no)\b[^.;\n]*(?:[.;\n]|$)", '', command(text), flags=re.I)
 
 
+def classroom_scope(text):
+    """Quotes and a refusal to use school data cannot grant source access."""
+    text=command(text)
+    # Negating a read is different from asking about work not submitted yet.
+    if re.search(r'(?:બતાવ\S*|વાંચ\S*|તપાસ\S*|વાપર\S*)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ)\s*(?:બતાવ|વાંચ|તપાસ|વાપર)|(?:मत|नहीं)\s*(?:दिखा|पढ़|जाँच|देख|भेज)|(?:दिखा\S*|पढ़\S*|जाँच\S*|देख\S*|भेज\S*)\s*नहीं|\b(?:batav\S*|vanch\S*|use|read|show)\s+(?:nahi|mat)\b|\b(?:nahi|mat)\s+(?:batav|vanch|use|read|show)',text,re.I):return ''
+    if re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b[^.;\n]*(?:classroom|assignments?|homework|coursework)",text,re.I):return ''
+    text=source_query(text)
+    text=re.split(r'\b(?:title|content|details)\s*:',text,maxsplit=1,flags=re.I)[0]
+    return re.sub(r'"[^"\n]*"|“[^”\n]*”|`[^`]*`','',text)
+
+
+def classroom_read(text):
+    """Only the current student's school-work question grants this read."""
+    if explicit(text) or study_output(text):return ''
+    text = classroom_scope(text)
+    if not text:return ''
+    if re.match(r'^(?:example\b|for example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)',text,re.I):return ''
+    # Quoted commands, literal titles and instructional questions are not reads.
+    if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे',text,re.I):return ''
+    if re.fullmatch(r'\s*what (?:is|are) (?:an? |the )?(?:assignments?|homework|classroom)[?.!\s]*',text,re.I):return ''
+    bare = re.fullmatch(r"\s*(?:what(?: is|'s|’s) pending|show (?:my )?pending work)[?.!\s]*",text,re.I)
+    school = re.search(r'\b(?:assignments?|homework|coursework|school (?:tasks?|work|to[ -]?do list)|to[ -]?do list (?:from |for )?(?:my )?school)\b|હોમવર્ક|ગૃહકાર્ય|અસાઇનમેન્ટ|હોમવક|होमवर्क|गृहकार्य|असाइनमेंट|असाइन्मेंट',text,re.I)
+    classroom = re.search(r'classroom|ક્લાસરૂમ|क्लासरूम',text,re.I) and re.search(r'work|tasks?|assign|pending|due|left|remaining|કામ|બાકી|काम|बाकी',text,re.I)
+    read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any)\b|શું|કય|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बाकी|लंबित',text,re.I)
+    return text.strip() if bare or (read and (school or classroom)) else ''
+
+
 def mode(text, selected='normal'):
     text = command(text)
     study = study_output(text)
@@ -81,17 +108,20 @@ def automatic(text, kind, operation='create'):
 
 
 def sources(text):
+    classroom = classroom_read(text)
+    classroom_text = classroom_scope(text)
     text = source_query(text)
-    if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
+    if not classroom and re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
     if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|reschedule|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
-        return set()
+        return {'classroom'} if classroom else set()
     patterns = {'tasks':r'\b(?:work|tasks?|planner|my plan)\b|કામ|મારી.*યોજના|काम|मेरी.*योजना',
                 'reminders':r'\bremind(?:er)?s?\b|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
                 'notes':r'\b(?:read|use|show|what|summari[sz]e|edit|update|replace|reschedule|delete|confirm).*\bnotes?\b|\b(?:make|turn|generate).*\b(?:from|of|using) (?:my |the )?notes\b|(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ).*નોંધ|નોંધ.*(?:વાંચ|બતાવ|સારાંશ|ફેરફાર|કાઢ)|(?:पढ़|दिखा|सारांश|बदल|हटा).*नोट|नोट.*(?:पढ़|दिखा|सारांश|बदल|हटा)',
                 'habits':r'habit|activity|આદત|પ્રવૃત્તિ|आदत|गतिविधि',
                 'exams':r'exam|પરીક્ષા|परीक्षा', 'memories':r'memor|remember|birthday|home city|address|યાદ|जन्मदिन|याद'}
-    result = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}
+    result = {key for key, pattern in patterns.items() if re.search(pattern, classroom_text if key=='classroom' else text, re.I)}
+    if classroom:result.add('classroom')
     if any(automatic(text,'task',op) for op in ('edit','complete','delete')):result.add('tasks')
     if re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending).*\btoday\b|(?:આજ|आज).*(?:બાકી|बाकी)',text,re.I):result.add('tasks')
     if re.search(r'activity today|આજ.*પ્રવૃત્તિ|आज.*गतिविधि', text, re.I):
