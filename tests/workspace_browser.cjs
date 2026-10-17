@@ -334,9 +334,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     SaathiMarkup.render(box,['**Sample space ($S$):**','*Probability: $\\frac{3}{6}=\\frac{1}{2}$*','__Given \\(A\\)__ and _\\(B\\)_','**Literal `$S$` and \\$5**','**<img src=x onerror=alert(1)>**'].join('\n\n'));
     const fraction=box.querySelector('mfrac').closest('.math-inline');
     const result={strongMath:box.querySelectorAll('strong math').length,emMath:box.querySelectorAll('em math').length,code:box.querySelector('code')?.textContent,codeMath:box.querySelectorAll('code math').length,literal:box.querySelectorAll('strong')[2].textContent,unsafe:box.querySelectorAll('img,script,a[href^="javascript:"]').length,errors:box.querySelectorAll('.math-error').length,verticalOverflow:fraction.scrollHeight>fraction.clientHeight+1};
-    box.remove();return result;
+    const geometry={client:[fraction.clientWidth,fraction.clientHeight],scroll:[fraction.scrollWidth,fraction.scrollHeight],mathHeight:fraction.querySelector('math').getBoundingClientRect().height};
+    box.remove();return{result,geometry};
    });
-   assert.deepEqual(nestedMath,{strongMath:2,emMath:2,code:'$S$',codeMath:0,literal:'Literal $S$ and $5',unsafe:0,errors:0,verticalOverflow:false});
+   assert.deepEqual(nestedMath.result,{strongMath:2,emMath:2,code:'$S$',codeMath:0,literal:'Literal $S$ and $5',unsafe:0,errors:0,verticalOverflow:false},'Fraction geometry: '+JSON.stringify(nestedMath.geometry));
    const failedCard=await page.evaluate(()=>visibleMessage({failed:true,content:'[FLASHCARDS]\nFront: Wrong?\nBack: Wrong.\n[/FLASHCARDS]'}));assert.ok(!failedCard.flash,'A failed generation must not look like saved cards');
    await page.evaluate(()=>{state.messages.push({id:991,role:'assistant',content:'[FLASHCARDS]\nFront: Template reading?\nBack: 5′→3′\n[/FLASHCARDS]',study_progress:{kind:'flashcards',progress:{known_indices:[0]}}});renderMessages()});
    await page.getByRole('button',{name:'Correct card',exact:true}).click();await page.getByLabel('Back',{exact:true}).fill('3′→5′');await page.getByRole('button',{name:'Save correction',exact:true}).click();await page.getByText('Corrected by you',{exact:false}).waitFor();assert.equal(cardCorrections,1);
