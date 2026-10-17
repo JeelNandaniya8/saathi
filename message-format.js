@@ -1,10 +1,11 @@
 /* Shared safe Markdown and native MathML; all rendering assets are self-hosted. */
 (function(){'use strict';
 function math(target,tex,block=false){
-  target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-block';target.style.verticalAlign='middle';target.style.fontSize=/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'max(1.3em, 21px)':'max(1.15em, 18px)';target.style.lineHeight='1.65';target.style.paddingBlock='3px';
+  // Native MathML ink can extend past its line box; leave scalable room inside the scroller.
+  target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-block';target.style.verticalAlign='middle';target.style.fontSize=/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'max(1.3em, 21px)':'max(1.15em, 18px)';target.style.lineHeight='1.65';target.style.paddingBlock='.4em';
   target.setAttribute('aria-label',tex);target.dataset.math=tex;target.dataset.display=String(block);
   if(!window.katex){target.textContent=tex;return}
-  try{if(!window.katex)throw Error('Math renderer unavailable');window.katex.render(!block&&/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'\\displaystyle '+tex:tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}
+  try{window.katex.render(!block&&/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'\\displaystyle '+tex:tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}
   catch(error){target.replaceChildren(document.createTextNode(tex));target.title='Formula could not be rendered';target.classList.add('math-error')}
 }
 function appendInline(target,text){
@@ -19,8 +20,8 @@ function appendInline(target,text){
     else if(token.startsWith('$')||token.startsWith('\\(')||token.startsWith('\\[')||/^\\(?:frac|sqrt)/.test(token)){node=document.createElement('span');const block=token.startsWith('$$')||token.startsWith('\\['),size=token.startsWith('$$')||token.startsWith('\\')?2:1;node.className='math-inline'+(block?' math-display':'');math(node,/^\\(?:frac|sqrt)/.test(token)?token:token.slice(size,-size),block)}
     else if(token.startsWith('\\')&&token.length===2){node=document.createTextNode(token[1])}
     else if(token.startsWith('`')){node=document.createElement('code');node.textContent=token.slice(1,-1)}
-    else if(token.startsWith('**')||token.startsWith('__')){node=document.createElement('strong');node.textContent=token.slice(2,-2)}
-    else{node=document.createElement('em');node.textContent=token.slice(1,-1)}
+    else if(token.startsWith('**')||token.startsWith('__')){node=document.createElement('strong');appendInline(node,token.slice(2,-2))}
+    else{node=document.createElement('em');appendInline(node,token.slice(1,-1))}
     target.append(node);last=offset+match.length;return match
   });if(last<source.length)target.append(document.createTextNode(source.slice(last)))
 }
