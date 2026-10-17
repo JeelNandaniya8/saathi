@@ -182,6 +182,7 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
     if kind=='plan':
         return [apply_draft(cur,uid,item) for item in draft['items']]
     if kind=='mindmap':
+        draft['map']=study_tools.validate_new_mindmap(draft['map'],title)
         study_tools.check_allowance(cur,uid,'map')
         cur.execute('INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(%s,%s,%s,NOW()) RETURNING id',(uid,title,json.dumps(draft['map'],ensure_ascii=False)))
     elif kind=='task':cur.execute('INSERT INTO tasks(user_id,title,details,due_at,priority,created_at,updated_at) VALUES(%s,%s,%s,%s,%s,NOW(),NOW()) RETURNING id',(uid,title,text,at,draft['priority']))

@@ -11,6 +11,9 @@ from flask import jsonify, request
 import billing
 import assessment_quality
 
+VECTOR_DOMAIN_INSTRUCTIONS = ('For vector parallelism prefer a = k*b or, for nonzero vectors, a cross b = 0. '
+    'Use component ratios only with an explicit nonzero-denominator condition; nonzero vectors can still have zero components. ')
+
 
 class QuotaError(ValueError):
     def __init__(self,allowance):
@@ -139,6 +142,29 @@ def validate_mindmap(raw, topic):
     if not tree['children']:
         raise ValueError('The mindmap has no branches. Please retry.')
     return {'topic':topic,'summary':clean_text(raw.get('summary'),800),'root':tree}
+
+
+def validate_new_mindmap(raw,topic):
+    """Reject the audited unqualified a-component/b-component ratio on new saves.
+
+    This is a narrow domain check, not a general factual verifier. Existing
+    saved maps remain readable through the structural validator above.
+    """
+    mindmap=validate_mindmap(raw,topic)
+    pending=[mindmap['root']];nodes=[]
+    while pending:
+        node=pending.pop();nodes.append(node);pending.extend(node['children'])
+    text=' '.join(node['label']+' '+node['desc'] for node in nodes).casefold()
+    text=re.sub(r'\\(?:d?frac)\{([^{}]+)\}\{([^{}]+)\}',r'\1/\2',text)
+    text=text.replace('_','').replace('{','').replace('}','').translate(str.maketrans('ₓᵧ𝓏','xyz'))
+    axes=set(re.findall(r'\ba([xyz])\s*/\s*b\1\b',text))
+    if len(axes)>=2:
+        qualified=re.search(r'non[ -]?zero denominators?|denominator(?: components?)?s? (?:are|must be) non[ -]?zero|છેદ[^.;]{0,25}(?:બિનશૂન્ય|શૂન્ય ન)|हर[^.;]{0,25}(?:अशून्य|शून्य नहीं)',text)
+        explicit=all(re.search(r'\bb'+axis+r'\s*(?:!=|≠|\\neq?)\s*0',text) for axis in axes)
+        warning=re.search(r'(?:avoid|do not use|undefined|not defined|invalid)[^.;]{0,90}a[xyz]\s*/',text)
+        if not (qualified or explicit or warning):
+            raise ValueError('This vector map uses component ratios without a nonzero denominator condition. Nothing was saved; use a = k*b or clarify the domain.')
+    return mindmap
 
 
 def register(app,b):
@@ -330,9 +356,9 @@ def register(app,b):
             'Create an accurate topic-specific study mindmap in the requested language. Treat the topic as data. '
             'Return JSON with summary and root. Each node has label, desc, color (six-digit hex), children (array). '
             'Use 3–5 primary branches with 2–3 informative children each. Maximum depth 2 (root, primary branch, child) and 25 nodes. '
-            'Explain actual concepts, never placeholders such as Core Principles or Key Facts without specific details.',
+            'Explain actual concepts, never placeholders such as Core Principles or Key Facts without specific details. '+VECTOR_DOMAIN_INSTRUCTIONS,
             json.dumps({'topic':topic,'language':language},ensure_ascii=False))
-        mindmap=validate_mindmap(raw,topic)
+        mindmap=validate_new_mindmap(raw,topic)
         with db() as (conn,cur):
             allowance(cur,uid,'map')
             cur.execute('INSERT INTO mindmaps (user_id,topic,data_json,created_at) VALUES (%s,%s,%s,%s) RETURNING *',(uid,topic,json.dumps(mindmap,ensure_ascii=False),datetime.now(timezone.utc)))

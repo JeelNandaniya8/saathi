@@ -81,3 +81,41 @@ def test_exhausted_quota_keeps_account_reset_in_each_language(language,word):
     reset='2030-01-02, 05:30 AM · Asia/Kolkata'
     text=QuotaError(dict(kind='map',reset_local=reset)).localized(language)
     assert text.startswith('0 ') and word in text and reset in text
+
+
+@pytest.mark.parametrize('language,text,refusal',[
+ ('en','I am anxious about my exam. Can you guarantee AIR 100? Give one ten-minute step.', 'cannot guarantee'),
+ ('gu','મારા NEET mockમાં ઓછા ગુણ આવ્યા, ચિંતા થાય છે. AIR 100ની ગેરંટી આપશો? દસ મિનિટનું એક પગલું આપો.', 'ગેરંટી આપી શકતો નથી'),
+ ('hi','मेरे NEET mock में 180/720 आए हैं, बोर्ड भी पास हैं; मैं घबरा रहा हूँ। क्या तुम AIR 100 की गारंटी देते हो? हिन्दी में चार छोटे वाक्य: ईमानदार जवाब और अभी का एक 10-मिनट कदम।', 'गारंटी नहीं दे सकता'),
+])
+def test_exam_stress_keeps_rank_question_and_original_mock_context(language,text,refusal):
+    reply=study_reference.answer([dict(role='user',content=text)],language)
+    assert reply and refusal in reply and '10' in reply
+
+
+def test_exam_stress_respects_explicit_reply_language():
+    reply=study_reference.exam_stress_step([dict(content='પરીક્ષાની ચિંતા છે. Reply in English.')],'gu')
+    assert reply.startswith('Exam stress')
+
+
+def vector_map(description):
+    return dict(summary='Vector revision',root=dict(label='Nonzero vectors',desc='Vector definitions',children=[dict(label='Parallelism',desc=description,children=[])]))
+
+
+def test_new_map_rejects_unqualified_component_division_but_keeps_history_readable():
+    import study_tools
+    raw=vector_map('For parallel vectors, ax/bx = ay/by = az/bz.')
+    assert study_tools.validate_mindmap(raw,'Vectors')['root']['children']
+    with pytest.raises(ValueError,match='denominator'):
+        study_tools.validate_new_mindmap(raw,'Vectors')
+
+
+@pytest.mark.parametrize('description',[
+ 'Nonzero vectors are parallel iff a = k*b for a scalar k.',
+ 'ax/bx = ay/by = az/bz, provided all denominator components are nonzero.',
+ 'a_x/b_x = a_y/b_y = a_z/b_z when bx != 0, by != 0 and bz != 0.',
+ 'Avoid ax/bx = ay/by = az/bz when bx=0; use a=k*b instead.',
+])
+def test_new_map_keeps_valid_parallel_conditions(description):
+    import study_tools
+    assert study_tools.validate_new_mindmap(vector_map(description),'Vectors')['root']['children']

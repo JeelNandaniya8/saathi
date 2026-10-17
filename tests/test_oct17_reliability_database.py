@@ -10,8 +10,44 @@ import struct
 import zlib
 from test_database_flows import db_app,one,questions
 from test_audit_reliability_database import send
+from test_oct17_reliability import vector_map
 
 pytestmark=pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'),reason='Requires isolated PostgreSQL')
+
+
+def test_unqualified_vector_map_fails_before_save_without_consuming_allowance(db_app,monkeypatch):
+    b,c,connect=db_app
+    raw=vector_map('For parallel vectors, ax/bx = ay/by = az/bz.')
+    monkeypatch.setattr(b,'generate_study_json',lambda *args:raw)
+    response=c.post('/api/mindmaps/generate',json=dict(job_id=str(uuid4()),topic='Vector parallelism'))
+    assert response.status_code==400 and 'denominator' in response.json['error']
+    assert one(connect,'SELECT COUNT(*) AS n FROM mindmaps')['n']==0
+    assert c.get('/api/study-allowance?kind=map').json['allowance']['remaining']==2
+
+
+@pytest.mark.parametrize('stream',[False,True])
+def test_chat_vector_map_failure_never_gets_a_saved_receipt(db_app,monkeypatch,stream):
+    b,c,connect=db_app
+    action=dict(kind='mindmap',title='Vector parallelism',text='Revision map',map=vector_map('ax/bx = ay/by = az/bz for parallel nonzero vectors.'))
+    fixture_reply(b,monkeypatch,'<SAATHI_ACTION>'+json.dumps(action)+'</SAATHI_ACTION>')
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    result=send(c,cid,'Create and save a mindmap titled Vector parallelism.',stream,str(uuid4()))
+    assistant=result['assistant_message']
+    assert assistant.get('action_error') and not assistant.get('action_receipt')
+    assert one(connect,'SELECT COUNT(*) AS n FROM mindmaps')['n']==0
+    assert one(connect,'SELECT COUNT(*) AS n FROM chat_action_receipts')['n']==0
+
+
+def test_legacy_vector_map_still_opens_without_rewriting_saved_content(db_app):
+    b,c,connect=db_app
+    raw=vector_map('For parallel vectors, ax/bx = ay/by = az/bz.')
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute('INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(1,%s,%s,NOW()) RETURNING id',('Legacy vectors',json.dumps(raw)))
+            identity=cur.fetchone()['id']
+    response=c.get('/api/mindmaps/'+str(identity))
+    assert response.status_code==200
+    assert 'ax/bx' in json.dumps(response.json)
 
 
 def fixture_reply(b,monkeypatch,reply='Fixture reply.',before=None):

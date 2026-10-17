@@ -5460,6 +5460,8 @@ def build_gemini_payload(
     profile=generation_profile(messages,selected_mode)
     mode_details = CHAT_MODES[selected_mode]
     system_text = SYSTEM_PROMPT
+    if selected_mode=='normal' and profile=='deep_study' and not file_only and not messages[-1].get('attachments'):
+        system_text+='\n'+study_tools.VECTOR_DOMAIN_INSTRUCTIONS
     if selected_mode=='flashcards' and not file_only:system_text+=study_reference.flashcard_grounding(messages)
     if memory_context:
         system_text += "\n\nUSER-CONTROLLED MEMORY\n" + memory_context

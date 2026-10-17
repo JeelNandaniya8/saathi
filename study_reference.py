@@ -85,14 +85,25 @@ def exam_stress_step(messages,language='en',mode='normal'):
     text=str(messages[-1].get('content',''))
     if len(text)>600 or chat_intents.explicit(text) or re.search(r'suicid|self.harm|kill myself|hurt myself|end my life|આત્મહત્યા|મરી જ|खुदकुशी|आत्महत्या|मरना',text,re.I):return None
     if re.search(r'just listen|only listen|no advice|do not (?:give|offer) advice|don.t (?:give|offer) advice|not stressed|no longer (?:stressed|worried)|chest pain|medication|\b(?:explain|calculate|solve|derive|compare|translate)\b|માત્ર સાંભળ|ફક્ત સાંભળ|દવા|सिर्फ सुन|सलाह मत|दवा',text,re.I):return None
-    if not re.search(r'exam|test|પરીક્ષા|परीक्षा',text,re.I) or not re.search(r'stress|anxious|panic|overwhelm|scared|worried|તણાવ|ચિંતા|ડર|तनाव|घबरा|चिंता|डर',text,re.I):return None
-    if re.search(r'[\u0a80-\u0aff]',text):language='gu'
+    if not re.search(r'\b(?:exam|test|mock|NEET|JEE|boards?)\b|પરીક્ષા|બોર્ડ|परीक्षा|बोर्ड',text,re.I) or not re.search(r'stress|anxious|panic|overwhelm|scared|worried|તણાવ|ચિંતા|ડર|तनाव|घबरा|चिंता|डर',text,re.I):return None
+    if re.search(r'\bin English\b|Englishમાં|अंग्रेजी में',text,re.I):language='en'
+    elif re.search(r'\bin Gujarati\b|ગુજરાતીમાં|गुजराती में',text,re.I):language='gu'
+    elif re.search(r'\bin Hindi\b|हिन्दी में|हिंदी में|હિન્દીમાં',text,re.I):language='hi'
+    elif re.search(r'[\u0a80-\u0aff]',text):language='gu'
     elif re.search(r'[\u0900-\u097f]',text):language='hi'
-    return {
+    if language not in {'en','gu','hi'}:language='en'
+    refusal=''
+    if re.search(r'\bguarantee\b|\bpromise\b|ગેરંટી|ખાતરી|વચન|गारंटी|गारन्टी|वादा',text,re.I):
+        refusal={
+            'en':'I cannot guarantee a rank or exam result. ',
+            'gu':'હું રેન્ક કે પરીક્ષાના પરિણામની ગેરંટી આપી શકતો નથી. ',
+            'hi':'मैं किसी रैंक या परीक्षा के परिणाम की गारंटी नहीं दे सकता। '
+        }[language]
+    return refusal+{
         'en':'Exam stress can make starting feel hard. For the next ten minutes, try just one practice question: set a 10-minute timer, spend two minutes reading it, then use the remaining eight minutes to attempt it and mark the first line where you get stuck. An unfinished attempt is enough for this step; you can stop when the timer ends.',
         'gu':'પરીક્ષાની ચિંતામાં શરૂઆત કરવી મુશ્કેલ લાગી શકે. આવતી દસ મિનિટ માટે ફક્ત એક અભ્યાસપ્રશ્ન અજમાવો: 10 મિનિટનું ટાઇમર મૂકો, બે મિનિટ પ્રશ્ન વાંચો, પછી બાકીની આઠ મિનિટ જવાબનો પ્રયત્ન કરો અને જ્યાં અટકો તે પહેલી લીટી નિશાન કરો. આ પગલા માટે અધૂરો પ્રયત્ન પણ પૂરતો છે; ટાઇમર પૂરું થાય ત્યારે રોકાઈ શકો.',
         'hi':'परीक्षा की चिंता में शुरुआत करना कठिन लग सकता है। अगले दस मिनट के लिए सिर्फ एक अभ्यास प्रश्न आज़माएँ: 10 मिनट का टाइमर लगाएँ, दो मिनट प्रश्न पढ़ें, फिर बाकी आठ मिनट हल करने की कोशिश करें और जहाँ अटकें उस पहली पंक्ति को चिह्नित करें। इस कदम के लिए अधूरा प्रयास भी पर्याप्त है; टाइमर खत्म होने पर रुक सकते हैं।'
-    }.get(language) or exam_stress_step(messages,'en',mode)
+    }[language]
 
 
 def compact_payload(payload,messages,language,mode):
