@@ -754,5 +754,8 @@ window.SaathiI18n.register({
   "The AI service took too long to start. Please retry; your message is kept here.": "AI का समय समाप्त हुआ। सेव होने की पुष्टि नहीं है। फिर कोशिश उसी अनुरोध को जाँचेगी।",
   "Saathi cannot reach the AI service right now. Please retry when the connection is ready.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।",
   "The AI service is not available with the current server setup. Please contact support.": "AI कनेक्शन की जाँच ज़रूरी है। सहायता से संपर्क करें।",
-  "Saathi could not connect to the AI service. Please retry.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।"
+  "Saathi could not connect to the AI service. Please retry.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।",
+  "Tools": "साधन",
+  "Mock Test": "मॉक टेस्ट",
+  "Mindmap": "माइंडमैप"
 },'hi');
