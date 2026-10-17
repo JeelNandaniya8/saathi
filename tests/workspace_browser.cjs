@@ -393,7 +393,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     await route.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({type:'error',error:'Fixture finished'})+'\n'});
    });
    await page.locator('#sendButton').click();
-   await page.locator('.request-stage').waitFor();assert.match(await page.locator('.request-stage').textContent(),/AI/);assert.equal(await page.locator('.thinking-dots').count(),0);
+   await page.locator('.request-stage').waitFor();assert.equal(await page.locator('.request-stage').textContent(),'Checking…','No AI-wait claim before the server identifies the work');assert.equal(await page.locator('.thinking-dots').count(),0);
    await page.evaluate(()=>setRequestStage('classroom'));
    assert.equal(await page.locator('.request-stage').textContent(),'Checking Google Classroom…');
    assert.equal(await page.locator('#sendButton').isDisabled(),false,'Stop stays available while Classroom is checked');
