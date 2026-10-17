@@ -15,7 +15,7 @@ function showAllowance(box,kind,api,onChange=()=>{}){
 function samePayload(a,b){return JSON.stringify(Object.entries(a).filter(([key])=>key!=='job_id').sort())===JSON.stringify(Object.entries(b).sort())}
 async function create(kind,payload,api,onStart=()=>{}){
  const key=kind+JSON.stringify(Object.entries(payload).sort()),recovery=window.SaathiRecovery,stored=recovery?.getDraft('study-job',kind)?.request;
- let request=pendingCreates.get(key)||(stored&&samePayload(stored,payload)?stored:null);
+ let refreshTimer,request=pendingCreates.get(key)||(stored&&samePayload(stored,payload)?stored:null);
  const changed=()=>window.dispatchEvent(new Event('saathi-study-job'));
  const forget=()=>{pendingCreates.delete(key);recovery?.removeDraft('study-job',kind)};
  const lookup=async()=>{const data=await api('/api/study-jobs?kind='+kind+'&job_id='+encodeURIComponent(request.job_id));return data.jobs.find(job=>job.id===request.job_id)};
@@ -24,11 +24,11 @@ async function create(kind,payload,api,onStart=()=>{}){
   let job=request?await lookup():null;
   if(job?.status==='ready')return await completed(job);
   if(job?.status==='failed'){forget();request=null;job=null}
-  if(!job){await allowance(kind,api);request=request||{...payload,job_id:crypto.randomUUID()};pendingCreates.set(key,request);recovery?.saveDraft('study-job',kind,{request});onStart('generating');setTimeout(changed,500);const response=await api(kind==='mock'?'/api/mock-tests/generate':'/api/mindmaps/generate',{method:'POST',body:JSON.stringify(request)});if(!response.job){forget();return response}job=response.job}else onStart('waiting');
+  if(!job){await allowance(kind,api);request=request||{...payload,job_id:crypto.randomUUID()};pendingCreates.set(key,request);recovery?.saveDraft('study-job',kind,{request});onStart('generating');refreshTimer=setTimeout(changed,500);const response=await api(kind==='mock'?'/api/mock-tests/generate':'/api/mindmaps/generate',{method:'POST',body:JSON.stringify(request)});if(!response.job){forget();return response}job=response.job}else onStart('waiting');
   for(let n=0;n<150;n++){const saved=await completed(job);if(saved)return saved;await new Promise(resolve=>setTimeout(resolve,2000));job=await lookup()}
   throw Error('Creation is still pending. Reopen this tool to check its status.')
  }catch(error){if(request){try{const job=await lookup();if(job?.status==='ready')return await completed(job);if(job?.status==='failed')forget()}catch(_){}}throw error}
- finally{changed()}
+ finally{clearTimeout(refreshTimer);changed()}
 }
 
 function render(box,{kind,api,open,retry,visible=()=>true}){const c=words[document.documentElement.lang]||words.en;box.setAttribute('aria-live','polite');box.textContent=c[5];let timer;

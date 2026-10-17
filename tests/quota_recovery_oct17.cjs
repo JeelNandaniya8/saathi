@@ -19,7 +19,7 @@ const source=fs.readFileSync('study-jobs.js','utf8');
 // exact owned job before checking exhausted quota or submitting another POST.
 (async()=>{
  const drafts=new Map(),events=[],window={dispatchEvent:e=>events.push(e.type),SaathiRecovery:{getDraft:()=>drafts.get('job'),saveDraft:(_kind,_id,value)=>drafts.set('job',value),removeDraft:()=>drafts.delete('job')}};
- const ctx={window,document:{documentElement:{lang:'en'}},crypto:require('node:crypto').webcrypto,Event,setTimeout:()=>0};vm.createContext(ctx);vm.runInContext(source,ctx);
+ const ctx={window,document:{documentElement:{lang:'en'}},crypto:require('node:crypto').webcrypto,Event,setTimeout:()=>0,clearTimeout:()=>{}};vm.createContext(ctx);vm.runInContext(source,ctx);
  let posts=0,allowances=0,savedJob;
  async function api(url,options){
   if(url.startsWith('/api/study-jobs'))return {jobs:savedJob?[savedJob]:[]};
@@ -32,4 +32,18 @@ const source=fs.readFileSync('study-jobs.js','utf8');
  drafts.set('job',{request:{topic:'Same exact topic',job_id:savedJob.id}});
  const again=await window.SaathiJobs.create('mock',{topic:'Same exact topic'},api);assert.equal(again.test.id,42);assert.equal(posts,1);assert.equal(allowances,1,'Saved retries must remain accessible at zero quota');
  console.log('PASS lost-response recovery preserves one job and one result');
+})().catch(e=>{console.error(e);process.exitCode=1});
+
+// Finishing a fast job must not leave a delayed refresh that disables the next
+// tool during its click. This reproduced intermittently on 360px Chromium.
+(async()=>{
+ const listeners=new Set(),changes=[],window={addEventListener:(_type,fn)=>listeners.add(fn),removeEventListener:(_type,fn)=>listeners.delete(fn),dispatchEvent:()=>{for(const fn of listeners)fn()}};
+ const box={isConnected:true,textContent:'',setAttribute(){},append(){}};
+ const ctx={window,document:{documentElement:{lang:'en'},createElement:()=>({})},crypto:require('node:crypto').webcrypto,Event,setTimeout,clearTimeout};vm.createContext(ctx);vm.runInContext(source,ctx);
+ const api=async url=>url.startsWith('/api/study-allowance')?{allowance:{remaining:2,reset_local:'fixture reset'}}:{test:{id:42}};
+ window.SaathiJobs.showAllowance(box,'map',api,a=>changes.push(a));await new Promise(setImmediate);
+ await window.SaathiJobs.create('mock',{topic:'Fast completion'},api);await new Promise(setImmediate);changes.length=0;
+ await new Promise(resolve=>setTimeout(resolve,550));
+ assert.equal(changes.length,0,'A completed job cannot later disable another tool');
+ console.log('PASS completed job has no delayed quota flash in another tool');
 })().catch(e=>{console.error(e);process.exitCode=1});
