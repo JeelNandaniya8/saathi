@@ -30,20 +30,26 @@ The production generation probe was stopped after automatic approval review reje
 - Browser CI uses the actual pages at 1280/768/390/360/320px, with touch/mobile emulation at phone widths. Map text readability, panning, keyboard controls, Unicode, Stop/draft retention and exact record navigation are checked. This does not establish physical-device uploads, a real soft keyboard, or notification receipt.
 - New provider failures map stable codes to EN/GU/HI UI errors. Quota checking/reset and critical recovery labels are translated; user text stays untouched. Complete independent EN/GU/HI live journeys remain a release gate.
 
-## Eight release trust gates
+## The attached audit's eight critical trust checks
 
-| Gate | Evidence and remaining requirement |
+These names match the October 15 audit trust table. Staging regression evidence is distinct from an independent live pass; all eight still require that live retest.
+
+| Audit check | Regression evidence and live limit |
 | --- | --- |
-| 1. Provider startup and completion | Staging routing reproduction/fix; real Normal mindmap + PNG + PDF versus direct-tool comparison still needed. |
-| 2. Exact retry and no duplicate/false saves | Database/browser regression fixtures; independent live lost-response/retry retest still needed. |
-| 3. Quota readiness and reset | Deferred/stale/exhausted fixtures and UTC/account-timezone checks; production limits unchanged. |
-| 4. Honest stages and effective Stop | Waiting, generating, checking, saving events; durable cancel/save race tests. An upstream provider call may continue computing after Stop; the server prevents a subsequent save when cancellation wins. |
-| 5. Persisted receipts and exact destinations | Read-back, ownership, correction reload and ID-specific link fixtures; all saved types need independent live spot checks. |
-| 6. Content correctness and ten-minute stress action | Narrow audited DNA/vector cases plus corrections and EN/GU/HI stress fixtures; this is not a general factual verifier. |
-| 7. Readability and EN/GU/HI | Readable minimum map scale, translated critical states/errors, responsive fixtures; full live language paths still pending. |
-| 8. Actual mobile/PDF/reminder delivery | PDF and scheduler fixtures are covered. Physical 360px upload, soft-keyboard layout and receipt of a due reminder on an authorized phone remain untested. |
+| What remains today? | Date-scoped Planner reads exclude overdue, undated, completed and other-account records; preserve exact local deadlines. Existing streamed and JSON fixtures pass. October 17 live retest pending. |
+| Mindmap honesty | No success without owned read-back; no generation at exhausted quota; atomic document/job completion and exact recovery. Normal chat/provider comparison still needs a live retest. |
+| Future snooze | Future reminders cannot be snoozed early; rescheduling remains separate; due-only snooze and recurrence/timezone fixtures are covered. Actual phone delivery remains unverified. |
+| Note deep link | Exact note ID, title and text reopen, including with a previously filtered list. Other saved types now also include IDs. Independent live destinations still need spot checks. |
+| LaTeX/Markdown | Conditional-probability/absolute-value bars, code bars, tables and inline fractions have renderer regressions; browser tests cover MathML and responsive layout. Independent live rendering review pending. |
+| Quota pre-check | Unresolved/error allowance means disabled; exhausted and stale-response fixtures, account reset displays, and recovery before new quota checks. Production limits are unchanged. |
+| Waiting honesty | Separate waiting, generating, checking and saving stages; local replies do not claim AI generation. Durable Stop/save races and exact retries are covered. An upstream call can continue computing after Stop; cancellation prevents a subsequent save when it wins the lock. |
+| Privacy state | Paused memories, current sharing controls, explicitly excluded sources, owned records and file-only provider payloads have regression coverage. Independent live cross-account/provider-payload review pending. |
+
+Additional release requirements include the audited DNA/vector corrections, readable maps, the ten-minute exam-stress step, complete live EN/GU/HI paths, physical 360px uploads/keyboard, PDF citations and actual reminder receipt. The fixture scope and remaining gaps above apply to those requirements as well. The narrow content guards are not a general factual verifier.
 
 ## Timing and acceptance limits
+
+CI run [233](https://github.com/JeelNandaniya8/saathi/actions/runs/39007863736), commit `93ca36a`, recorded 649 passing backend tests in 126.41s. Its deterministic note sample completed 100/100 save/replay/reload journeys with zero duplicates and zero false saves; p50 receipt 31.8ms and p95 receipt 32.9ms. Those are local Flask/PostgreSQL receipt timings, with no provider or external network in the sample. Browser checks are a separate gate.
 
 There is no valid October 17 live generation baseline, no live core-flow sample, and no measured live p95 first words for this PR. Consequently neither ≥99% live success nor p95 <5 seconds is established. The CI note receipt metric must not be substituted for either target. For reference only, earlier October 15 measurements were small samples (Normal first words about 5.72s; file paths about 5.56/7.41s), from another release and workload; they are not an October 17 comparison.
 
