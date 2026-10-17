@@ -2196,7 +2196,8 @@ def cited_source_pages(reply, attachments, query="", mode="normal"):
         }
         for item in pdfs
     }
-    for name, page_text in re.findall(r"\[([^\]\n,]+),\s*Page\s+(\d+)\]", str(reply), re.I):
+    named_citation = re.compile(r"\[([^\]\n]+),\s*Page\s+(\d+)\]", re.I)
+    for name, page_text in named_citation.findall(str(reply)):
         page = int(page_text)
         matched = next(
             (item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()),
@@ -2209,7 +2210,10 @@ def cited_source_pages(reply, attachments, query="", mode="normal"):
                 sources.append({"name": matched["name"], "page": page})
     if len(pdfs) == 1:
         matched = pdfs[0]
-        for page_text in re.findall(r"\bPage\s+(\d+)\b", str(reply), re.I):
+        # A named reference to another file must not become a bare-page
+        # reference to this upload just because its page number exists here.
+        bare_text = named_citation.sub("", str(reply))
+        for page_text in re.findall(r"\bPage\s+(\d+)\b", bare_text, re.I):
             page = int(page_text)
             key = (matched["name"], page)
             if page in allowed_pages.get(str(matched.get("name") or "").lower(), set()) and key not in seen:
@@ -5384,9 +5388,14 @@ def build_gemini_payload(
     if not GEMINI_API_KEY:
         raise ProviderError("AI_ACCESS", "Saathi is not connected yet. Please contact support so the AI connection can be configured.")
 
+    # File-only is a provider boundary, not just an instruction competing with
+    # older conversation text, uploads or a caller-supplied memory bundle.
+    history = messages[-1:] if file_only else messages
+    if file_only:
+        memory_context = ""
     selected = []
     remaining_characters = GEMINI_CONTEXT_CHARACTER_LIMIT
-    for message in reversed(messages[-30:]):
+    for message in reversed(history[-30:]):
         if not isinstance(message, dict):
             continue
         text = str(message.get("content", ""))[:5000].strip()
@@ -5512,7 +5521,7 @@ def build_gemini_payload(
         elif model == "gemini-3.8-flash":
             generation_config["thinkingConfig"] = {"thinkingLevel": "low"}
     latest_text = str(messages[-1].get("content", "")) if messages else ""
-    pending_scope = chat_intents.continuation(messages[:-1], latest_text)
+    pending_scope = None if file_only else chat_intents.continuation(messages[:-1], latest_text)
     latest_text = pending_scope or latest_text
     if chat_intents.automatic(latest_text, "plan") or chat_intents.automatic(latest_text, "mindmap"):
         generation_config["maxOutputTokens"] = max(generation_config["maxOutputTokens"], 3300)
