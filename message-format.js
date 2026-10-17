@@ -1,14 +1,11 @@
 /* Shared safe Markdown and native MathML; all rendering assets are self-hosted. */
 (function(){'use strict';
 function math(target,tex,block=false){
-  target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-flex';target.style.alignItems='center';target.style.verticalAlign='middle';target.style.fontSize=/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'max(1.3em, 21px)':'max(1.15em, 18px)';target.style.lineHeight='1.65';target.style.paddingBlock='3px';
+  // Native MathML ink can extend past its line box; leave scalable room inside the scroller.
+  target.style.maxWidth='100%';target.style.overflowX='auto';target.style.display=block?'block':'inline-block';target.style.verticalAlign='middle';target.style.fontSize=/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'max(1.3em, 21px)':'max(1.15em, 18px)';target.style.lineHeight='1.65';target.style.paddingBlock='.4em';
   target.setAttribute('aria-label',tex);target.dataset.math=tex;target.dataset.display=String(block);
   if(!window.katex){target.textContent=tex;return}
-  try{
-    window.katex.render(!block&&/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'\\displaystyle '+tex:tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15});
-    // Keep native fraction descenders inside the inline wrapper's scroll area.
-    if(!block)target.querySelector('math')?.style.setProperty('display','block')
-  }
+  try{window.katex.render(!block&&/\\(?:dfrac|tfrac|frac|binom)\b/.test(tex)?'\\displaystyle '+tex:tex,target,{output:'mathml',displayMode:block,throwOnError:true,trust:false,maxExpand:200,maxSize:15})}
   catch(error){target.replaceChildren(document.createTextNode(tex));target.title='Formula could not be rendered';target.classList.add('math-error')}
 }
 function appendInline(target,text){
