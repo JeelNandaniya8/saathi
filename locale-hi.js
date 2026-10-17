@@ -740,5 +740,19 @@ window.SaathiI18n.register({
   "Saving could not be confirmed. Reload to check the saved answer.": "सेव की पुष्टि नहीं हुई। सहेजा उत्तर जाँचने के लिए फिर खोलें।",
   "Creation was interrupted. Retry when ready.": "बनाना बाधित हुआ। तैयार हों तो फिर कोशिश करें।",
   "Creation is still pending. Reopen this tool to check its status.": "बनाना अभी बाकी है। स्थिति जाँचने के लिए यह साधन फिर खोलें।",
-  "The AI service is temporarily busy. Please retry in a moment; your message is kept here.": "AI अभी व्यस्त है। आपका संदेश रखा है। थोड़ी देर में फिर कोशिश करें।"
+  "The AI service is temporarily busy. Please retry in a moment; your message is kept here.": "AI व्यस्त है। आपका अनुरोध रखा है। थोड़ी देर में फिर कोशिश करें।",
+  "These flashcards contain a DNA direction error and were not saved. DNA polymerase reads the template 3′→5′ and extends new DNA 5′→3′. Check your textbook and retry.": "उत्तर सामग्री की जाँच में विफल हुआ। कुछ नया सेव नहीं हुआ। फिर कोशिश करें।",
+  "Saathi is not connected yet. Please contact support so the AI connection can be configured.": "AI कनेक्शन की जाँच ज़रूरी है। सहायता से संपर्क करें।",
+  "This request was cancelled before it was saved.": "अनुरोध रोका गया। फिर कोशिश से पहले सेव की स्थिति जाँचें।",
+  "Saathi could not prepare a reply. Please try again.": "उत्तर जाँचा नहीं जा सका। कुछ नया सेव नहीं हुआ। फिर कोशिश करें।",
+  "Reply reached its length limit. Use Continue reply to finish from the received text; this partial reply is not saved.": "उत्तर अधूरा था। कुछ नया सेव नहीं हुआ। फिर कोशिश करें।",
+  "The reply timed out. Received text is kept here; please retry when ready.": "AI का समय समाप्त हुआ। सेव होने की पुष्टि नहीं है। फिर कोशिश उसी अनुरोध को जाँचेगी।",
+  "The connection was interrupted. Received text is kept here; please retry when ready.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।",
+  "Saathi’s AI connection needs attention. Please contact support; retrying this message will not fix the connection.": "AI कनेक्शन की जाँच ज़रूरी है। सहायता से संपर्क करें।",
+  "The AI service has reached its usage limit. Please try later. Your message is kept here.": "AI उपयोग सीमा पूरी हुई। आपका अनुरोध रखा है। बाद में कोशिश करें।",
+  "The selected AI model is unavailable. Please contact support so the connection can be updated.": "AI कनेक्शन की जाँच ज़रूरी है। सहायता से संपर्क करें।",
+  "The AI service took too long to start. Please retry; your message is kept here.": "AI का समय समाप्त हुआ। सेव होने की पुष्टि नहीं है। फिर कोशिश उसी अनुरोध को जाँचेगी।",
+  "Saathi cannot reach the AI service right now. Please retry when the connection is ready.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।",
+  "The AI service is not available with the current server setup. Please contact support.": "AI कनेक्शन की जाँच ज़रूरी है। सहायता से संपर्क करें।",
+  "Saathi could not connect to the AI service. Please retry.": "कनेक्शन विफल हुआ। आपका अनुरोध रखा है। फिर कोशिश करें।"
 },'hi');

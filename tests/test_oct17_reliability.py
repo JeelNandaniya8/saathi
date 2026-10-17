@@ -68,3 +68,8 @@ def test_exam_stress_step_does_not_intercept_crisis_or_other_requests():
     assert study_reference.exam_stress_step([dict(content='I am stressed about an exam and want to kill myself')]) is None
     assert study_reference.exam_stress_step([dict(content='Save this note: exam stress')]) is None
     assert study_reference.exam_stress_step([dict(content='Explain exam registration')]) is None
+
+
+@pytest.mark.parametrize('text',['I am stressed about my exam; just listen, no advice.','Explain why exam stress causes chest pain','મને પરીક્ષાની ચિંતા છે, માત્ર સાંભળો','परीक्षा का तनाव है, सिर्फ सुनें'])
+def test_ten_minute_step_respects_listening_and_specific_requests(text):
+    assert study_reference.exam_stress_step([dict(content=text)]) is None

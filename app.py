@@ -2953,6 +2953,8 @@ def conversation_messages(conversation_id):
         else:
             reply, ai_usage = generate_gemini_reply(context, memory_context, language, mode, include_usage=True, file_only=file_only)
         validate_study_reply(mode,reply,file_only)
+    except ProviderError as error:
+        return jsonify(error=str(error),code=error.code,retry_after=error.retry_after),error.status
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
     except Exception:
@@ -5271,6 +5273,7 @@ def ai_diagnostics():
         "error_detail": error_detail,
         "fast_model": gemini_model("normal"),
         "care_model": gemini_model("care"),
+        "study_model": gemini_model("deep_study"),
     })
 
 
@@ -5675,8 +5678,8 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         # Operational timing only: never include prompts, replies, account IDs,
         # provider URLs, credentials or exception text in this event.
         log_timing = app.logger.warning if elapsed_ms >= 10000 else app.logger.info
-        log_timing("ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
-                   headers_ms, first_text_ms, elapsed_ms, outcome)
+        log_timing("ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s profile=%s model=%s attachments=%s",
+                   headers_ms, first_text_ms, elapsed_ms, outcome,profile,gemini_model(profile),len(messages[-1].get('attachments') or []) if messages else 0)
         if response is not None:
             response.close()
 

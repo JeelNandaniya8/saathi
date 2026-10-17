@@ -84,6 +84,7 @@ def exam_stress_step(messages,language='en',mode='normal'):
     if mode not in {'normal','care'} or not messages or messages[-1].get('attachments'):return None
     text=str(messages[-1].get('content',''))
     if len(text)>600 or chat_intents.explicit(text) or re.search(r'suicid|self.harm|kill myself|hurt myself|end my life|આત્મહત્યા|મરી જ|खुदकुशी|आत्महत्या|मरना',text,re.I):return None
+    if re.search(r'just listen|only listen|no advice|do not (?:give|offer) advice|don.t (?:give|offer) advice|not stressed|no longer (?:stressed|worried)|chest pain|medication|\b(?:explain|calculate|solve|derive|compare|translate)\b|માત્ર સાંભળ|ફક્ત સાંભળ|દવા|सिर्फ सुन|सलाह मत|दवा',text,re.I):return None
     if not re.search(r'exam|test|પરીક્ષા|परीक्षा',text,re.I) or not re.search(r'stress|anxious|panic|overwhelm|scared|worried|તણાવ|ચિંતા|ડર|तनाव|घबरा|चिंता|डर',text,re.I):return None
     if re.search(r'[\u0a80-\u0aff]',text):language='gu'
     elif re.search(r'[\u0900-\u097f]',text):language='hi'
