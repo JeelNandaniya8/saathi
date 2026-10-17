@@ -9,7 +9,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
  try{
   for(const width of [1280,768,390,360,320]){
-   const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
+   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<=390,isMobile:width<=390,serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let inlineSaved=null,inlineJobs=[],cardCorrections=0;
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
@@ -26,6 +26,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
      if(pathname==='/api/conversations/7/messages'){if(chatProfilePending)historyWhileProfilePending=true;await new Promise(resolve=>setTimeout(resolve,850))}
      if(pathname==='/api/mock-tests/generate'){inlineGenerations++;if(inlineGenerations===1){status=503;data={error:'Fixture creation failed'}}else data={test:{id:53,topic:body().topic,expires_at:new Date(Date.now()+900000).toISOString(),questions:Array.from({length:body().question_count},(_,i)=>({id:i+1,question:'Fixture question '+(i+1),options:Object.fromEntries(['A','B','C','D'].map(letter=>[letter,'Choice '+letter+' '+(i+1)]))}))}};assert.ok(body().job_id);const {job_id,...input}=body();inlineJobs.unshift({id:job_id,kind:'mock',request:input,status:status===503?'failed':'ready',result_id:status===503?null:53,error:status===503?'Fixture creation failed':null});if(data.test)inlineSaved=data.test}
+     else if(/^\/api\/conversations\/\d+\/cancel$/.test(pathname)){assert.ok(body().request_id);data={cancelled:true}}
      else if(pathname==='/api/study-allowance')data={allowance:{kind:url.searchParams.get('kind'),remaining:2,reset_local:'2026-10-15, 05:30 AM · Asia/Kolkata'}};
      else if(pathname==='/api/study-jobs')data={jobs:inlineJobs.filter(job=>job.kind===url.searchParams.get('kind'))};
      else if(pathname==='/api/mock-tests/53')data={test:inlineSaved,...(inlineSubmits?{result:{attempt:{score:1,total_questions:5},review:[]}}:{})};
@@ -304,7 +305,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    // Full hierarchy, keyboard/collapse and PNG export use real DOM/canvas.
    await page.evaluate(()=>{openView('mindmaps');const root={id:'root',label:'Root',desc:String.raw`Overview \(\frac{1}{2}\)`,children:Array.from({length:4},(_,i)=>({id:'p'+i,label:'Branch '+i,desc:'Description',children:Array.from({length:5},(_,j)=>({id:'s'+i+j,label:'Detail '+j,desc:'ગુજરાતી example'}))}))};state.activeMindmap={topic:'Fixture',data:{root}};displayMindmap(state.activeMindmap)});
    assert.equal(await page.locator('.mm-node').count(),25);
-   const mapFit=await page.evaluate(()=>({scale:state.mmZoom,w:state.mmLayout.width*state.mmZoom,h:state.mmLayout.height*state.mmZoom,vw:document.querySelector('#mmViewport').clientWidth,vh:document.querySelector('#mmViewport').clientHeight}));assert.ok(mapFit.scale<1&&mapFit.w<=mapFit.vw&&mapFit.h<=mapFit.vh,'Opening a map fits its full hierarchy');
+   const mapFit=await page.evaluate(()=>({scale:state.mmZoom,w:state.mmLayout.width*state.mmZoom,h:state.mmLayout.height*state.mmZoom,vw:document.querySelector('#mmViewport').clientWidth,vh:document.querySelector('#mmViewport').clientHeight}));assert.ok(mapFit.scale>=12/14&&mapFit.scale<=1,'Opening a map preserves readable labels');const pan=await page.evaluate(()=>{const vp=document.querySelector('#mmViewport');vp.scrollLeft=1e6;vp.scrollTop=1e6;return {x:vp.scrollLeft,y:vp.scrollTop,w:vp.scrollWidth,h:vp.scrollHeight}});assert.ok(pan.x>0&&pan.y>0,'All map regions remain reachable by scrolling');
    assert.equal(await page.locator('.mm-desc mfrac').count(),1);
    await page.getByRole('button',{name:'Collapse Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),20);
    await page.getByRole('button',{name:'Expand Branch 0',exact:true}).click();assert.equal(await page.locator('.mm-node').count(),25);

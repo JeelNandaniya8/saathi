@@ -842,7 +842,7 @@ def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch)
     monkeypatch.setattr(backend, "require_user_id", lambda: 1)
     monkeypatch.setattr(backend, "limited", lambda *args: None)
     monkeypatch.setattr(backend, "get_db", Connection)
-    monkeypatch.setattr(backend, "owned_conversation", lambda *args: True)
+    monkeypatch.setattr(backend, "owned_conversation", lambda *args, **kwargs: {"id": 1})
     monkeypatch.setattr(backend, "load_attachment_payloads", lambda *args: [])
     monkeypatch.setattr(backend, "load_active_memory_bundle", lambda *args: ("", []))
     monkeypatch.setattr(backend, "load_user_language", lambda *args: "gu")
@@ -851,6 +851,7 @@ def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch)
         response = backend.regenerate_conversation_reply(1)
         stream = iter(response.response)
         assert json.loads(next(stream))["type"] == "ready"
+        assert json.loads(next(stream))["stage"] == "generating"
         assert json.loads(next(stream))["text"] == "ગુજરાતી"
         response.close()
     assert closed == [True]

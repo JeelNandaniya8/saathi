@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-15-evening-audit"
+RELEASE_ID = "2026-10-17-reliability"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2361,10 +2361,12 @@ def make_attachment_conversation_title(mode, attachments):
 
 REQUEST_LOOKUP_COLUMNS = """
     COALESCE((SELECT jsonb_agg(turn ORDER BY turn.id) FROM (
-        SELECT id,role,content,created_at,ai_mode,client_request_id,memory_labels,feedback,file_only,source_pages
+        SELECT id,role,content,created_at,ai_mode,client_request_id,memory_labels,feedback,file_only,source_pages,request_fingerprint
         FROM messages WHERE conversation_id=c.id AND user_id=c.user_id AND client_request_id=%s
         ORDER BY id
-    ) turn),'[]'::jsonb) AS completed_request_rows, %s::text AS lookup_request_id
+    ) turn),'[]'::jsonb) AS completed_request_rows, %s::text AS lookup_request_id,
+    EXISTS(SELECT 1 FROM chat_request_cancellations cancelled WHERE cancelled.user_id=c.user_id
+        AND cancelled.conversation_id=c.id AND cancelled.request_id=%s) AS request_cancelled
 """
 
 
@@ -2374,7 +2376,7 @@ def owned_conversation(cur, conversation_id, user_id, lock=False, request_id=Non
         ("SELECT pg_advisory_xact_lock(%s); " if lock else "") +
         "SELECT c.*"+lookup+" FROM conversations c WHERE c.id=%s AND c.user_id=%s",
         ((730000000000+user_id,) if lock else ()) +
-        ((request_id,request_id) if request_id is not None else ()) + (conversation_id,user_id),
+        ((request_id,request_id,request_id) if request_id is not None else ()) + (conversation_id,user_id),
     )
     return cur.fetchone()
 
@@ -2389,7 +2391,7 @@ def chat_conversation_snapshot(cur, conversation_id, user_id, request_id=None):
                   WHERE conversation_id=c.id AND user_id=c.user_id ORDER BY id DESC LIMIT 29) recent
         ),'[]'::jsonb) AS recent_messages, """+REQUEST_LOOKUP_COLUMNS+"""
         FROM conversations c WHERE c.id=%s AND c.user_id=%s
-        """,(request_id,request_id,conversation_id,user_id),
+        """,(request_id,request_id,request_id,conversation_id,user_id),
     )
     return cur.fetchone()
 
@@ -2403,7 +2405,7 @@ def completed_chat_request(cur, conversation, user_id, request_id):
     else:
         cur.execute(
             """SELECT id,role,content,created_at,ai_mode,client_request_id,memory_labels,feedback,file_only,source_pages
-               FROM messages WHERE conversation_id=%s AND user_id=%s AND client_request_id=%s ORDER BY id""",
+                   ,request_fingerprint FROM messages WHERE conversation_id=%s AND user_id=%s AND client_request_id=%s ORDER BY id""",
             (conversation["id"],user_id,request_id),
         )
         rows=cur.fetchall()
@@ -2423,17 +2425,44 @@ def completed_chat_request(cur, conversation, user_id, request_id):
             assistant_message, study_progress=study.get(assistant_message["id"])
         ),
         "replayed": True,
+        "_request_fingerprint": user_message.get('request_fingerprint'),
     }
 
 
-def insert_local_exchange(cur, user_id, conversation_id, content, reply, request_id, now):
+def chat_request_fingerprint(content,mode,file_only,attachments):
+    files=[dict(name=a['name'],mime_type=a['mime_type'],sha256=hashlib.sha256(a['content']).hexdigest()) for a in attachments]
+    body=dict(content=content,mode=normalise_chat_mode(mode),file_only=bool(file_only),attachments=files)
+    return hashlib.sha256(json.dumps(body,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+
+
+def matches_completed_request(cur,existing,user_id,conversation_id,content,mode,file_only,attachments):
+    expected=chat_request_fingerprint(content,mode,file_only,attachments)
+    fingerprint=existing.pop('_request_fingerprint',None)
+    if fingerprint:return fingerprint==expected
+    # Old saved requests predate the digest. Read their owned original bytes;
+    # attachment names or lengths alone cannot establish an exact retry.
+    original=existing['user_message']
+    originals=load_attachment_payloads(cur,original['id'],user_id,conversation_id)
+    return chat_request_fingerprint(original['content'],original.get('ai_mode'),original.get('file_only'),originals)==expected
+
+
+def completed_regeneration(cur,user_id,conversation_id,request_id):
+    if not request_id:return None
+    cur.execute("SELECT id,role,content,created_at,ai_mode,memory_labels,feedback,file_only,source_pages FROM messages WHERE user_id=%s AND conversation_id=%s AND regeneration_request_id=%s",(user_id,conversation_id,request_id))
+    row=cur.fetchone()
+    if not row:return None
+    study=load_study_progress(cur,[row['id']],user_id)
+    return dict(assistant_message=message_to_dict(row,study_progress=study.get(row['id'])),replayed=True)
+
+
+def insert_local_exchange(cur, user_id, conversation_id, content, reply, request_id, now,fingerprint=None):
     """Store both local turns together; actions still require separate read-back."""
     cur.execute(
         """
         WITH user_turn AS (
             INSERT INTO messages (user_id, conversation_id, role, content,
-                                  created_at, ai_mode, client_request_id)
-            VALUES (%s, %s, 'user', %s, %s, 'normal', %s)
+                                  created_at, ai_mode, client_request_id,request_fingerprint)
+            VALUES (%s, %s, 'user', %s, %s, 'normal', %s,%s)
             RETURNING id, role, content, created_at, ai_mode, memory_labels,
                       feedback, file_only, source_pages
         ), assistant_turn AS (
@@ -2445,7 +2474,7 @@ def insert_local_exchange(cur, user_id, conversation_id, content, reply, request
         )
         SELECT * FROM user_turn UNION ALL SELECT * FROM assistant_turn
         """,
-        (user_id, conversation_id, content, now, request_id,
+        (user_id, conversation_id, content, now, request_id,fingerprint,
          user_id, conversation_id, reply, now, request_id),
     )
     rows = cur.fetchall()
@@ -2456,9 +2485,10 @@ def insert_local_exchange(cur, user_id, conversation_id, content, reply, request
 def persist_streamed_exchange(
     user_id, conversation_id, conversation, content, user_wrote_content, mode,
     request_id, attachments, reply, ai_usage, memory_labels, entitlement,
-    is_first_user_message, file_only, direct=None,
+    is_first_user_message, file_only, direct=None, fingerprint=None,
 ):
     validate_study_reply(mode,reply,file_only)
+    fingerprint=fingerprint or chat_request_fingerprint(content,mode,file_only,attachments)
     now = datetime.now(timezone.utc)
     new_title = (
         make_conversation_title(content)
@@ -2474,13 +2504,14 @@ def persist_streamed_exchange(
             raise RuntimeError("This conversation is no longer available.")
         existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
         if existing:
-            if existing['user_message']['content'] != content:
+            if existing.pop('_request_fingerprint',None)!=fingerprint:
                 raise RuntimeError('That message request was already used. Try again.')
             existing["attachment_usage"] = attachment_usage_payload(
                 cur, user_id, entitlement, now
             )
             conn.rollback()
             return existing
+        if locked_conversation.get('request_cancelled'):raise ProviderError('AI_STOPPED','This request was cancelled before it was saved.',409)
         if attachments:
             used_today = attachment_usage_today(cur, user_id, now)
             if used_today + len(attachments) > entitlement["attachments_per_day"]:
@@ -2489,19 +2520,19 @@ def persist_streamed_exchange(
         local_pair = direct and not attachments
         if local_pair:
             user_message, assistant_message = insert_local_exchange(
-                cur, user_id, conversation_id, content, reply, request_id, now
+                cur, user_id, conversation_id, content, reply, request_id, now,fingerprint
             )
         else:
             cur.execute(
                 """
                 INSERT INTO messages (
                     user_id, conversation_id, role, content, created_at, ai_mode,
-                    client_request_id, file_only
+                    client_request_id, file_only,request_fingerprint
                 )
-                VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
+                VALUES (%s, %s, 'user', %s, %s, %s, %s, %s,%s)
                 RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
                 """,
-                (user_id, conversation_id, content, now, mode, request_id, file_only),
+                (user_id, conversation_id, content, now, mode, request_id, file_only,fingerprint),
             )
             user_message = cur.fetchone()
         saved_attachments = []
@@ -2723,6 +2754,36 @@ def conversation_detail(conversation_id):
     return jsonify({"conversation": conversation_to_dict(updated)})
 
 
+@app.post('/api/conversations/<int:conversation_id>/cancel')
+def cancel_chat_request(conversation_id):
+    user_id=require_user_id()
+    if not user_id:return jsonify(error='Please log in first.',login_required=True),401
+    data=request.get_json(silent=True) or {}
+    request_id=data.get('request_id') if isinstance(data,dict) else None
+    if not isinstance(request_id,str) or not CLIENT_REQUEST_ID_RE.fullmatch(request_id):return jsonify(error='Choose a valid request.'),400
+    limit_response=limited('chat_cancel',str(user_id),60,5)
+    if limit_response:return limit_response
+    conn=get_db();cur=conn.cursor()
+    try:
+        conversation=owned_conversation(cur,conversation_id,user_id,lock=True,request_id=request_id)
+        if not conversation:return jsonify(error='Conversation not found.'),404
+        existing=completed_chat_request(cur,conversation,user_id,request_id)
+        if existing:
+            existing.pop('_request_fingerprint',None)
+            _plan,entitlement=active_plan_entitlement(cur,user_id)
+            existing['attachment_usage']=attachment_usage_payload(cur,user_id,entitlement)
+            return jsonify(cancelled=False,completed=existing)
+        regenerated=completed_regeneration(cur,user_id,conversation_id,request_id)
+        if regenerated:return jsonify(cancelled=False,completed_regeneration=regenerated)
+        cur.execute('INSERT INTO chat_request_cancellations(user_id,conversation_id,request_id) VALUES(%s,%s,%s) ON CONFLICT DO NOTHING',(user_id,conversation_id,request_id))
+        conn.commit()
+        return jsonify(cancelled=True)
+    except Exception:
+        conn.rollback();raise
+    finally:
+        cur.close();conn.close()
+
+
 @app.route("/api/conversations/<int:conversation_id>/messages", methods=["GET", "POST"])
 def conversation_messages(conversation_id):
     user_id = require_user_id()
@@ -2834,9 +2895,10 @@ def conversation_messages(conversation_id):
         conn.close()
         return jsonify({"error": "Messages can be up to 5,000 characters."}), 400
 
+    fingerprint=chat_request_fingerprint(content,normalise_chat_mode(data.get('mode')),file_only,attachments)
     existing = completed_chat_request(cur, conversation, user_id, request_id)
     if existing:
-        if existing["user_message"]["content"] != content:
+        if not matches_completed_request(cur,existing,user_id,conversation_id,content,normalise_chat_mode(data.get('mode')),file_only,attachments):
             cur.close()
             conn.close()
             return jsonify({"error": "That message request was already used. Try again."}), 409
@@ -2847,6 +2909,9 @@ def conversation_messages(conversation_id):
         conn.close()
         return jsonify(existing)
 
+    if conversation.get('request_cancelled'):
+        cur.close();conn.close()
+        return jsonify(error='This request was cancelled. Retry with a new request ID.',code='AI_STOPPED'),409
     limit_response = limited("chat_message", str(user_id), 30, 5, conn)
     if limit_response:
         cur.close()
@@ -2899,7 +2964,7 @@ def conversation_messages(conversation_id):
             return jsonify(persist_streamed_exchange(
                 user_id, conversation_id, conversation, content, user_wrote_content,
                 mode, request_id, attachments, reply, ai_usage, memory_labels,
-                entitlement, is_first_user_message, file_only, direct,
+                entitlement, is_first_user_message, file_only, direct,fingerprint,
             ))
         except RuntimeError as error:
             return jsonify(error=str(error)), (404 if str(error) == 'This conversation is no longer available.' else 409)
@@ -2926,7 +2991,7 @@ def conversation_messages(conversation_id):
         return jsonify({"error": "This conversation is no longer available."}), 404
     existing = completed_chat_request(cur, locked_conversation, user_id, request_id)
     if existing:
-        if existing['user_message']['content'] != content:
+        if not matches_completed_request(cur,existing,user_id,conversation_id,content,normalise_chat_mode(data.get('mode')),file_only,attachments):
             conn.rollback()
             cur.close()
             conn.close()
@@ -2938,6 +3003,9 @@ def conversation_messages(conversation_id):
         cur.close()
         conn.close()
         return jsonify(existing)
+    if locked_conversation.get('request_cancelled'):
+        conn.rollback();cur.close();conn.close()
+        return jsonify(error='This request was cancelled before it was saved.',code='AI_STOPPED'),409
     if attachments:
         used_today = attachment_usage_today(cur, user_id, now)
         if used_today + len(attachments) > entitlement["attachments_per_day"]:
@@ -2952,12 +3020,12 @@ def conversation_messages(conversation_id):
         """
         INSERT INTO messages (
             user_id, conversation_id, role, content, created_at, ai_mode,
-            client_request_id, file_only
+            client_request_id, file_only,request_fingerprint
         )
-        VALUES (%s, %s, 'user', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, 'user', %s, %s, %s, %s, %s,%s)
         RETURNING id, role, content, created_at, ai_mode, file_only, source_pages
         """,
-        (user_id, conversation_id, content, now, mode, request_id, file_only),
+        (user_id, conversation_id, content, now, mode, request_id, file_only,fingerprint),
     )
     user_message = cur.fetchone()
     saved_attachments = []
@@ -3107,9 +3175,10 @@ def stream_conversation_message(conversation_id):
         conn.close()
         return jsonify({"error": "Attach a file before using file-only answers."}), 400
 
+    fingerprint=chat_request_fingerprint(content,normalise_chat_mode(data.get('mode')),file_only,attachments)
     existing = completed_chat_request(cur, conversation, user_id, request_id)
     if existing:
-        if existing['user_message']['content'] != content:
+        if not matches_completed_request(cur,existing,user_id,conversation_id,content,normalise_chat_mode(data.get('mode')),file_only,attachments):
             cur.close()
             conn.close()
             return jsonify(error='That message request was already used. Try again.'), 409
@@ -3121,6 +3190,9 @@ def stream_conversation_message(conversation_id):
             content_type="application/x-ndjson; charset=utf-8",
             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
         )
+    if conversation.get('request_cancelled'):
+        cur.close();conn.close()
+        return jsonify(error='This request was cancelled. Retry with a new request ID.',code='AI_STOPPED'),409
     limit_response = limited("chat_stream", str(user_id), 30, 5, conn)
     if limit_response:
         cur.close()
@@ -3154,16 +3226,18 @@ def stream_conversation_message(conversation_id):
     context = [{"role": row["role"], "content": row["content"]} for row in recent]
     context.append({"role": "user", "content": content, "attachments": attachments})
 
+    local_reference=None if direct or file_only else study_reference.answer(context,language,mode)
+
     @stream_with_context
     def generate():
         provider = None
         chunks = []
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         try:
-            yield ndjson_event("ready", stage="saving" if direct and '<SAATHI_ACTION>' in direct['reply'] else "checking" if direct else "waiting", allowance=map_allowance)
-            if direct:
+            yield ndjson_event("ready", stage="saving" if direct and '<SAATHI_ACTION>' in direct['reply'] else "checking" if direct or local_reference else "waiting", allowance=map_allowance)
+            if direct or local_reference:
                 def direct_stream():
-                    yield direct['reply']
+                    yield direct['reply'] if direct else local_reference
                     return {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
                 provider = direct_stream()
             else:
@@ -3175,20 +3249,21 @@ def stream_conversation_message(conversation_id):
                     if isinstance(finished.value, dict):
                         usage = finished.value
                     break
-                if not chunks and not direct:
+                if not chunks and not direct and not local_reference:
                     yield ndjson_event("stage", stage="generating")
                 chunks.append(chunk)
                 if not chat_intents.explicit(turn_context):
-                    yield ndjson_event("delta", text=chunk)
+                    yield ndjson_event("delta", text=chunk,local=bool(direct or local_reference))
             reply = "".join(chunks).strip()
             if not reply:
                 raise RuntimeError("Saathi could not prepare a reply. Please try again.")
-            if not direct and '<SAATHI_ACTION>' in reply:
-                yield ndjson_event("stage",stage="saving" if chat_intents.explicit(turn_context) else "checking")
+            yield ndjson_event("stage",stage="checking")
+            validate_study_reply(mode,reply,file_only)
+            yield ndjson_event("stage",stage="saving")
             saved = persist_streamed_exchange(
                 user_id, conversation_id, conversation, content, user_wrote_content,
                 mode, request_id, attachments, reply, usage, memory_labels,
-                entitlement, is_first_user_message, file_only, direct,
+                entitlement, is_first_user_message, file_only, direct,fingerprint,
             )
             yield ndjson_event("complete", data=saved)
         except GeneratorExit:
@@ -3224,12 +3299,25 @@ def regenerate_conversation_reply(conversation_id):
     if limit_response:
         return limit_response
 
+    request_data=request.get_json(silent=True) or {}
+    regeneration_id=request_data.get('request_id') if isinstance(request_data,dict) else None
+    if regeneration_id is not None and (not isinstance(regeneration_id,str) or not CLIENT_REQUEST_ID_RE.fullmatch(regeneration_id)):
+        return jsonify(error='Choose a valid request.'),400
     conn = get_db()
     cur = conn.cursor()
-    if not owned_conversation(cur, conversation_id, user_id):
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Conversation not found."}), 404
+    conversation=owned_conversation(cur,conversation_id,user_id,request_id=regeneration_id)
+    if not conversation:
+        cur.close();conn.close()
+        return jsonify(error='Conversation not found.'),404
+    existing=completed_regeneration(cur,user_id,conversation_id,regeneration_id)
+    if existing:
+        cur.close();conn.close()
+        if 'application/x-ndjson' in request.headers.get('Accept',''):
+            return Response(ndjson_event('complete',data=existing),content_type='application/x-ndjson; charset=utf-8')
+        return jsonify(existing)
+    if conversation.get('request_cancelled'):
+        cur.close();conn.close()
+        return jsonify(error='This request was cancelled before it was saved.',code='AI_STOPPED'),409
     cur.execute(
         """
         SELECT id, role, content, created_at, ai_mode, client_request_id,
@@ -3278,6 +3366,11 @@ def regenerate_conversation_reply(conversation_id):
         conn = get_db()
         cur = conn.cursor()
         try:
+            locked=owned_conversation(cur,conversation_id,user_id,lock=True,request_id=regeneration_id)
+            if not locked:raise RuntimeError('This conversation is no longer available.')
+            existing=completed_regeneration(cur,user_id,conversation_id,regeneration_id)
+            if existing:return existing
+            if locked.get('request_cancelled'):raise ProviderError('AI_STOPPED','This request was cancelled before it was saved.',409)
             cur.execute(
                 """
                 SELECT id FROM messages
@@ -3306,15 +3399,15 @@ def regenerate_conversation_reply(conversation_id):
                 """
                 INSERT INTO messages (
                     user_id, conversation_id, role, content, created_at, ai_mode,
-                    client_request_id, memory_labels, source_pages
+                    client_request_id, memory_labels, source_pages, regeneration_request_id
                 )
-                VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, 'assistant', %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, role, content, created_at, ai_mode, memory_labels, feedback,
                           file_only, source_pages
                 """,
                 (
                     user_id, conversation_id, reply, now, mode, last_request_id,
-                    psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),
+                    psycopg2.extras.Json([] if ai_usage.get("local_action") else memory_labels), psycopg2.extras.Json(source_pages),regeneration_id,
                 ),
             )
             assistant_message = cur.fetchone()
@@ -3349,18 +3442,22 @@ def regenerate_conversation_reply(conversation_id):
             chunks = []
             usage = {}
             try:
-                yield ndjson_event("ready")
+                yield ndjson_event("ready",stage="waiting")
                 while True:
                     try:
                         chunk = next(provider)
                     except StopIteration as finished:
                         usage = finished.value or {}
                         break
+                    if not chunks:yield ndjson_event('stage',stage='generating')
                     chunks.append(chunk)
                     yield ndjson_event("delta", text=chunk)
                 reply = "".join(chunks).strip()
                 if not reply:
                     raise RuntimeError("No reply was received. Please try again.")
+                yield ndjson_event('stage',stage='checking')
+                validate_study_reply(mode,reply,file_only)
+                yield ndjson_event('stage',stage='saving')
                 yield ndjson_event("complete", data=save_reply(reply, usage))
             except GeneratorExit:
                 raise
@@ -3379,6 +3476,8 @@ def regenerate_conversation_reply(conversation_id):
         reply, usage = generate_gemini_reply(context, memory_context, language, mode,
                                             include_usage=True, file_only=file_only)
         return jsonify(save_reply(reply, usage))
+    except ProviderError as error:
+        return jsonify(error=str(error),code=error.code),error.status
     except RuntimeError as error:
         return jsonify({"error": str(error)}), 502
 
@@ -4076,11 +4175,13 @@ def check_ins():
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
     if request.method == "GET":
+        target=request.args.get('id') or None
+        if target and not re.fullmatch(r'[1-9][0-9]{0,17}',target):return jsonify(error='Choose a valid saved item.'),400
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM check_ins WHERE user_id = %s ORDER BY created_at DESC LIMIT 90",
-            (user_id,),
+            "SELECT * FROM check_ins WHERE user_id = %s AND (%s::bigint IS NULL OR id=%s) ORDER BY created_at DESC LIMIT 90",
+            (user_id,target,target),
         )
         rows = cur.fetchall()
         cur.close()
@@ -4376,11 +4477,13 @@ def habits():
     except ValueError:
         return jsonify({"error": "Use a valid date."}), 400
     if request.method == "GET":
+        target=request.args.get('id') or None
+        if target and not re.fullmatch(r'[1-9][0-9]{0,17}',target):return jsonify(error='Choose a valid saved item.'),400
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM habits WHERE user_id = %s ORDER BY active DESC, updated_at DESC LIMIT 100",
-            (user_id,),
+            "SELECT * FROM habits WHERE user_id = %s AND (%s::bigint IS NULL OR id=%s) ORDER BY active DESC, updated_at DESC LIMIT 100",
+            (user_id,target,target),
         )
         rows = cur.fetchall()
         cur.execute(
@@ -4532,6 +4635,8 @@ def journal_entries():
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
     if request.method == "GET":
+        target=request.args.get('id') or None
+        if target and not re.fullmatch(r'[1-9][0-9]{0,17}',target):return jsonify(error='Choose a valid saved item.'),400
         search = str(request.args.get("search") or "").strip()[:100]
         pattern = f"%{search}%"
         conn = get_db()
@@ -4539,10 +4644,10 @@ def journal_entries():
         cur.execute(
             """
             SELECT * FROM journal_entries
-            WHERE user_id = %s AND (%s = '' OR title ILIKE %s OR content ILIKE %s)
+            WHERE user_id = %s AND (%s::bigint IS NULL OR id=%s) AND (%s = '' OR title ILIKE %s OR content ILIKE %s)
             ORDER BY entry_date DESC, id DESC LIMIT 100
             """,
-            (user_id, search, pattern, pattern),
+            (user_id,target,target,search,pattern,pattern),
         )
         rows = cur.fetchall()
         cur.close()
@@ -5349,6 +5454,7 @@ def build_gemini_payload(
         raise RuntimeError("Write a message first.")
 
     selected_mode = normalise_chat_mode(mode)
+    profile=generation_profile(messages,selected_mode)
     mode_details = CHAT_MODES[selected_mode]
     system_text = SYSTEM_PROMPT
     if selected_mode=='flashcards' and not file_only:system_text+=study_reference.flashcard_grounding(messages)
@@ -5388,14 +5494,14 @@ def build_gemini_payload(
     }
     # Only these 2.5 models support disabling thinking with this API shape.
     # Respect custom model overrides and keep reasoning for study modes.
-    if selected_mode in FAST_CHAT_MODES and gemini_model(selected_mode) in (
+    if profile in FAST_CHAT_MODES and gemini_model(profile) in (
         "gemini-2.5-flash-lite", "gemini-2.5-flash"
     ):
         generation_config["thinkingConfig"] = {"thinkingBudget": 0}
-    elif selected_mode in FAST_CHAT_MODES:
+    elif profile in FAST_CHAT_MODES:
         # Exact supported models only; Pro, study modes and unknown overrides
         # retain their reasoning defaults. Flash-Lite already defaults minimal.
-        model = gemini_model(selected_mode)
+        model = gemini_model(profile)
         if model in ("gemini-3-flash-preview", "gemini-3.6-flash"):
             generation_config["thinkingConfig"] = {"thinkingLevel": "minimal"}
         elif model == "gemini-3.8-flash":
@@ -5429,6 +5535,17 @@ def gemini_text_and_usage(result):
 
 
 FAST_CHAT_MODES = frozenset(("normal", "care", "healer", "explain", "summarise"))
+
+
+def generation_profile(messages,mode):
+    """Use the configured study provider for the same work as direct tools."""
+    if mode=='normal' and messages:
+        latest=messages[-1]
+        text=str(latest.get('content',''))
+        pending=chat_intents.continuation(messages[:-1],text)
+        if latest.get('attachments') or chat_intents.automatic(pending or text,'mindmap'):
+            return 'deep_study'
+    return mode
 
 
 def gemini_model(mode="normal"):
@@ -5483,11 +5600,12 @@ def generate_gemini_reply(
     if local:
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
         return (local, usage) if include_usage else local
+    profile=generation_profile(messages,mode)
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
     if not file_only:payload=study_reference.compact_payload(payload,messages,language,mode) or payload
 
     try:
-        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(profile), payload, fast=profile in FAST_CHAT_MODES, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
         try:
             result = response.json()
         finally:
@@ -5508,6 +5626,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0, "local_action": True}
         yield local
         return usage
+    profile=generation_profile(messages,mode)
     payload = build_gemini_payload(messages, memory_context, language, mode, file_only)
     if not file_only:payload=study_reference.compact_payload(payload,messages,language,mode) or payload
     response = None
@@ -5517,7 +5636,7 @@ def stream_gemini_reply(messages, memory_context="", language="en", mode="normal
     headers_ms = first_text_ms = None
     outcome = "interrupted"
     try:
-        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(mode), payload, fast=mode in FAST_CHAT_MODES, stream=True, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
+        response = provider_send(provider_post, GEMINI_API_KEY, gemini_model(profile), payload, fast=profile in FAST_CHAT_MODES, stream=True, fallback_payload=None if file_only else study_reference.compact_payload(payload,messages,language,mode))
         headers_ms = round((monotonic() - started) * 1000)
         # Requests otherwise buffers SSE data in 512-byte blocks and may infer
         # Latin-1 when a provider omits a charset. One-byte line iteration lets

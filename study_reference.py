@@ -7,17 +7,20 @@ DNA_SOURCE='https://sathee.iitk.ac.in/te/sathee-neet/ncert-books/neet-ncert-book
 
 def flashcard_grounding(messages):
     recent=' '.join(str(m.get('content','')) for m in messages[-2:])
-    if not re.search(r'\bDNA\b|replication|polymerase',recent,re.I):return ''
+    if not re.search(r'\bDNA\b|replication|transcription|polymerase',recent,re.I):return ''
     return ('\nNCERT replication reference: DNA polymerase extends a new strand 5-prime to 3-prime '
             'and reads its template 3-prime to 5-prime. A template drawn 5-prime to 3-prime '
-            'can support discontinuous replication; its drawn polarity is not the reading direction. Source: '+DNA_SOURCE)
+            'can support discontinuous replication; its drawn polarity is not the reading direction. During transcription, '
+            'RNA polymerase reads the DNA template 3-prime to 5-prime and synthesizes RNA 5-prime to 3-prime. '
+            'The coding strand is written 5-prime to 3-prime. Source: '+DNA_SOURCE)
 
 
 def flashcard_direction_error(cards):
     """Catch the audited, explicit direction reversal; not a general fact checker."""
-    if not re.search(r'dna|replication|polymerase',' '.join(a+' '+b for a,b in cards),re.I):return False
+    if not re.search(r'dna|replication|transcription|polymerase',' '.join(a+' '+b for a,b in cards),re.I):return False
     def normalise(value):
-        value=re.sub(r"['′’`^{}$*]",'',value.casefold())
+        value=value.casefold().replace('\\prime','')
+        value=re.sub(r"['′’`^{}$*]",'',value)
         value=value.replace('\\rightarrow','to').replace('\\to','to')
         return re.sub(r'([35])\s*(?:→|->|\bto\b|[-–])\s*([35])',r'\1to\2',value)
     for front,back in cards:
@@ -31,7 +34,11 @@ def flashcard_direction_error(cards):
         direct_answer=re.match(r'(?:the (?:reading )?direction is\s*)?(?:from\s*)?5to3\b',answer)
         wrong_read=re.search(r'(?:template(?: strand)? (?:is )?(?:read|traversed)|polymerase (?:reads|traverses|moves along) (?:the )?template(?: strand)?)\s*(?:in (?:the )?(?:direction )?)?(?:from\s*)?5to3\b',answer)
         wrong_growth=re.search(r'(?:dna (?:is )?synthesi[sz]ed|new (?:dna )?strand (?:grows|is synthesi[sz]ed))\s*(?:in (?:the )?(?:direction )?)?(?:from\s*)?3to5\b',answer)
-        if (template_question and direct_answer) or wrong_read or wrong_growth:return True
+        transcription_template='transcript' in question and 'template' in question and not re.search(r'compare|difference|coding',question)
+        template_start=answer.find('template')
+        first_direction=re.search(r'[35]to[35]',answer[max(0,template_start):])
+        wrong_template=transcription_template and first_direction and first_direction[0]=='5to3'
+        if (template_question and direct_answer) or wrong_read or wrong_growth or wrong_template:return True
     return False
 
 REFERENCES = {
@@ -55,6 +62,8 @@ def short_study(messages, mode='normal'):
 
 
 def answer(messages,language='en',mode='normal'):
+    step=exam_stress_step(messages,language,mode)
+    if step:return step
     if not short_study(messages,mode):return None
     text=messages[-1]['content']
     if re.search(r'Gujarati|[\u0a80-\u0aff]',text,re.I) and not re.search(r'in English',text,re.I):language='gu'
@@ -68,6 +77,21 @@ def answer(messages,language='en',mode='normal'):
     source,copy=REFERENCES[key]
     label={'en':'Study reference','gu':'અભ્યાસ સંદર્ભ','hi':'अध्ययन संदर्भ'}.get(language,'Study reference')
     return copy.get(language,copy['en'])+'\n\n['+label+' · NCERT]('+source+')'
+
+
+def exam_stress_step(messages,language='en',mode='normal'):
+    """A bounded study action for ordinary exam stress; crisis replies stay separate."""
+    if mode not in {'normal','care'} or not messages or messages[-1].get('attachments'):return None
+    text=str(messages[-1].get('content',''))
+    if len(text)>600 or chat_intents.explicit(text) or re.search(r'suicid|self.harm|kill myself|hurt myself|end my life|આત્મહત્યા|મરી જ|खुदकुशी|आत्महत्या|मरना',text,re.I):return None
+    if not re.search(r'exam|test|પરીક્ષા|परीक्षा',text,re.I) or not re.search(r'stress|anxious|panic|overwhelm|scared|worried|તણાવ|ચિંતા|ડર|तनाव|घबरा|चिंता|डर',text,re.I):return None
+    if re.search(r'[\u0a80-\u0aff]',text):language='gu'
+    elif re.search(r'[\u0900-\u097f]',text):language='hi'
+    return {
+        'en':'Exam stress can make starting feel hard. For the next ten minutes, try just one practice question: set a 10-minute timer, spend two minutes reading it, then use the remaining eight minutes to attempt it and mark the first line where you get stuck. An unfinished attempt is enough for this step; you can stop when the timer ends.',
+        'gu':'પરીક્ષાની ચિંતામાં શરૂઆત કરવી મુશ્કેલ લાગી શકે. આવતી દસ મિનિટ માટે ફક્ત એક અભ્યાસપ્રશ્ન અજમાવો: 10 મિનિટનું ટાઇમર મૂકો, બે મિનિટ પ્રશ્ન વાંચો, પછી બાકીની આઠ મિનિટ જવાબનો પ્રયત્ન કરો અને જ્યાં અટકો તે પહેલી લીટી નિશાન કરો. આ પગલા માટે અધૂરો પ્રયત્ન પણ પૂરતો છે; ટાઇમર પૂરું થાય ત્યારે રોકાઈ શકો.',
+        'hi':'परीक्षा की चिंता में शुरुआत करना कठिन लग सकता है। अगले दस मिनट के लिए सिर्फ एक अभ्यास प्रश्न आज़माएँ: 10 मिनट का टाइमर लगाएँ, दो मिनट प्रश्न पढ़ें, फिर बाकी आठ मिनट हल करने की कोशिश करें और जहाँ अटकें उस पहली पंक्ति को चिह्नित करें। इस कदम के लिए अधूरा प्रयास भी पर्याप्त है; टाइमर खत्म होने पर रुक सकते हैं।'
+    }.get(language) or exam_stress_step(messages,'en',mode)
 
 
 def compact_payload(payload,messages,language,mode):

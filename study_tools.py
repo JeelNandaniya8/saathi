@@ -153,7 +153,7 @@ def register(app,b):
             try:return fn(uid,*args,**kwargs)
             except QuotaError as error:return jsonify(error=str(error),code='STUDY_QUOTA',allowance=error.allowance),429
             except ValueError as error:return jsonify(error=str(error)),400
-            except RuntimeError as error:return jsonify(error=str(error)),503
+            except RuntimeError as error:return jsonify(error=str(error),code=getattr(error,'code','AI_UNAVAILABLE')),getattr(error,'status',503)
         return wrapped
 
     def allowance(cur,uid,kind):
@@ -206,12 +206,12 @@ def register(app,b):
                     status='ready' if resource and resource.get('id') else 'failed'
                     error=None if status=='ready' else body.get('error','Could not finish. Retry when ready.')
                     with db() as (conn,cur):
-                        cur.execute('UPDATE study_jobs SET status=%s,result_id=%s,error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s',(status,resource.get('id') if resource else None,error,job_id,uid));conn.commit()
+                        cur.execute("UPDATE study_jobs SET status=%s,result_id=%s,error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s AND status<>'ready'",(status,resource.get('id') if resource else None,error,job_id,uid));conn.commit()
                     return result
                 except Exception as error:
                     message=str(error) if isinstance(error,(ValueError,RuntimeError)) else 'Creation was interrupted. Retry when ready.'
                     with db() as (conn,cur):
-                        cur.execute("UPDATE study_jobs SET status='failed',error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s",(message[:500],job_id,uid));conn.commit()
+                        cur.execute("UPDATE study_jobs SET status='failed',error=%s,updated_at=NOW() WHERE id=%s AND user_id=%s AND status<>'ready'",(message[:500],job_id,uid));conn.commit()
                     raise
             return tracked
         return decorate
@@ -221,10 +221,21 @@ def register(app,b):
     def jobs(uid):
         kind=request.args.get('kind','mock')
         if kind not in {'mock','map'}:raise ValueError('Choose a study tool.')
+        job_id=request.args.get('job_id')
+        if job_id:
+            try:job_id=str(UUID(job_id))
+            except (ValueError,TypeError,AttributeError):raise ValueError('Use a valid study job ID.') from None
         with db() as (conn,cur):
             cur.execute("UPDATE study_jobs SET status='failed',error='Creation was interrupted. Retry when ready.',updated_at=NOW() WHERE user_id=%s AND status='creating' AND updated_at<NOW()-INTERVAL '5 minutes'",(uid,))
-            cur.execute('SELECT * FROM study_jobs WHERE user_id=%s AND kind=%s ORDER BY created_at DESC LIMIT 5',(uid,kind));rows=cur.fetchall();conn.commit()
+            cur.execute('SELECT * FROM study_jobs WHERE user_id=%s AND kind=%s'+(' AND id=%s' if job_id else '')+' ORDER BY created_at DESC LIMIT 5',(uid,kind,job_id) if job_id else (uid,kind));rows=cur.fetchall();conn.commit()
         return jsonify(jobs=[job_data(row) for row in rows])
+
+    def complete_job(cur,uid,kind,resource_id):
+        """Commit the receipt and resource together, including after a lost response."""
+        job_id=(request.get_json(silent=True) or {}).get('job_id')
+        if not job_id:return
+        cur.execute("UPDATE study_jobs SET status='ready',result_id=%s,error=NULL,updated_at=NOW() WHERE id=%s AND user_id=%s AND kind=%s AND status='creating'",(resource_id,job_id,uid,kind))
+        if cur.rowcount!=1:raise ValueError('Creation was interrupted. Retry when ready.')
 
     @app.post('/api/mock-tests/generate')
     @private
@@ -255,6 +266,7 @@ def register(app,b):
             row=cur.fetchone()
             cur.execute('SELECT * FROM mock_tests WHERE id=%s AND user_id=%s',(row['id'],uid));row=cur.fetchone()
             if not row:raise ValueError('Test save could not be read back. Retry.')
+            complete_job(cur,uid,'mock',row['id'])
             conn.commit()
         return jsonify(ok=True,test=public_test(row))
 
@@ -322,5 +334,6 @@ def register(app,b):
             saved=cur.fetchone()
             cur.execute('SELECT * FROM mindmaps WHERE id=%s AND user_id=%s',(saved['id'],uid));saved=cur.fetchone()
             if not saved:raise ValueError('Mindmap save could not be read back. Retry.')
-            mindmap=validate_mindmap(saved['data_json'],saved['topic']);conn.commit()
+            mindmap=validate_mindmap(saved['data_json'],saved['topic'])
+            complete_job(cur,uid,'map',saved['id']);conn.commit()
         return jsonify(ok=True,mindmap={'id':saved['id'],'topic':topic,'data':mindmap,'created_at':saved['created_at'].isoformat()})
