@@ -9,3 +9,6 @@ assert.equal(ctx.mindmapLayout(root,new Set(['p0'])).nodes.length,20);
 assert.equal(ctx.mindmapLayout(root,new Set(['root'])).nodes.length,1);
 const measure={measureText:s=>({width:[...s].length*10})};const value='ગુજરાતી શબ્દો '+('x'.repeat(100));const lines=ctx.wrapMindmapText(measure,value,80);assert.ok(lines.every(x=>measure.measureText(x).width<=80));assert.equal(lines.join('').replace(/\s/g,''),value.replace(/\s/g,''));
 console.log('PASS: full mindmap bounds, non-overlap, collapse and wrapping');
+// At readable scale, open on the root instead of an empty top-left corner.
+const viewport={clientWidth:300,clientHeight:400},fit={state:{mmLayout:{width:1200,height:3200,nodes:[{x:200,y:1600}]}},$:()=>viewport,applyMindmapZoom(){},window:{}};
+vm.createContext(fit);vm.runInContext(source.slice(source.indexOf('function resetMindmapZoom('),source.indexOf('function applyMindmapZoom(')),fit);fit.resetMindmapZoom();assert.ok(14*fit.state.mmZoom>=12);assert.ok(Math.abs(1600*fit.state.mmZoom-viewport.scrollTop-viewport.clientHeight/2)<1,'Readable reset must keep the root visible');

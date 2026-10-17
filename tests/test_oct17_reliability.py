@@ -1,0 +1,129 @@
+from unittest.mock import Mock
+import pytest
+import requests
+import ai_transport
+import assessment_quality
+import study_reference
+
+
+def test_transcription_template_polarity_is_rejected():
+    assert study_reference.flashcard_direction_error([('Which DNA strand is the transcription template?','The template strand has 5′→3′ polarity.')])
+
+
+def test_zero_vector_angle_cannot_be_marked_as_ninety_degrees():
+    question=dict(question='Find the angle between vectors a=(0,0,0) and b=(1,2,3).',options={'A':'90 degrees','B':'0 degrees','C':'180 degrees','D':'Undefined'},correct_option='A',explanation='The zero dot product gives a right angle.')
+    with pytest.raises(ValueError):assessment_quality.validate(question)
+
+
+def test_file_analysis_uses_the_working_study_model(monkeypatch):
+    import app
+    monkeypatch.setattr(app,'GEMINI_API_KEY','fixture')
+    monkeypatch.setenv('GEMINI_FAST_MODEL','gemini-fixture-busy')
+    monkeypatch.setenv('GEMINI_MODEL','gemini-fixture-study')
+    seen=[]
+    def send(*args,**kwargs):
+        seen.append((args[2],kwargs.get('fast')))
+        if args[2]=='gemini-fixture-busy':raise ai_transport.ProviderError('AI_BUSY','Fixture fast model is unavailable',503)
+        return Mock(json=lambda:{'candidates':[{'content':{'parts':[{'text':'Fixture code read.'}]},'finishReason':'STOP'}]},close=lambda:None)
+    monkeypatch.setattr(app,'provider_send',send)
+    attachment=dict(name='page.png',mime_type='image/png',content=b'fixture',size_bytes=7)
+    text=app.generate_gemini_reply([dict(role='user',content='Read the fixture code',attachments=[attachment])],file_only=True)
+    assert text=='Fixture code read.' and seen==[('gemini-fixture-study',False)]
+
+
+@pytest.mark.parametrize('question,expected',[
+ ('Find a unit vector of a=(0,0,0).',True),
+ ('Find the projection of a=(1,2,3) onto b=(0,0,0).',True),
+ ('Find the projection of a=(0,0,0) onto b=(1,2,3).',False),
+ ('Find a unit vector of a=(1,0,0), given b=(0,0,0).',None),
+ ('Find the angle between a=(1,0,0) and b=(0,1,0).',None),
+])
+def test_vector_domain_cases(question,expected):
+    result=assessment_quality.vector_zero_case(question)
+    assert (result['undefined'] if result else None)==expected
+
+
+@pytest.mark.parametrize('back,wrong',[
+ (r'The template strand has $5^{\prime} \to 3^{\prime}$ polarity.',True),
+ ('RNA polymerase reads the template 3′→5′ and synthesizes RNA 5′→3′.',False),
+ ('The coding strand is 5′→3′; the template strand is 3′→5′.',False),
+])
+def test_transcription_guard_keeps_correct_distinctions(back,wrong):
+    assert bool(study_reference.flashcard_direction_error([('Which DNA strand is the transcription template?',back)]))==wrong
+
+
+@pytest.mark.parametrize('language,text,needle',[
+ ('en','I am overwhelmed about my exam','two minutes'),
+ ('gu','પરીક્ષાની ચિંતા થાય છે','બે મિનિટ'),
+ ('hi','परीक्षा की चिंता है','दो मिनट'),
+])
+def test_exam_stress_gets_one_bounded_ten_minute_step(language,text,needle):
+    reply=study_reference.answer([dict(role='user',content=text)],language)
+    assert needle in reply and '10' in reply
+    assert not any(word in reply.casefold() for word in ['guarantee','lazy','definitely pass'])
+    assert study_reference.answer([dict(role='user',content=text,attachments=[{}])],language) is None
+
+
+def test_exam_stress_step_does_not_intercept_crisis_or_other_requests():
+    assert study_reference.exam_stress_step([dict(content='I am stressed about an exam and want to kill myself')]) is None
+    assert study_reference.exam_stress_step([dict(content='Save this note: exam stress')]) is None
+    assert study_reference.exam_stress_step([dict(content='Explain exam registration')]) is None
+
+
+@pytest.mark.parametrize('text',['I am stressed about my exam; just listen, no advice.','Explain why exam stress causes chest pain','મને પરીક્ષાની ચિંતા છે, માત્ર સાંભળો','परीक्षा का तनाव है, सिर्फ सुनें'])
+def test_ten_minute_step_respects_listening_and_specific_requests(text):
+    assert study_reference.exam_stress_step([dict(content=text)]) is None
+
+
+@pytest.mark.parametrize('language,word',[('en','Resets'),('gu','ફરી ઉપલબ્ધ'),('hi','फिर उपलब्ध')])
+def test_exhausted_quota_keeps_account_reset_in_each_language(language,word):
+    from study_tools import QuotaError
+    reset='2030-01-02, 05:30 AM · Asia/Kolkata'
+    text=QuotaError(dict(kind='map',reset_local=reset)).localized(language)
+    assert text.startswith('0 ') and word in text and reset in text
+
+
+@pytest.mark.parametrize('language,text,refusal',[
+ ('en','I am anxious about my exam. Can you guarantee AIR 100? Give one ten-minute step.', 'cannot guarantee'),
+ ('gu','મારા NEET mockમાં ઓછા ગુણ આવ્યા, ચિંતા થાય છે. AIR 100ની ગેરંટી આપશો? દસ મિનિટનું એક પગલું આપો.', 'ગેરંટી આપી શકતો નથી'),
+ ('hi','मेरे NEET mock में 180/720 आए हैं, बोर्ड भी पास हैं; मैं घबरा रहा हूँ। क्या तुम AIR 100 की गारंटी देते हो? हिन्दी में चार छोटे वाक्य: ईमानदार जवाब और अभी का एक 10-मिनट कदम।', 'गारंटी नहीं दे सकता'),
+])
+def test_exam_stress_keeps_rank_question_and_original_mock_context(language,text,refusal):
+    reply=study_reference.answer([dict(role='user',content=text)],language)
+    assert reply and refusal in reply and '10' in reply
+
+
+def test_exam_stress_respects_explicit_reply_language():
+    reply=study_reference.exam_stress_step([dict(content='પરીક્ષાની ચિંતા છે. Reply in English.')],'gu')
+    assert reply.startswith('Exam stress')
+
+
+def vector_map(description):
+    return dict(summary='Vector revision',root=dict(label='Nonzero vectors',desc='Vector definitions',children=[dict(label='Parallelism',desc=description,children=[])]))
+
+
+def test_new_map_rejects_unqualified_component_division_but_keeps_history_readable():
+    import study_tools
+    raw=vector_map('For parallel vectors, ax/bx = ay/by = az/bz.')
+    assert study_tools.validate_mindmap(raw,'Vectors')['root']['children']
+    with pytest.raises(ValueError,match='denominator'):
+        study_tools.validate_new_mindmap(raw,'Vectors')
+
+
+@pytest.mark.parametrize('description',[
+ 'Nonzero vectors are parallel iff a = k*b for a scalar k.',
+ 'ax/bx = ay/by = az/bz, provided all denominator components are nonzero.',
+ 'a_x/b_x = a_y/b_y = a_z/b_z when bx != 0, by != 0 and bz != 0.',
+ 'Avoid ax/bx = ay/by = az/bz when bx=0; use a=k*b instead.',
+ 'ax/bx = ay/by = az/bz when bx, by and bz are all non-zero.',
+ 'For parallel vectors with b=(2,4,6), ax/bx = ay/by = az/bz.',
+])
+def test_new_map_keeps_valid_parallel_conditions(description):
+    import study_tools
+    assert study_tools.validate_new_mindmap(vector_map(description),'Vectors')['root']['children']
+
+
+def test_component_assignment_with_zero_denominator_is_not_a_valid_condition():
+    import study_tools
+    with pytest.raises(ValueError,match='denominator'):
+        study_tools.validate_new_mindmap(vector_map('For parallel vectors with b=(2,0,6), ax/bx = ay/by = az/bz.'),'Vectors')

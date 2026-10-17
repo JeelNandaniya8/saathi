@@ -182,6 +182,7 @@ def apply_draft(cur, uid, draft, replace_full=False, command_text=None, conversa
     if kind=='plan':
         return [apply_draft(cur,uid,item) for item in draft['items']]
     if kind=='mindmap':
+        draft['map']=study_tools.validate_new_mindmap(draft['map'],title)
         study_tools.check_allowance(cur,uid,'map')
         cur.execute('INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(%s,%s,%s,NOW()) RETURNING id',(uid,title,json.dumps(draft['map'],ensure_ascii=False)))
     elif kind=='task':cur.execute('INSERT INTO tasks(user_id,title,details,due_at,priority,created_at,updated_at) VALUES(%s,%s,%s,%s,%s,NOW(),NOW()) RETURNING id',(uid,title,text,at,draft['priority']))
@@ -425,7 +426,7 @@ def direct_reply(cur,uid,messages,language='en'):
         return {'reply':'Saving…\n\n<SAATHI_ACTION>'+json.dumps(draft,ensure_ascii=False)+'</SAATHI_ACTION>'}
     if chat_intents.automatic(text,'mindmap') or chat_intents.automatic(chat_intents.continuation(messages[:-1],text),'mindmap'):
         try:study_tools.check_allowance(cur,uid,'map',pending=True)
-        except study_tools.QuotaError as error:return {'reply':str(error)}
+        except study_tools.QuotaError as error:return {'reply':error.localized(language)}
     query=chat_intents.command(text)
     if query and re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending|unfinished)|(?:કેટલ|શું|બતાવ).*(?:બાકી|કામ)|(?:क्या|कितना|दिखा).*(?:बाकी|काम)',query,re.I) and not chat_intents.explicit(query):
         if re.search(r'today|tomorrow|yesterday|\b\d{4}-\d{2}-\d{2}\b|planner|my plan|work|tasks?|આજ|કામ|યોજના|आज|काम|योजना',query,re.I):

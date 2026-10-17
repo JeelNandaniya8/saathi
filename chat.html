@@ -574,15 +574,15 @@ body.chat-polish{background:var(--paper)}
 
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
-<script src="/i18n.js?v=20261008e"></script>
+<script src="/i18n.js?v=20261017a"></script>
 <script src="/workspace-hub.js?v=20261014f"></script>
 <script src="/recovery.js?v=20260919"></script>
 <script src="/account-clock.js?v=20261014a"></script>
 <script src="/vendor/katex-0.19.0.min.js" defer></script>
 <script src="/message-format.js?v=20261015h"></script>
-<script src="/study-jobs.js?v=20261015h"></script>
+<script src="/study-jobs.js?v=20261017a"></script>
 <script src="/workspace.js?v=20261015h"></script>
-<script src="/chat-actions.js?v=20261015g"></script>
+<script src="/chat-actions.js?v=20261017a"></script>
 <script>
 const state={ready:false,user:null,csrf:'',conversations:[],activeId:null,messages:[],sending:false,activeRequest:null,actionMessage:null,menuId:null,searchTimer:null,showArchived:false,hasMore:false,nextBeforeId:null,selectedFiles:[],chatModes:[],speakingButton:null,revealTimer:null,attachmentLimits:{enabled:true,per_message:1,max_bytes:5242880,total_max_bytes:5242880,per_day:5,used_today:0,remaining_today:5}};
 const el={
@@ -605,13 +605,13 @@ async function api(url,options={}){
   let data={};
   try{data=await response.json()}catch(error){data={error:'The server returned an unreadable response.'}}
   if(response.status===401||data.login_required){location.replace('/account?next=/chat');throw new Error('Please log in first.')}
-  if(!response.ok){if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}throw new Error(data.error||'Something went wrong.')}
+  if(!response.ok){if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}throw Object.assign(new Error(window.SaathiI18n?.error(data.code,data.error)||data.error||'Something went wrong.'),{code:data.code,allowance:data.allowance})}
   return data;
 }
 
 let toastTimer;
 function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=String(message||'').toLowerCase();if(/error|wrong|could not|cannot|failed|unavailable|not supported|log in/.test(copy))return'error';if(/deleted|removed|saved|added|updated|created|enabled|accepted|changed|copied|pinned|archived|restored|export ready/.test(copy))return'success';if(/stopped|permission|expired|warning|blocked/.test(copy))return'warning';return'info'}
-function showToast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone);el.toast.className='toast '+kind;document.getElementById('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];document.getElementById('toastMessage').textContent=message;el.toast.setAttribute('role',kind==='error'?'alert':'status');el.toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>el.toast.classList.add('show'));toastTimer=setTimeout(()=>el.toast.classList.remove('show'),3200)}
+function showToast(message,tone='auto'){clearTimeout(toastTimer);const kind=toastTone(message,tone);el.toast.className='toast '+kind;document.getElementById('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];document.getElementById('toastMessage').textContent=window.SaathiI18n?.t(message)||message;el.toast.setAttribute('role',kind==='error'?'alert':'status');el.toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>el.toast.classList.add('show'));toastTimer=setTimeout(()=>el.toast.classList.remove('show'),3200)}
 const chatSidebarMedia=matchMedia('(max-width:900px)');
 function setChatSidebar(open){const mobile=chatSidebarMedia.matches;el.sidebar.hidden=!open;el.sidebar.inert=!open;el.sidebar.classList.toggle('open',open);document.querySelector('.app').classList.toggle('sidebar-collapsed',!open);el.scrim.classList.toggle('show',mobile&&open);document.getElementById('openSidebar').setAttribute('aria-expanded',String(open));document.querySelector('.main').inert=mobile&&open}
 function closeSide(){if(chatSidebarMedia.matches)setChatSidebar(false)}
@@ -621,19 +621,19 @@ chatSidebarMedia.addEventListener('change',()=>setChatSidebar(!chatSidebarMedia.
 function currentConversation(){return state.conversations.find(item=>item.id===state.activeId)}
 let replyWaitTimer;
 function clearReplyWait(){clearTimeout(replyWaitTimer);document.getElementById('replyStatus').hidden=true}
-function requestStageText(stage){const c={en:{saving:'Saving…',checking:'Checking saved records…',waiting:'Waiting for AI…',generating:'Generating with AI…'},gu:{saving:'સાચવાય છે…',checking:'સાચવેલી વિગતો તપાસાય છે…',waiting:'AIની રાહ જોવાય છે…',generating:'AIથી જવાબ બને છે…'},hi:{saving:'सेव हो रहा है…',checking:'सहेजी जानकारी जाँची जा रही है…',waiting:'AI का इंतज़ार…',generating:'AI से जवाब बन रहा है…'}};return(c[state.user?.language]||c.en)[stage]||c.en.waiting}
+function requestStageText(stage){const c={en:{saving:'Saving…',checking:'Checking…',waiting:'Waiting for AI…',generating:'Generating with AI…'},gu:{saving:'સાચવાય છે…',checking:'તપાસાય છે…',waiting:'AIની રાહ જોવાય છે…',generating:'AIથી જવાબ બને છે…'},hi:{saving:'सेव हो रहा है…',checking:'जाँच हो रही है…',waiting:'AI का इंतज़ार…',generating:'AI से जवाब बन रहा है…'}};return(c[state.user?.language]||c.en)[stage]||c.en.waiting}
 function setRequestStage(stage){if(!['saving','checking','waiting','generating'].includes(stage))return;state.requestStage=stage;for(const m of state.messages||[])if(m.streaming){m.stage=stage;const target=document.querySelector('[data-message-id="'+m.id+'"] .request-stage');if(target)target.textContent=requestStageText(stage)}}
 function setBusy(busy,stage='waiting'){clearReplyWait();state.sending=busy;if(busy)setRequestStage(stage);el.messages.setAttribute('aria-busy',String(busy));el.input.disabled=false;el.mode.disabled=busy;el.attach.disabled=busy||!state.attachmentLimits.enabled||state.attachmentLimits.remaining_today<=0;el.fileInput.disabled=el.attach.disabled;el.fileOnly.disabled=busy;document.querySelectorAll('.quick-action').forEach(button=>button.disabled=busy);if(!busy){state.activeRequest=null;el.uploadStatus.hidden=true;el.uploadStatus.classList.remove('processing')}updateComposer()}
-function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop waiting':'Send message');el.send.title=stopping?'Stop waiting':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId||Boolean(state.creatingConversation||state.loadingConversation||state.historyError);el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
+function updateComposer(){const length=el.input.value.length,hasFile=state.selectedFiles.length>0,stopping=state.sending;el.send.classList.toggle('stopping',stopping);el.send.textContent=stopping?'■':'↑';el.send.setAttribute('aria-label',stopping?'Stop waiting':'Send message');el.send.title=stopping?'Stop waiting':'Send message';el.send.disabled=stopping?false:(!length&&!hasFile)||!state.activeId||Boolean(state.creatingConversation||state.loadingConversation||state.historyError)||Boolean(state.missingAttachmentDraft||state.cancelling);el.charCount.textContent=`${length} / 5000`;el.composer.classList.toggle('long',length>4200);el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,160)+'px'}
 function readableSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return Math.ceil(bytes/1024)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
 function decodeLegacyText(value){const text=String(value??'');if(!/[ÃÂàð][\u0080-\u00bf]/.test(text))return text;try{const characters=Array.from(text);if(characters.some(character=>character.charCodeAt(0)>255))return text;return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(characters,character=>character.charCodeAt(0)))}catch(error){return text}}
 function normaliseConversationDisplay(conversation){return{...conversation,title:decodeLegacyText(conversation?.title),preview:decodeLegacyText(conversation?.preview)}}
 function normaliseMessageDisplay(message){return{...message,content:decodeLegacyText(message?.content)}}
-function attachmentMeta(){const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576),remaining=Math.max(Number(state.attachmentLimits.remaining_today)||0,0);el.composerMeta.textContent=`Photos and PDFs: ${state.attachmentLimits.per_message} per message, ${maxMb} MB each · ${remaining} upload${remaining===1?'':'s'} left today. AI can make mistakes.${state.attachmentLimits.reset_at?' Resets '+SaathiClock.format(state.attachmentLimits.reset_at)+'.':''}`;el.attach.disabled=state.sending||!state.attachmentLimits.enabled||remaining<=0}
+function attachmentMeta(){const maxMb=Math.round(state.attachmentLimits.max_bytes/1048576),remaining=Math.max(Number(state.attachmentLimits.remaining_today)||0,0);el.composerMeta.textContent=`Photos and PDFs: ${state.attachmentLimits.per_message} per message, ${maxMb} MB each · ${remaining} upload${remaining===1?'':'s'} left today. AI can make mistakes.${state.attachmentLimits.reset_at?' Resets '+SaathiClock.format(state.attachmentLimits.reset_at)+'.':''}`;const lang=state.user?.language||'en',copy={gu:['ફોટા અને PDF','સંદેશ દીઠ','દરેક','આજે અપલોડ બાકી','AIથી ભૂલ થઈ શકે છે.','ફરી ઉપલબ્ધ'],hi:['फ़ोटो और PDF','प्रति संदेश','प्रत्येक','आज अपलोड बाकी','AI गलतियाँ कर सकता है।','फिर उपलब्ध']}[lang];if(copy)el.composerMeta.textContent=`${copy[0]}: ${state.attachmentLimits.per_message} ${copy[1]}, ${maxMb} MB ${copy[2]} · ${remaining} ${copy[3]}. ${copy[4]}${state.attachmentLimits.reset_at?' '+copy[5]+' '+SaathiClock.format(state.attachmentLimits.reset_at):''}`;el.attach.disabled=state.sending||!state.attachmentLimits.enabled||remaining<=0}
 function releaseSelection(entry){if(entry?.previewUrl)URL.revokeObjectURL(entry.previewUrl)}
-function renderSelectedFiles(){el.attachmentTray.replaceChildren();const hasFiles=state.selectedFiles.length>0;el.attachmentTray.hidden=!hasFiles;el.fileOnlyWrap.hidden=!hasFiles;if(!hasFiles)el.fileOnly.checked=false;state.selectedFiles.forEach((entry,index)=>{const file=entry.file,chip=document.createElement('div');chip.className='selected-file';if(entry.previewUrl){const preview=document.createElement('img');preview.className='selected-preview';preview.src=entry.previewUrl;preview.alt='';chip.append(preview)}else{const pdf=document.createElement('span');pdf.className='selected-pdf';pdf.textContent='PDF';chip.append(pdf)}const copy=document.createElement('span');copy.className='selected-copy';const name=document.createElement('span');name.textContent=file.name;const size=document.createElement('small');size.textContent=readableSize(file.size);copy.append(name,size);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove ${file.name}`);remove.addEventListener('click',()=>{releaseSelection(state.selectedFiles[index]);state.selectedFiles.splice(index,1);renderSelectedFiles();updateComposer()});chip.append(copy,remove);el.attachmentTray.append(chip)})}
-function chooseFiles(fileList){const allowed=['application/pdf','image/jpeg','image/png','image/webp'],extensions=['.pdf','.jpg','.jpeg','.png','.webp'],incoming=Array.from(fileList||[]),selectionLimit=Math.min(state.attachmentLimits.per_message,state.attachmentLimits.remaining_today);if(state.attachmentLimits.remaining_today<=0){showToast("You have used today's attachment allowance.");return}for(const file of incoming){if(state.selectedFiles.length>=selectionLimit){showToast(`You can attach up to ${selectionLimit} file${selectionLimit===1?'':'s'} within your current allowance.`);break}if(!allowed.includes(file.type)&&!extensions.some(ext=>file.name.toLowerCase().endsWith(ext))){showToast('Use a PDF, JPG, PNG or WebP file.');continue}if(!file.size){showToast('Empty files cannot be attached.');continue}if(file.size>state.attachmentLimits.max_bytes){showToast(`Each file can be up to ${readableSize(state.attachmentLimits.max_bytes)}.`);continue}const selectedBytes=state.selectedFiles.reduce((total,entry)=>total+entry.file.size,0);if(selectedBytes+file.size>state.attachmentLimits.total_max_bytes){showToast(`Files in one message can total up to ${readableSize(state.attachmentLimits.total_max_bytes)}.`);continue}const duplicate=state.selectedFiles.some(entry=>entry.file.name===file.name&&entry.file.size===file.size&&entry.file.lastModified===file.lastModified);if(duplicate){showToast(`${file.name} is already attached.`);continue}state.selectedFiles.push({file,previewUrl:file.type.startsWith('image/')?URL.createObjectURL(file):null})}el.fileInput.value='';renderSelectedFiles();updateComposer()}
-function clearSelectedFiles(revoke=true){if(revoke)state.selectedFiles.forEach(releaseSelection);state.selectedFiles=[];el.fileInput.value='';renderSelectedFiles();updateComposer()}
+function renderSelectedFiles(){el.attachmentTray.replaceChildren();const hasFiles=state.selectedFiles.length>0;el.attachmentTray.hidden=!hasFiles&&!state.missingAttachmentDraft;el.fileOnlyWrap.hidden=!hasFiles&&!state.missingAttachmentDraft;if(state.missingAttachmentDraft&&!hasFiles){const notice=document.createElement('span'),discard=document.createElement('button');notice.textContent=window.SaathiI18n?.t('Reattach the original files before retrying.')||'Reattach the original files before retrying.';discard.type='button';discard.textContent=window.SaathiI18n?.t('Discard missing files')||'Discard missing files';discard.onclick=()=>{state.missingAttachmentDraft=false;state.draftRequestId=null;el.fileOnly.checked=false;renderSelectedFiles();saveChatDraft();updateComposer()};el.attachmentTray.append(notice,discard)}if(!hasFiles&&!state.missingAttachmentDraft)el.fileOnly.checked=false;state.selectedFiles.forEach((entry,index)=>{const file=entry.file,chip=document.createElement('div');chip.className='selected-file';if(entry.previewUrl){const preview=document.createElement('img');preview.className='selected-preview';preview.src=entry.previewUrl;preview.alt='';chip.append(preview)}else{const pdf=document.createElement('span');pdf.className='selected-pdf';pdf.textContent='PDF';chip.append(pdf)}const copy=document.createElement('span');copy.className='selected-copy';const name=document.createElement('span');name.textContent=file.name;const size=document.createElement('small');size.textContent=readableSize(file.size);copy.append(name,size);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove ${file.name}`);remove.addEventListener('click',()=>{releaseSelection(state.selectedFiles[index]);state.selectedFiles.splice(index,1);state.draftRequestId=null;renderSelectedFiles();updateComposer();saveChatDraft()});chip.append(copy,remove);el.attachmentTray.append(chip)})}
+function chooseFiles(fileList){const allowed=['application/pdf','image/jpeg','image/png','image/webp'],extensions=['.pdf','.jpg','.jpeg','.png','.webp'],incoming=Array.from(fileList||[]),selectionLimit=Math.min(state.attachmentLimits.per_message,state.attachmentLimits.remaining_today);if(state.attachmentLimits.remaining_today<=0){showToast("You have used today's attachment allowance.");return}for(const file of incoming){if(state.selectedFiles.length>=selectionLimit){showToast(`You can attach up to ${selectionLimit} file${selectionLimit===1?'':'s'} within your current allowance.`);break}if(!allowed.includes(file.type)&&!extensions.some(ext=>file.name.toLowerCase().endsWith(ext))){showToast('Use a PDF, JPG, PNG or WebP file.');continue}if(!file.size){showToast('Empty files cannot be attached.');continue}if(file.size>state.attachmentLimits.max_bytes){showToast(`Each file can be up to ${readableSize(state.attachmentLimits.max_bytes)}.`);continue}const selectedBytes=state.selectedFiles.reduce((total,entry)=>total+entry.file.size,0);if(selectedBytes+file.size>state.attachmentLimits.total_max_bytes){showToast(`Files in one message can total up to ${readableSize(state.attachmentLimits.total_max_bytes)}.`);continue}const duplicate=state.selectedFiles.some(entry=>entry.file.name===file.name&&entry.file.size===file.size&&entry.file.lastModified===file.lastModified);if(duplicate){showToast(`${file.name} is already attached.`);continue}if(!state.missingAttachmentDraft)state.draftRequestId=null;state.selectedFiles.push({file,previewUrl:file.type.startsWith('image/')?URL.createObjectURL(file):null})}el.fileInput.value='';if(state.selectedFiles.length)state.missingAttachmentDraft=false;renderSelectedFiles();updateComposer();saveChatDraft()}
+function clearSelectedFiles(revoke=true){state.missingAttachmentDraft=false;if(revoke)state.selectedFiles.forEach(releaseSelection);state.selectedFiles=[];el.fileInput.value='';renderSelectedFiles();updateComposer()}
 function requestId(){if(crypto.randomUUID)return crypto.randomUUID();return`${Date.now()}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`}
 function defaultFilePrompt(mode,count){const noun=count===1?'file':'files',prompts={summarise:`Summarise the attached ${noun} and preserve the important details.`,quiz:`Quiz me using the attached ${noun}. Ask one question at a time.`,flashcards:`Create useful revision flashcards from the attached ${noun}.`,deep_study:`Teach me the attached ${noun} in depth for study and revision.`,explain:`Explain the attached ${noun} in simple steps with an example.`,study_plan:`Create a realistic study plan using the attached ${noun}.`};return prompts[mode]||`Please explain the attached ${noun}.`}
 function showRequestProgress(copy,percent=null,processing=false){el.uploadStatus.hidden=false;el.uploadStatus.classList.toggle('processing',processing);el.uploadCopy.textContent=copy;if(percent!==null)el.uploadProgress.style.width=Math.max(2,Math.min(percent,100))+'%'}
@@ -648,16 +648,16 @@ async function streamChatRequest(url,body,onDelta){
     if(!line.trim())return;
     const event=JSON.parse(line);
     if(event.type==='ready'||event.type==='stage'){setRequestStage(event.stage||state.requestStage||'waiting');if(event.allowance){const m=state.messages.find(item=>item.streaming);const body=m&&document.querySelector('[data-message-id="'+m.id+'"] .message-body');if(body){const line=document.createElement('small');line.className='helper request-allowance';line.textContent=event.allowance.remaining+' '+(event.allowance.remaining===1?'mindmap':'mindmaps')+' remaining · Resets '+event.allowance.reset_local;body.append(line)}}el.uploadStatus.hidden=true;}
-    else if(event.type==='delta'){setRequestStage('generating');clearReplyWait();const text=String(event.text||'');if(text)window.SaathiRecovery?.measureDelta(measurement);el.uploadStatus.hidden=true;onDelta(text)}
+    else if(event.type==='delta'){if(!event.local)setRequestStage('generating');clearReplyWait();const text=String(event.text||'');if(text)window.SaathiRecovery?.measureDelta(measurement);el.uploadStatus.hidden=true;onDelta(text)}
     else if(event.type==='complete')complete=event.data;
-    else if(event.type==='error')throw Object.assign(new Error(event.error||'Saathi could not finish this reply.'),{code:event.code,reference:event.reference,retry_after:event.retry_after});
+    else if(event.type==='error')throw Object.assign(new Error(window.SaathiI18n?.error(event.code,event.error)||event.error||'Saathi could not finish this reply.'),{code:event.code,reference:event.reference,retry_after:event.retry_after});
   }
   try{
     const headers={'X-CSRF-Token':state.csrf,'Accept':'application/x-ndjson'};
     if(!(body instanceof FormData))headers['Content-Type']='application/json';
     const response=await fetch(url,{method:'POST',headers,body,credentials:'same-origin',cache:'no-store',signal:controller.signal});
     if(response.status===401){location.replace('/account?next=/chat');throw new Error('Please log in first.')}
-    if(!response.ok){let data={};try{data=await response.json()}catch(_){}if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}throw new Error(data.error||'The request could not start. Please try again.')}
+    if(!response.ok){let data={};try{data=await response.json()}catch(_){}if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}throw Object.assign(new Error(window.SaathiI18n?.error(data.code,data.error)||data.error||'The request could not start. Please try again.'),{code:data.code,allowance:data.allowance,retry_after:data.retry_after})}
     if(!response.body)throw new Error('Streaming is unavailable in this browser. Please update your browser.');
     reader=response.body.getReader();
     while(true){
@@ -673,7 +673,7 @@ async function streamChatRequest(url,body,onDelta){
   }catch(error){
     if(controller.signal.aborted||error.name==='AbortError'){
       outcome=timedOut?'error':'cancelled';
-      error=Object.assign(new Error(timedOut?'Reply timed out. Received text is kept on this screen; it is not saved yet.':'Reply stopped. Received text is kept on this screen; it is not saved yet.'),{name:'AbortError',code:timedOut?'AI_TIMEOUT':'AI_STOPPED'});
+      error=Object.assign(new Error(timedOut?'Reply timed out. Saving could not be confirmed. Retry checks the same request before saving.':'Reply stopped. Received text is kept here. Checking whether anything was already saved.'),{name:'AbortError',code:timedOut?'AI_TIMEOUT':'AI_STOPPED',stop_unconfirmed:!timedOut});
     }
     failure=error;
     throw error;
@@ -685,7 +685,7 @@ function saveChatDraft(){
   // Keep a failed request for recovery until the user edits or retries it.
   if(!el.input.value&&state.messages.some(message=>message.failed))return;
   const recovery=window.SaathiRecovery;
-  if(el.input.value)recovery?.saveDraft('chat',state.activeId,{content:el.input.value,mode:el.mode.value,request_id:state.draftRequestId||null});
+  if(el.input.value)recovery?.saveDraft('chat',state.activeId,{content:el.input.value,mode:el.mode.value,request_id:state.draftRequestId||null,file_only:Boolean(el.fileOnly?.checked),had_attachments:state.selectedFiles.length>0||Boolean(state.missingAttachmentDraft),attachment_manifest:state.selectedFiles.map(entry=>({name:entry.file.name,size:entry.file.size,type:entry.file.type,lastModified:entry.file.lastModified}))});
   else recovery?.removeDraft('chat',state.activeId);
 }
 function restoreChatDraft(){
@@ -693,7 +693,8 @@ function restoreChatDraft(){
   el.input.value=typeof draft?.content==='string'?draft.content.slice(0,5000):'';
   state.draftRequestId=typeof draft?.request_id==='string'?draft.request_id:null;
   if(draft&&state.chatModes.some(mode=>mode.id===draft.mode)){el.mode.value=draft.mode;updateModeDescription()}
-  updateComposer();
+  if(el.fileOnly)el.fileOnly.checked=Boolean(draft?.file_only);state.missingAttachmentDraft=Boolean(draft?.had_attachments&&!state.selectedFiles.length);
+  if(typeof renderSelectedFiles==='function')renderSelectedFiles();updateComposer();
   if(el.input.value)showToast(draft.had_attachments?'Text recovered. Reattach your files before retrying.':'Unsent message recovered. Review it before sending.');
 }
 
@@ -928,28 +929,30 @@ function scrollToLatest(smooth=true){el.messages.scrollTo({top:el.messages.scrol
 
 function releaseLocalPreviews(message){(message?.attachments||[]).forEach(item=>{if(item.local&&item.url)URL.revokeObjectURL(item.url)})}
 async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverride=null,fileOnlyOverride=null,preserveDraft=false){
-  const entries=retryFiles?retryFiles.map(file=>({file,previewUrl:null})):state.selectedFiles.slice(),files=entries.map(entry=>entry.file);if(state.sending||state.creatingConversation||state.loadingConversation||state.historyError||!state.activeId||(!content.trim()&&!files.length))return;
+  const entries=retryFiles?retryFiles.map(file=>({file,previewUrl:null})):state.selectedFiles.slice(),files=entries.map(entry=>entry.file);if(state.sending||state.creatingConversation||state.loadingConversation||state.historyError||state.missingAttachmentDraft||state.cancelling||!state.activeId||(!content.trim()&&!files.length))return;
   const draft=window.SaathiRecovery?.getDraft('chat',state.activeId);
-  const reuseDraft=state.draftRequestId&&draft?.content?.trim()===content.trim()&&draft.mode===(modeOverride||el.mode.value||'normal');
+  const wantedFileOnly=files.length?Boolean(fileOnlyOverride??el.fileOnly.checked):false;
+  const reuseDraft=state.draftRequestId&&draft?.content?.trim()===content.trim()&&draft.mode===(modeOverride||el.mode.value||'normal')&&Boolean(draft.file_only)===wantedFileOnly;
   const mode=modeOverride||el.mode.value||'normal',currentRequestId=retryRequestId||(reuseDraft?state.draftRequestId:null)||requestId(),fileOnly=files.length?Boolean(fileOnlyOverride??el.fileOnly.checked):false;
   const text=content.trim()||defaultFilePrompt(mode,files.length);
-  if(!preserveDraft){window.SaathiRecovery?.saveDraft('chat',state.activeId,{content:text,mode,request_id:currentRequestId,had_attachments:files.length>0});state.draftRequestId=null;}
+  if(!preserveDraft){window.SaathiRecovery?.saveDraft('chat',state.activeId,{content:text,mode,request_id:currentRequestId,had_attachments:files.length>0,file_only:fileOnly});state.draftRequestId=null;}
   const temporary={id:'temporary-'+Date.now(),role:'user',content:text,created_at:new Date().toISOString(),ai_mode:mode,request_id:currentRequestId,file_only:fileOnly,local_files:files,attachments:entries.map((entry,index)=>({id:'local-'+index,name:entry.file.name,mime_type:entry.file.type,size_bytes:entry.file.size,url:entry.previewUrl||(entry.file.type.startsWith('image/')?URL.createObjectURL(entry.file):''),local:true}))},streaming={id:'streaming-'+Date.now(),role:'assistant',content:'',created_at:new Date().toISOString(),ai_mode:mode,streaming:true};
   const active=currentConversation(),firstUserMessage=!state.messages.some(message=>message.role==='user'),previousTitle=active?.title||null;let optimisticTitle=false;
   if(active&&firstUserMessage&&active.title==='New conversation'){active.title=content.trim()?conversationTitle(text):attachmentConversationTitle(mode,files);active.preview=text;active.updated_at=temporary.created_at;el.chatTitle.textContent=active.title;sortConversations();renderConversations();optimisticTitle=true}
   state.messages.push(temporary,streaming);if(!preserveDraft){el.input.value='';state.selectedFiles=[];}renderSelectedFiles();setBusy(true,files.length?'waiting':(window.SaathiChatActions?.stageFor(text)||'waiting'));if(files.length)showRequestProgress('Preparing your upload…');else el.uploadStatus.hidden=true;renderMessages();scrollToLatest();
+  state.pendingExchange={conversation_id:state.activeId,request_id:currentRequestId,content:text,message:temporary};
   const painter=createStreamPainter(streaming);
   try{
     let body;if(files.length){body=new FormData();body.append('content',text);body.append('mode',mode);body.append('request_id',currentRequestId);body.append('file_only',String(fileOnly));files.forEach(file=>body.append('attachments',file,file.name))}else body=JSON.stringify({content:text,mode,request_id:currentRequestId,file_only:fileOnly});
     let receivedFirstDelta=false;const data=await streamChatRequest(`/api/conversations/${state.activeId}/messages/stream`,body,chunk=>{streaming.content+=chunk;if(!receivedFirstDelta){receivedFirstDelta=true;el.uploadStatus.hidden=true}painter.update()});
     releaseLocalPreviews(temporary);
-    if(data.assistant_message?.action_error&&!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.selectedFiles=entries;renderSelectedFiles();state.draftRequestId=null;window.SaathiRecovery?.saveDraft('chat',state.activeId,{content:text,mode,request_id:null,had_attachments:files.length>0});}else if(!el.input.value.trim())window.SaathiRecovery?.removeDraft('chat',state.activeId);
+    if(data.assistant_message?.action_error&&!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.selectedFiles=entries;el.fileOnly.checked=fileOnly;renderSelectedFiles();state.draftRequestId=null;window.SaathiRecovery?.saveDraft('chat',state.activeId,{content:text,mode,request_id:null,had_attachments:files.length>0,file_only:fileOnly});}else if(!el.input.value.trim())window.SaathiRecovery?.removeDraft('chat',state.activeId);
     state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming&&message.id!==data.user_message.id&&message.id!==data.assistant_message.id);state.messages.push(normaliseMessageDisplay(data.user_message),normaliseMessageDisplay(data.assistant_message));
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
     return data;
-  }catch(error){if(!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.draftRequestId=currentRequestId;if(!state.selectedFiles.length)state.selectedFiles=entries;renderSelectedFiles()}if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+((error.name==='AbortError'&&error.code!=='AI_TIMEOUT')?'':'Failed. ')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true,...(error.code==='AI_LENGTH'&&streaming.content?{incomplete_text:streaming.content}:{})});renderMessages();scrollToLatest();}
-  finally{painter.cancel();setBusy(false);el.input.focus()}
+  }catch(error){if(error.code==='AI_STOPPED'&&!error.stop_unconfirmed)temporary.cancelled=true;if(!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.draftRequestId=currentRequestId;if(!state.selectedFiles.length)state.selectedFiles=entries;el.fileOnly.checked=fileOnly;renderSelectedFiles()}if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+((error.name==='AbortError'&&error.code!=='AI_TIMEOUT')?'':'Failed. ')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true,failed_request_id:currentRequestId,...(error.code==='AI_LENGTH'&&streaming.content?{incomplete_text:streaming.content}:{})});renderMessages();scrollToLatest();}
+  finally{painter.cancel();state.pendingExchange=null;setBusy(false);el.input.focus()}
 }
 
 let editingMessage=null,editController=null,editConversation=null;
@@ -970,9 +973,20 @@ document.getElementById('sendMessageEdit').onclick=async()=>{
   }catch(error){if(error.name!=='AbortError'&&dialog.open)document.getElementById('editMessageNotice').textContent=error.message}finally{button.disabled=false;if(editController===controller)editController=null}
 };
 
+async function stopCurrentRequest(){
+  const pending=state.pendingExchange;state.activeRequest?.abort();if(!pending||state.cancelling)return;
+  state.cancelling=true;updateComposer();const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+  state.cancelPromise=(async()=>{try{const data=await api('/api/conversations/'+pending.conversation_id+'/cancel',{method:'POST',signal:controller.signal,body:JSON.stringify({request_id:pending.request_id})});
+    if(data.cancelled){pending.message.cancelled=true;if(pending.regenerating)state.regenerationRequest=null;if(state.activeId===pending.conversation_id&&el.input.value.trim()===pending.content.trim()){state.draftRequestId=null;saveChatDraft()}}
+    else if(data.completed_regeneration&&state.activeId===pending.conversation_id){const saved=data.completed_regeneration.assistant_message;state.messages=state.messages.filter(m=>m!==pending.message&&!String(m.id).startsWith('regenerating-')&&m.id!==saved.id);state.messages.push(normaliseMessageDisplay(saved));state.regenerationRequest=null;renderMessages();showToast('Saved before Stop; the verified result is shown.')}
+    else if(data.completed&&state.activeId===pending.conversation_id){const result=data.completed;state.messages=state.messages.filter(message=>message!==pending.message&&message.failed_request_id!==pending.request_id&&message.id!==result.user_message.id&&message.id!==result.assistant_message.id);state.messages.push(normaliseMessageDisplay(result.user_message),normaliseMessageDisplay(result.assistant_message));if(result.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...result.attachment_usage};attachmentMeta()}if(pending.content&&el.input.value.trim()===pending.content.trim()){el.input.value='';clearSelectedFiles();window.SaathiRecovery?.removeDraft('chat',state.activeId)}renderMessages();showToast(window.SaathiI18n?.t('Saved before Stop; the verified result is shown.')||'Saved before Stop; the verified result is shown.')}
+  }catch(error){showToast(window.SaathiI18n?.t('Stop could not confirm the saved state. Retry checks the same request.')||'Stop could not confirm the saved state. Retry checks the same request.','warning')}
+  finally{clearTimeout(timer);state.cancelling=false;state.cancelPromise=null;updateComposer()}})();await state.cancelPromise
+}
+
 async function retryFailed(){
-  if(state.sending)return;const failedIndex=state.messages.findIndex(message=>message.failed);if(failedIndex<1)return;const previous=state.messages[failedIndex-1];
-  const retryFiles=previous.local_files||[];releaseLocalPreviews(previous);state.messages.splice(failedIndex-1,2);renderMessages();await sendContent(previous.content,retryFiles,previous.request_id,previous.ai_mode,previous.file_only,Boolean(el.input.value.trim()&&el.input.value.trim()!==previous.content.trim()||state.selectedFiles.length));
+  if(state.sending)return;if(state.cancelPromise)await state.cancelPromise;const failedIndex=state.messages.findIndex(message=>message.failed);if(failedIndex<1)return;const previous=state.messages[failedIndex-1];
+  const retryFiles=previous.local_files||[];releaseLocalPreviews(previous);state.messages.splice(failedIndex-1,2);renderMessages();await sendContent(previous.content,retryFiles,previous.cancelled?requestId():previous.request_id,previous.ai_mode,previous.file_only,Boolean(el.input.value.trim()&&el.input.value.trim()!==previous.content.trim()||state.selectedFiles.some((entry,index)=>entry.file!==retryFiles[index])||state.selectedFiles.length!==retryFiles.length));
 }
 
 async function regenerateReply(){
@@ -980,21 +994,23 @@ async function regenerateReply(){
   const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;
   const streaming={id:'regenerating-'+Date.now(),role:'assistant',content:'',streaming:true};
   state.messages.push(streaming);setBusy(true);renderMessages();scrollToLatest(false);
+  const user=state.messages.filter(m=>m.role==='user').at(-1);const previousRequest=state.regenerationRequest;const key=previousRequest?.conversation_id===state.activeId&&previousRequest.user_id===user?.id?previousRequest.request_id:requestId();state.regenerationRequest={conversation_id:state.activeId,user_id:user?.id,request_id:key};state.pendingExchange={conversation_id:state.activeId,request_id:key,message:previous,regenerating:true};
   const painter=createStreamPainter(streaming);
   try{
-    const data=await streamChatRequest(`/api/conversations/${state.activeId}/regenerate`,'{}',chunk=>{
+    const data=await streamChatRequest(`/api/conversations/${state.activeId}/regenerate`,JSON.stringify({request_id:key}),chunk=>{
       streaming.content+=chunk;
       painter.update();
     });
+    state.regenerationRequest=null;
     state.messages=state.messages.filter(message=>message!==previous&&message!==streaming);
     state.messages.push(normaliseMessageDisplay(data.assistant_message));renderMessages();
   }catch(error){
     state.messages=state.messages.filter(message=>message!==streaming);
-    if(streaming.content){el.input.value='';showToast('Reply stopped. The original saved answer is kept.','warning');
+    if(streaming.content){el.input.value='';showToast(previous.cancelled?'Reply stopped. The original saved answer is kept.':'Saving could not be confirmed. Reload to check the saved answer.','warning');
       const node=document.createElement('div');node.className='message-content';renderMarkdown(node,streaming.content);
-      const notice=document.createElement('p');notice.textContent='Incomplete alternative · not saved';node.prepend(notice);renderMessages();el.list.append(node);
+      const notice=document.createElement('p');notice.textContent=previous.cancelled?'Incomplete alternative · not saved':'Incomplete alternative · save status unconfirmed';node.prepend(notice);renderMessages();el.list.append(node);
     }else{renderMessages();showToast(error.message,'warning')}
-  }finally{painter.cancel();setBusy(false);el.input.focus()}
+  }finally{painter.cancel();state.pendingExchange=null;setBusy(false);el.input.focus()}
 }
 
 function openConversationMenu(event,id){
@@ -1029,7 +1045,8 @@ el.mode.addEventListener('change',updateModeDescription);
 el.composer.addEventListener('dragleave',event=>{if(!el.composer.contains(event.relatedTarget))el.composer.classList.remove('dragging')});
 el.composer.addEventListener('drop',event=>{event.preventDefault();el.composer.classList.remove('dragging');if(!state.sending)chooseFiles(event.dataTransfer?.files)});
 el.input.addEventListener('paste',event=>{const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);if(files.length){event.preventDefault();chooseFiles(files)}});
-el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){state.activeRequest?.abort();return}sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
+el.fileOnly.addEventListener('change',()=>{state.draftRequestId=null;saveChatDraft()});
+el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){stopCurrentRequest();return}if(!state.cancelling)sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
 el.search.addEventListener('input',()=>{historyLoadSequence++;el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
 document.getElementById('archiveToggle').addEventListener('click',()=>{if(state.sending)return;state.showArchived=!state.showArchived;state.activeId=null;state.messages=[];state.hasMore=false;updateComposer();document.getElementById('archiveToggle').classList.toggle('active',state.showArchived);document.getElementById('archiveLabel').textContent=state.showArchived?'Back to conversations':'Archived conversations';loadConversations()});

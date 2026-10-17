@@ -3,7 +3,8 @@ async function handleMindmapSubmit(event){
   event.preventDefault();
   const input=$('mindmapTopicInput');
   const topic=input.value.trim();
-  if(!topic)return;
+  if(!topic||state.mapGenerating)return;
+  state.mapGenerating=true;
   const depth=$('mindmapDepth')?.value||'standard';
   const btn=$('mindmapSubmitBtn');
   btn.disabled=true;
@@ -23,7 +24,8 @@ async function handleMindmapSubmit(event){
     }
     toast(err.message||'Could not generate mindmap','error');
   }finally{
-    btn.disabled=false;
+    state.mapGenerating=false;btn.disabled=state.mapRemaining==null||state.mapRemaining<=0;
+    renderMindmapsHistory();
     btn.textContent='Generate visual mindmap';
   }
 }
@@ -127,9 +129,14 @@ function zoomMindmap(delta){
 
 function resetMindmapZoom(){
   const vp=$('mmViewport'),layout=state.mmLayout||{width:1400,height:900};
-  state.mmZoom=Math.min(1,Math.max(0.01,(vp.clientWidth-16)/layout.width),Math.max(0.01,(vp.clientHeight-16)/layout.height));
+  // A whole-map thumbnail made 14px labels unreadable on phones. Keep at
+  // least 12px text and use the existing scroll/pan surface for larger maps.
+  state.mmZoom=Math.max(12/14,Math.min(1,(vp.clientWidth-16)/layout.width,(vp.clientHeight-16)/layout.height));
   applyMindmapZoom();
-  vp.scrollLeft=0;vp.scrollTop=0;
+  const root=layout.nodes?.[0];
+  vp.scrollLeft=root?Math.max(0,root.x*state.mmZoom-vp.clientWidth/2):0;
+  vp.scrollTop=root?Math.max(0,root.y*state.mmZoom-vp.clientHeight/2):0;
+  vp.title=window.SaathiI18n?.t('Readable view. Scroll to explore the map.')||'Readable view. Scroll to explore the map.';
 }
 
 function applyMindmapZoom(){
@@ -139,7 +146,7 @@ function applyMindmapZoom(){
 }
 
 function renderMindmapsHistory(){
-  window.SaathiJobs?.showAllowance($('mindmapAllowance'),'map',api,value=>{$('mindmapSubmitBtn').disabled=!value||!value.remaining});
+  window.SaathiJobs?.showAllowance($('mindmapAllowance'),'map',api,value=>{state.mapRemaining=value?.remaining??null;$('mindmapSubmitBtn').disabled=state.mapGenerating||!value||!value.remaining});
   openLinkedRecord('mindmap');
   const box=$('mindmapsHistoryList');
   if(!box)return;

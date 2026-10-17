@@ -525,8 +525,8 @@ def test_stream_timings_measure_first_text_without_logging_content(backend, monk
         with pytest.raises(StopIteration):
             next(stream)
     logger.warning.assert_called_once_with(
-        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
-        2000, 13000, 14000, "complete" if ending == "complete" else "interrupted")
+        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s profile=%s model=%s attachments=%s",
+        2000, 13000, 14000, "complete" if ending == "complete" else "interrupted", "normal", backend.gemini_model("normal"), 0)
     logger.info.assert_not_called()
     response.close.assert_called_once()
 
@@ -547,8 +547,8 @@ def test_stream_timings_handle_failure_before_provider_headers(backend, monkeypa
     with pytest.raises(backend.ProviderError):
         list(backend.stream_gemini_reply([{"role": "user", "content": "private prompt"}]))
     logger.info.assert_called_once_with(
-        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s",
-        None, None, 1000, "interrupted")
+        "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s profile=%s model=%s attachments=%s",
+        None, None, 1000, "interrupted", "normal", backend.gemini_model("normal"), 0)
     logger.warning.assert_not_called()
 
 
@@ -842,7 +842,7 @@ def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch)
     monkeypatch.setattr(backend, "require_user_id", lambda: 1)
     monkeypatch.setattr(backend, "limited", lambda *args: None)
     monkeypatch.setattr(backend, "get_db", Connection)
-    monkeypatch.setattr(backend, "owned_conversation", lambda *args: True)
+    monkeypatch.setattr(backend, "owned_conversation", lambda *args, **kwargs: {"id": 1})
     monkeypatch.setattr(backend, "load_attachment_payloads", lambda *args: [])
     monkeypatch.setattr(backend, "load_active_memory_bundle", lambda *args: ("", []))
     monkeypatch.setattr(backend, "load_user_language", lambda *args: "gu")
@@ -851,6 +851,7 @@ def test_regeneration_stream_cancel_preserves_saved_answer(backend, monkeypatch)
         response = backend.regenerate_conversation_reply(1)
         stream = iter(response.response)
         assert json.loads(next(stream))["type"] == "ready"
+        assert json.loads(next(stream))["stage"] == "generating"
         assert json.loads(next(stream))["text"] == "ગુજરાતી"
         response.close()
     assert closed == [True]

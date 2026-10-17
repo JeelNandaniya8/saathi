@@ -41,6 +41,29 @@ def equivalent(a,b):
     return (x is not None and y is not None and x==y) or ' '.join(a.casefold().split())==' '.join(b.casefold().split())
 
 
+def vector_zero_case(question):
+    """Exact zero-denominator cases only; never assume a zero dot product is an angle."""
+    text=question.casefold().replace('−','-')
+    vectors={}
+    for name,body in re.findall(r'\b([ab])\s*=\s*\(([^()]{1,100})\)',text):
+        values=[numeric_value(part) for part in body.split(',')]
+        if len(values) in (2,3) and all(value is not None for value in values):vectors[name]=values
+    zeros={name for name,values in vectors.items() if all(value==0 for value in values)}
+    undefined=False
+    if re.search(r'angle|કોણ|कोण',text) and len(vectors)==2 and zeros:undefined=True
+    if re.search(r'unit vector|એકમ સદિશ|मात्रक सदिश',text):
+        target=re.search(r'unit vector\s+(?:of|along|in the direction of)\s+(?:vector\s+)?([ab])\b',text)
+        if len(vectors)>1 and not target:return None
+        undefined=target[1] in zeros if target else bool(zeros or re.search(r'zero vector|null vector|શૂન્ય સદિશ|शून्य सदिश|\(\s*0\s*,\s*0\s*(?:,\s*0\s*)?\)',text))
+    if 'projection' in text:
+        target=re.search(r'(?:onto|on|along)\s+(?:the )?(?:vector )?([ab])\b',text)
+        if target and target[1] in zeros:undefined=True
+        elif target and len(vectors)==2 and zeros and target[1] not in zeros:
+            return dict(undefined=False,value=Fraction(0),explanation='The projected vector is zero and the target vector is nonzero, so the projection is zero.')
+    if undefined:return dict(undefined=True,explanation='Undefined: the formula divides by a zero vector magnitude. A zero dot product alone does not establish a right angle.')
+    return None
+
+
 def dice_probability(question):
     text=question.lower()
     if re.search(r'\b(?:sides|faces|numbered|tetrahedral|tetrahedron)\b',text):return None
@@ -66,6 +89,12 @@ def dice_probability(question):
 def check(question):
     options=question['options'];key=question['correct_option'];explanation=question['explanation']
     accepted=[letter for letter,text in options.items() if equivalent(text,options[key])]
+    vector=vector_zero_case(question['question'])
+    if vector:
+        if vector['undefined']:
+            accepted=[letter for letter,text in options.items() if re.search(r'undefined|not defined|not possible|અવ્યાખ્યાયિત|વ્યાખ્યાયિત નથી|અનિર્ધારિત|अपरिभाषित|परिभाषित नहीं',text,re.I)]
+        else:accepted=[letter for letter,text in options.items() if numeric_value(text)==vector['value']]
+        return dict(accepted=accepted,verified=True,explanation=vector['explanation'],issue='' if accepted else 'No option matches the independently checked vector domain.')
     oracle=dice_probability(question['question'])
     if oracle:
         value,explanation=oracle
