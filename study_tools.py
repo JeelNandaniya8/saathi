@@ -161,6 +161,12 @@ def validate_new_mindmap(raw,topic):
     if len(axes)>=2:
         qualified=re.search(r'non[ -]?zero denominators?|denominator(?: components?)?s? (?:are|must be) non[ -]?zero|છેદ[^.;]{0,25}(?:બિનશૂન્ય|શૂન્ય ન)|हर[^.;]{0,25}(?:अशून्य|शून्य नहीं)',text)
         explicit=all(re.search(r'\bb'+axis+r'\s*(?:!=|≠|\\neq?)\s*0',text) for axis in axes)
+        groups=re.findall(r'\b(b[xyz](?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)b[xyz])+)\s+(?:are(?: all)?|must be)\s+non[ -]?zero\b',text)
+        qualified=qualified or any(axes<=set(re.findall(r'b([xyz])',group)) for group in groups)
+        for body in re.findall(r'\bb\s*=\s*\(([^()]*)\)',text):
+            values=[assessment_quality.numeric_value(part) for part in body.split(',')]
+            if len(values) in {2,3} and all(value is not None for value in values):
+                explicit=explicit or all('xyz'.index(axis)<len(values) and values['xyz'.index(axis)]!=0 for axis in axes)
         warning=re.search(r'(?:avoid|do not use|undefined|not defined|invalid)[^.;]{0,90}a[xyz]\s*/',text)
         if not (qualified or explicit or warning):
             raise ValueError('This vector map uses component ratios without a nonzero denominator condition. Nothing was saved; use a = k*b or clarify the domain.')

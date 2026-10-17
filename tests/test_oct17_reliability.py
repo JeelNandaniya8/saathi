@@ -115,7 +115,15 @@ def test_new_map_rejects_unqualified_component_division_but_keeps_history_readab
  'ax/bx = ay/by = az/bz, provided all denominator components are nonzero.',
  'a_x/b_x = a_y/b_y = a_z/b_z when bx != 0, by != 0 and bz != 0.',
  'Avoid ax/bx = ay/by = az/bz when bx=0; use a=k*b instead.',
+ 'ax/bx = ay/by = az/bz when bx, by and bz are all non-zero.',
+ 'For parallel vectors with b=(2,4,6), ax/bx = ay/by = az/bz.',
 ])
 def test_new_map_keeps_valid_parallel_conditions(description):
     import study_tools
     assert study_tools.validate_new_mindmap(vector_map(description),'Vectors')['root']['children']
+
+
+def test_component_assignment_with_zero_denominator_is_not_a_valid_condition():
+    import study_tools
+    with pytest.raises(ValueError,match='denominator'):
+        study_tools.validate_new_mindmap(vector_map('For parallel vectors with b=(2,0,6), ax/bx = ay/by = az/bz.'),'Vectors')
