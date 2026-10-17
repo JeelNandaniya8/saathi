@@ -574,7 +574,7 @@ body.chat-polish{background:var(--paper)}
 
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
-<script src="/i18n.js?v=20261017a"></script>
+<script src="/i18n.js?v=20261017b"></script>
 <script src="/workspace-hub.js?v=20261014f"></script>
 <script src="/recovery.js?v=20260919"></script>
 <script src="/account-clock.js?v=20261014a"></script>
@@ -951,7 +951,15 @@ async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverr
     if(data.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...data.attachment_usage};attachmentMeta()}
     const conversation=normaliseConversationDisplay(data.conversation),preview=decodeLegacyText(data.assistant_message?.content||text);state.conversations=state.conversations.map(item=>item.id===conversation.id?{...item,...conversation,preview}:item);sortConversations();el.chatTitle.textContent=conversation.title;renderConversations();renderMessages();scrollToLatest();
     return data;
-  }catch(error){if(error.code==='AI_STOPPED'&&!error.stop_unconfirmed)temporary.cancelled=true;if(!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.draftRequestId=currentRequestId;if(!state.selectedFiles.length)state.selectedFiles=entries;el.fileOnly.checked=fileOnly;renderSelectedFiles()}if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+((error.name==='AbortError'&&error.code!=='AI_TIMEOUT')?'':'Failed. ')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true,failed_request_id:currentRequestId,...(error.code==='AI_LENGTH'&&streaming.content?{incomplete_text:streaming.content}:{})});renderMessages();scrollToLatest();}
+  }catch(error){
+    if(error.code==='AI_STOPPED'){
+      if(state.cancelPromise)await state.cancelPromise;
+      if(temporary.completed_on_stop){state.messages=state.messages.filter(message=>message!==temporary&&message!==streaming);renderMessages();return;}
+      if(!error.stop_unconfirmed)temporary.cancelled=true;
+      const notice=temporary.cancelled?'Reply stopped. Received text is kept here. No answer or action was saved for this request.':'Reply stopped. Saved state is unconfirmed. Retry checks the same request.';
+      error.message=window.SaathiI18n?.t(notice)||notice;
+    }
+    if(!preserveDraft&&!el.input.value.trim()){el.input.value=text;state.draftRequestId=currentRequestId;if(!state.selectedFiles.length)state.selectedFiles=entries;el.fileOnly.checked=fileOnly;renderSelectedFiles()}if(optimisticTitle&&active){active.title=previousTitle;active.preview='';el.chatTitle.textContent=previousTitle;renderConversations()}state.messages=state.messages.filter(message=>message!==streaming);state.messages.push({id:'failed-'+Date.now(),role:'assistant',content:(streaming.content?streaming.content+'\n\n':'')+((error.name==='AbortError'&&error.code!=='AI_TIMEOUT')?'':'Failed. ')+(error.message||'Connection interrupted. Try again to recover or resend.'),failed:true,failed_request_id:currentRequestId,...(error.code==='AI_LENGTH'&&streaming.content?{incomplete_text:streaming.content}:{})});renderMessages();scrollToLatest();}
   finally{painter.cancel();state.pendingExchange=null;setBusy(false);el.input.focus()}
 }
 
@@ -975,11 +983,11 @@ document.getElementById('sendMessageEdit').onclick=async()=>{
 
 async function stopCurrentRequest(){
   const pending=state.pendingExchange;state.activeRequest?.abort();if(!pending||state.cancelling)return;
-  state.cancelling=true;updateComposer();const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+  state.cancelling=true;setRequestStage('checking');updateComposer();const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   state.cancelPromise=(async()=>{try{const data=await api('/api/conversations/'+pending.conversation_id+'/cancel',{method:'POST',signal:controller.signal,body:JSON.stringify({request_id:pending.request_id})});
     if(data.cancelled){pending.message.cancelled=true;if(pending.regenerating)state.regenerationRequest=null;if(state.activeId===pending.conversation_id&&el.input.value.trim()===pending.content.trim()){state.draftRequestId=null;saveChatDraft()}}
-    else if(data.completed_regeneration&&state.activeId===pending.conversation_id){const saved=data.completed_regeneration.assistant_message;state.messages=state.messages.filter(m=>m!==pending.message&&!String(m.id).startsWith('regenerating-')&&m.id!==saved.id);state.messages.push(normaliseMessageDisplay(saved));state.regenerationRequest=null;renderMessages();showToast('Saved before Stop; the verified result is shown.')}
-    else if(data.completed&&state.activeId===pending.conversation_id){const result=data.completed;state.messages=state.messages.filter(message=>message!==pending.message&&message.failed_request_id!==pending.request_id&&message.id!==result.user_message.id&&message.id!==result.assistant_message.id);state.messages.push(normaliseMessageDisplay(result.user_message),normaliseMessageDisplay(result.assistant_message));if(result.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...result.attachment_usage};attachmentMeta()}if(pending.content&&el.input.value.trim()===pending.content.trim()){el.input.value='';clearSelectedFiles();window.SaathiRecovery?.removeDraft('chat',state.activeId)}renderMessages();showToast(window.SaathiI18n?.t('Saved before Stop; the verified result is shown.')||'Saved before Stop; the verified result is shown.')}
+    else if(data.completed_regeneration&&state.activeId===pending.conversation_id){pending.message.completed_on_stop=true;const saved=data.completed_regeneration.assistant_message;state.messages=state.messages.filter(m=>m!==pending.message&&!String(m.id).startsWith('regenerating-')&&m.id!==saved.id);state.messages.push(normaliseMessageDisplay(saved));state.regenerationRequest=null;renderMessages();showToast('Saved before Stop; the verified result is shown.')}
+    else if(data.completed&&state.activeId===pending.conversation_id){pending.message.completed_on_stop=true;const result=data.completed;state.messages=state.messages.filter(message=>message!==pending.message&&message.failed_request_id!==pending.request_id&&message.id!==result.user_message.id&&message.id!==result.assistant_message.id);state.messages.push(normaliseMessageDisplay(result.user_message),normaliseMessageDisplay(result.assistant_message));if(result.attachment_usage){state.attachmentLimits={...state.attachmentLimits,...result.attachment_usage};attachmentMeta()}if(pending.content&&(!el.input.value.trim()||el.input.value.trim()===pending.content.trim())){el.input.value='';clearSelectedFiles();window.SaathiRecovery?.removeDraft('chat',state.activeId)}renderMessages();showToast(window.SaathiI18n?.t('Saved before Stop; the verified result is shown.')||'Saved before Stop; the verified result is shown.')}
   }catch(error){showToast(window.SaathiI18n?.t('Stop could not confirm the saved state. Retry checks the same request.')||'Stop could not confirm the saved state. Retry checks the same request.','warning')}
   finally{clearTimeout(timer);state.cancelling=false;state.cancelPromise=null;updateComposer()}})();await state.cancelPromise
 }
@@ -991,7 +999,7 @@ async function retryFailed(){
 
 async function regenerateReply(){
   if(state.sending||!state.activeId)return;
-  const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;
+  const previous=state.messages[state.messages.length-1];if(previous?.role!=='assistant')return;delete previous.completed_on_stop;delete previous.cancelled;
   const streaming={id:'regenerating-'+Date.now(),role:'assistant',content:'',streaming:true};
   state.messages.push(streaming);setBusy(true);renderMessages();scrollToLatest(false);
   const user=state.messages.filter(m=>m.role==='user').at(-1);const previousRequest=state.regenerationRequest;const key=previousRequest?.conversation_id===state.activeId&&previousRequest.user_id===user?.id?previousRequest.request_id:requestId();state.regenerationRequest={conversation_id:state.activeId,user_id:user?.id,request_id:key};state.pendingExchange={conversation_id:state.activeId,request_id:key,message:previous,regenerating:true};
@@ -1005,11 +1013,13 @@ async function regenerateReply(){
     state.messages=state.messages.filter(message=>message!==previous&&message!==streaming);
     state.messages.push(normaliseMessageDisplay(data.assistant_message));renderMessages();
   }catch(error){
+    if(error.code==='AI_STOPPED'&&state.cancelPromise)await state.cancelPromise;
     state.messages=state.messages.filter(message=>message!==streaming);
+    if(previous.completed_on_stop){renderMessages();return;}
     if(streaming.content){el.input.value='';showToast(previous.cancelled?'Reply stopped. The original saved answer is kept.':'Saving could not be confirmed. Reload to check the saved answer.','warning');
       const node=document.createElement('div');node.className='message-content';renderMarkdown(node,streaming.content);
       const notice=document.createElement('p');notice.textContent=previous.cancelled?'Incomplete alternative · not saved':'Incomplete alternative · save status unconfirmed';node.prepend(notice);renderMessages();el.list.append(node);
-    }else{renderMessages();showToast(error.message,'warning')}
+    }else{renderMessages();const notice=error.code==='AI_STOPPED'?(previous.cancelled?'Reply stopped. The original saved answer is kept.':'Reply stopped. Saved state is unconfirmed. Retry checks the same request.'):error.message;showToast(notice,'warning')}
   }finally{painter.cancel();state.pendingExchange=null;setBusy(false);el.input.focus()}
 }
 

@@ -30,6 +30,42 @@ def test_context_reminder_confirmation_reads_back_bound_subject(db_app,monkeypat
 
 
 @pytest.mark.parametrize('stream',[False,True])
+@pytest.mark.parametrize('missing_item',[False,True])
+def test_context_reminder_resolves_only_the_current_owned_plan(db_app,monkeypatch,stream,missing_item):
+    import chat_actions
+    b,c,connect=db_app
+    monkeypatch.setattr(b,'provider_send',lambda *a,**k:pytest.fail('Receipt-bound reminder needs no AI'))
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    with connect() as conn:
+        with conn.cursor() as cur:
+            ids=[]
+            for title,when in [('Release17 Vectors Day 1','2030-10-19T13:30:00+00:00'),('Release17 Vectors Day 2','2030-10-20T13:30:00+00:00')]:
+                cur.execute('INSERT INTO tasks(user_id,title,due_at,created_at,updated_at) VALUES(1,%s,%s,NOW(),NOW()) RETURNING id',(title,when))
+                ids.append(cur.fetchone()['id'])
+            draft=dict(kind='plan',title='Study plan',items=[dict(title='Release17 Vectors Day 1'),dict(title='Release17 Vectors Day 2')])
+            cur.execute("INSERT INTO messages(user_id,conversation_id,role,content,created_at) VALUES(1,%s,'assistant',%s,NOW()) RETURNING id",(cid,chat_actions.saved_content(draft)))
+            mid=cur.fetchone()['id']
+            chat_actions.store_receipt(cur,1,mid,chat_actions.make_receipt('plan',ids))
+            cur.execute("UPDATE tasks SET title='Updated vector recall' WHERE id=%s",(ids[0],))
+            cur.execute("INSERT INTO tasks(user_id,title,created_at,updated_at) VALUES(2,'Other-account private task',NOW(),NOW())")
+            if missing_item:cur.execute('DELETE FROM tasks WHERE id=%s',(ids[1],))
+    preview=send(c,cid,'Remind me about this on 2030-10-18 at 6 PM IST',stream)['assistant_message']
+    assert one(connect,'SELECT COUNT(*) AS n FROM reminders')['n']==0
+    assert 'Other-account' not in preview['content']
+    if missing_item:
+        assert 'Which topic' in preview['content']
+        return
+    assert 'Updated vector recall' in preview['content'] and 'Release17 Vectors Day 2' in preview['content']
+    assert '2030-10-19, 07:00 PM' in preview['content']
+    saved=send(c,cid,'Confirm reminder',stream)['assistant_message']
+    assert saved['action_receipt']['kind']=='reminder'
+    row=one(connect,'SELECT title,note,next_run_at FROM reminders')
+    assert row['title']=='Study plan: Updated vector recall / Release17 Vectors Day 2'
+    assert 'Updated vector recall — 2030-10-19, 07:00 PM' in row['note']
+    assert row['next_run_at'].isoformat()=='2030-10-18T12:30:00+00:00'
+
+
+@pytest.mark.parametrize('stream',[False,True])
 def test_wrong_direction_never_becomes_saved_flashcards(db_app,monkeypatch,stream):
     b,c,connect=db_app
     reply='[FLASHCARDS]\nFront: Which direction is the DNA template read?\nBack: 5′→3′.\n[/FLASHCARDS]'

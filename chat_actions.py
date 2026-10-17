@@ -404,6 +404,25 @@ def direct_reply(cur,uid,messages,language='en'):
         source_index=len(messages)-(4 if pending else 2)
         source=messages[source_index] if source_index>=0 else {}
         quote=MARKER.sub('',str(source.get('content',''))).strip()
+        if '<SAATHI_ACTION>' in str(source.get('content','')):
+            # A save acknowledgement is not the thing the student referred to.
+            # Resolve only this message's owned receipt, never arbitrary model IDs.
+            saved=dict(source)
+            saved.pop('action_receipt',None);saved.pop('action_resource',None)
+            if cur is not None and saved.get('id'):load_receipts(cur,uid,[saved])
+            resource=saved.get('action_resource') or {}
+            receipt=saved.get('action_receipt') or {}
+            if not receipt or not resource or resource.get('available') is False:
+                quote=''
+            elif receipt.get('kind')=='plan':
+                items=resource.get('items') or []
+                zone=account_timezone(cur,uid)
+                quote='Study plan: '+' / '.join(item['title'] for item in items)
+                for item in items:
+                    when=datetime.fromisoformat(item['due_at']).astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')+' · '+zone if item.get('due_at') else 'No deadline'
+                    quote+='\n- '+item['title']+' — '+when
+            else:
+                quote=str(resource.get('title') or '').strip()
         if source.get('role')!='assistant' or not quote or chat_intents.clarification(quote) or quote.startswith(('Failed:','Not saved.')):
             return {'reply':'Which topic should I remind you about? Include the subject and the date and time.'}
         quote=re.sub(r'[*#`\[\]]','',quote).strip()

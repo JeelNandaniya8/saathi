@@ -35,6 +35,20 @@ def test_birthday_is_clean_and_does_not_keep_instructions():
     assert commands.parse('> Remember that my birthday is 1st January') is None
 
 
+@pytest.mark.parametrize('suffix',[
+    'Save this as a memory.', 'Please save that preference as memory!',
+    'Save this to my memory.', 'Save that preference to memory.',
+])
+def test_memory_drops_only_a_trailing_save_command(suffix):
+    fact='my preferred practice topic is Release17 combinatorics'
+    assert commands.parse(f'Remember that {fact}. {suffix}')['text']==fact
+
+
+def test_memory_preserves_a_save_phrase_inside_the_actual_fact():
+    fact='I prefer the phrase "save this as a memory" on my study poster'
+    assert commands.parse('Remember that '+fact)['text']==fact
+
+
 def test_reminder_uses_account_midnight_and_asks_for_confirmation():
     now=datetime(2026,10,13,20,0,tzinfo=timezone.utc)
     draft=commands.parse('Remind me tomorrow at 7 PM to revise probability','Asia/Kolkata',now)
