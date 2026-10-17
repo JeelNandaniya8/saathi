@@ -1,4 +1,4 @@
-"""Selected-course read-only import; AI only for an explicitly selected assignment."""
+"""Selected-course sync and own-student chat reads; separate selected-assignment AI."""
 import base64
 import hashlib
 import json
@@ -11,17 +11,21 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import urlencode, urlparse, quote
+from zoneinfo import ZoneInfo
 
 import requests
 from cryptography.fernet import Fernet, InvalidToken
 from flask import jsonify, request, session, redirect
 from psycopg2.extras import Json
+from psycopg2.errors import LockNotAvailable
 
 SCOPES = ('https://www.googleapis.com/auth/classroom.courses.readonly',
           'https://www.googleapis.com/auth/classroom.coursework.me.readonly')
 API = 'https://classroom.googleapis.com/v1/'
 TOKEN = 'https://oauth2.googleapis.com/token'
 _provider_deadline = ContextVar('classroom_deadline', default=None)
+SUBMISSION_STATES = {'NEW','CREATED','TURNED_IN','RETURNED','RECLAIMED_BY_STUDENT'}
+PENDING_STATES = {'NEW','CREATED','RECLAIMED_BY_STUDENT'}
 
 def has_required_scopes(value):
     """Accept Google's own-student read-only scope alias, never write access."""
@@ -119,26 +123,125 @@ def assignment(row):
     return external,title[:3000],description[:30000],safe_link(row.get('alternateLink','')),due,uncertain
 
 
-def sync_connection(cur,row):
+def sync_connection(cur,row,seconds=40):
     uid=row['user_id']
-    with provider_budget():
+    with provider_budget(seconds):
         token=access_token(row['refresh_cipher']);snapshots={}
         for cid in row['selected_courses']:
             if not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',cid):raise ProviderError('provider_unavailable')
             work=list_pages(token,'courses/'+quote(cid,safe='')+'/courseWork','courseWork',
                 {'courseWorkStates':'PUBLISHED','fields':'courseWork(id,title,description,alternateLink,dueDate,dueTime),nextPageToken'})
-            snapshots[cid]=[assignment(r) for r in work]
+            # The existing own-student read scope covers this endpoint. Never
+            # request classmates, grades, attachments, or a broader OAuth scope.
+            submissions=list_pages(token,'courses/'+quote(cid,safe='')+'/courseWork/-/studentSubmissions','studentSubmissions',
+                {'userId':'me','fields':'studentSubmissions(courseWorkId,state),nextPageToken'})
+            states={}
+            for submission in submissions:
+                external=submission.get('courseWorkId');state=submission.get('state')
+                if not isinstance(external,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',external) or external in states:
+                    raise ProviderError('provider_unavailable')
+                states[external]=state if isinstance(state,str) and state in SUBMISSION_STATES else 'UNKNOWN'
+            snapshots[cid]=[(assignment(r),states.get(r.get('id'),'UNKNOWN')) for r in work]
     count=0
     for cid,items in snapshots.items():
         cur.execute('UPDATE classroom_assignments SET available=FALSE WHERE user_id=%s AND course_id=%s',(uid,cid))
-        for external,title,note,url,due,uncertain in items:
-            cur.execute('''INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions,original_url,due_at,deadline_uncertain)
-                VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(user_id,course_id,external_id) DO UPDATE SET
+        for (external,title,note,url,due,uncertain),state in items:
+            cur.execute('''INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions,original_url,due_at,deadline_uncertain,submission_state)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(user_id,course_id,external_id) DO UPDATE SET
                 title=EXCLUDED.title,instructions=EXCLUDED.instructions,original_url=EXCLUDED.original_url,
-                due_at=EXCLUDED.due_at,deadline_uncertain=EXCLUDED.deadline_uncertain,available=TRUE,synced_at=NOW()''',
-                (uid,cid,external,title,note,url,due,uncertain));count+=1
-    cur.execute("UPDATE classroom_connections SET last_sync=NOW(),last_attempt=NOW(),last_error=NULL,sync_failures=0,next_sync_at=CASE WHEN auto_sync_enabled THEN NOW()+INTERVAL '6 hours' ELSE NULL END WHERE user_id=%s",(uid,))
+                due_at=EXCLUDED.due_at,deadline_uncertain=EXCLUDED.deadline_uncertain,
+                submission_state=EXCLUDED.submission_state,available=TRUE,synced_at=NOW()''',
+                (uid,cid,external,title,note,url,due,uncertain,state));count+=1
+    cur.execute("UPDATE classroom_connections SET last_sync=NOW(),submission_sync_at=NOW(),last_attempt=NOW(),last_error=NULL,sync_failures=0,next_sync_at=CASE WHEN auto_sync_enabled THEN NOW()+INTERVAL '6 hours' ELSE NULL END WHERE user_id=%s",(uid,))
     return count
+
+
+def format_chat_assignments(rows,connection,query,zone,language='en',now=None):
+    """Deterministic counts; titles are data and cannot become instructions."""
+    from chat_actions import task_date_filter
+    now=now or datetime.now(timezone.utc)
+    start,end,day=task_date_filter(query,zone,now)
+    overdue=bool(re.search(r'\boverdue\b|અતિવિલંબિત|अतिदेय|समयसीमा बीत',query,re.I))
+    words={
+        'en':dict(pending='pending assignments',overdue='Overdue',due='Due',none='No due date',uncertain='Deadline unconfirmed',unknown='Submission status unavailable',returned='Returned — review feedback; not assumed pending or complete',submitted='Submitted; excluded from pending',checked='Last checked',scope='Selected courses only',subject='Subject unavailable',more='Showing {n} of {total}; open Study → Google Classroom for the full list.'),
+        'gu':dict(pending='બાકી અસાઇનમેન્ટ',overdue='સમયમર્યાદા વીતી',due='છેલ્લી તારીખ',none='છેલ્લી તારીખ નથી',uncertain='સમયમર્યાદા અચોક્કસ',unknown='Submission સ્થિતિ ઉપલબ્ધ નથી',returned='પરત મળેલાં — feedback તપાસો; બાકી કે પૂર્ણ માન્યાં નથી',submitted='Submit થયેલાં; બાકીમાં ગણ્યાં નથી',checked='છેલ્લે તપાસ્યું',scope='ફક્ત પસંદ કરેલા courses',subject='વિષય ઉપલબ્ધ નથી',more='{total}માંથી {n} બતાવ્યાં; આખી યાદી Study → Google Classroomમાં જુઓ.'),
+        'hi':dict(pending='बाकी असाइनमेंट',overdue='समयसीमा बीती',due='अंतिम समय',none='समयसीमा नहीं',uncertain='समयसीमा अनिश्चित',unknown='सबमिशन स्थिति उपलब्ध नहीं',returned='वापस मिले — feedback देखें; बाकी या पूरा नहीं माना',submitted='Submit किए; बाकी में नहीं गिने',checked='अंतिम जाँच',scope='केवल चुने पाठ्यक्रम',subject='विषय उपलब्ध नहीं',more='{total} में से {n} दिखाए; पूरी सूची Study → Google Classroom में देखें.')
+    }.get(language)
+    if words is None:return format_chat_assignments(rows,connection,query,zone,'en',now)
+    def matches(row):
+        due=row['due_at']
+        if start is not None or end is not None or overdue:
+            if not due or row['deadline_uncertain']:return False
+            if start is not None and due<start:return False
+            if end is not None and due>=end:return False
+            if overdue and due>=now:return False
+        return True
+    pending=[r for r in rows if r['submission_state'] in PENDING_STATES and matches(r)]
+    returned=[r for r in rows if r['submission_state']=='RETURNED' and matches(r)]
+    unknown=[r for r in rows if r['submission_state']=='UNKNOWN' and matches(r)]
+    undated=[r for r in rows if (not r['due_at'] or r['deadline_uncertain']) and r['submission_state'] in PENDING_STATES|{'UNKNOWN'}] if day or overdue else []
+    catalog={c['id']:c.get('name') for c in connection['course_catalog'] if isinstance(c,dict) and isinstance(c.get('id'),str)}
+    escape=lambda value:re.sub(r'([\\`*_{}\[\]()<>#|$])',r'\\\1',str(value)).replace('\n',' ').replace('\r',' ')
+    def stamp(value):return value.astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')+' · '+zone
+    scope=(' · '+day.isoformat() if day else '')+(' · '+words['overdue'] if overdue else '')
+    lines=['Google Classroom · '+str(len(pending))+' '+words['pending']+scope,
+           words['scope']+' · '+str(len(connection['selected_courses'])),words['checked']+': '+stamp(connection['submission_sync_at'])]
+    def section(items,label=None,limit=50):
+        if label:lines.append('\n'+label+': '+str(len(items)))
+        for row in items[:limit]:
+            due=row['due_at']
+            deadline=words['uncertain'] if row['deadline_uncertain'] else words['none'] if not due else words['due']+': '+stamp(due)
+            if due and not row['deadline_uncertain'] and due<now and row['submission_state'] in PENDING_STATES:deadline+=' · '+words['overdue']
+            if row['submission_state']=='UNKNOWN':deadline+=' · '+words['unknown']
+            lines.append('- '+escape(catalog.get(row['course_id']) or words['subject'])+' · '+escape(row['title'])+' — '+deadline)
+        if len(items)>limit:lines.append(words['more'].format(n=limit,total=len(items)))
+    section(pending)
+    if returned:section(returned,words['returned'])
+    if unknown:section(unknown,words['unknown'])
+    if undated:section(undated,words['uncertain']+' / '+words['none'])
+    submitted=sum(r['submission_state']=='TURNED_IN' for r in rows)
+    if submitted:lines.append('\n'+words['submitted']+': '+str(submitted))
+    return '\n'.join(lines)
+
+
+def chat_reply(get_db,uid,query,language='en'):
+    """Read this authenticated user's connection; no LLM or other user's data."""
+    failure='Google Classroom data could not be fetched right now'
+    settings='[Study → Google Classroom](/dashboard#study)'
+    conn=get_db();cur=conn.cursor()
+    try:
+        # Concurrent disconnect/course changes finish before a later read, and
+        # a busy refresh fails promptly rather than holding chat indefinitely.
+        cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s FOR UPDATE NOWAIT',(uid,))
+        row=cur.fetchone()
+        if not row:return dict(reply=failure+'. Check your connection in '+settings+'.')
+        if not row['selected_courses']:return dict(reply=failure+'. Choose courses in '+settings+'.')
+        if not configuration():return dict(reply=failure+'. Classroom is temporarily unavailable; your saved work is retained.')
+        now=datetime.now(timezone.utc)
+        fresh=row['submission_sync_at'] and not row['last_error'] and timedelta(0)<=now-row['submission_sync_at']<timedelta(seconds=60)
+        if not fresh:
+            try:sync_connection(cur,row,seconds=12)
+            except ProviderError as error:
+                sync_failed(cur,row,error.code);conn.commit()
+                action='Reconnect in ' if error.code=='reconnect_required' else 'Retry from '
+                return dict(reply=failure+'. '+action+settings+'. Your previous imports were retained; they are not a current pending list.')
+            cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s',(uid,));row=cur.fetchone()
+        # Connection-row lock keeps selection/disconnect atomic through this
+        # snapshot; messages still use the existing cancellation/replay guard.
+        cur.execute('''SELECT a.course_id,a.title,a.due_at,a.deadline_uncertain,a.submission_state
+            FROM classroom_assignments a WHERE a.user_id=%s AND a.available=TRUE
+            AND a.course_id=ANY(%s) ORDER BY a.due_at NULLS LAST,a.course_id,a.external_id''',(uid,row['selected_courses']))
+        rows=cur.fetchall()
+        cur.execute('SELECT timezone FROM workspace_preferences WHERE user_id=%s',(uid,));preference=cur.fetchone()
+        zone=preference['timezone'] if preference else 'Asia/Kolkata'
+        try:reply=format_chat_assignments(rows,row,query,zone,language)
+        except ValueError as error:reply=str(error).replace('task date','assignment date')
+        conn.commit()
+        return dict(reply=reply,source_labels=['Requested classroom for this reply'])
+    except LockNotAvailable:
+        conn.rollback()
+        return dict(reply=failure+'. A Classroom update is already running. Please retry shortly.')
+    finally:cur.close();conn.close()
 
 def sync_failed(cur,row,code):
     failures=min(row['sync_failures']+1,20)
@@ -260,7 +363,7 @@ def register(app,b):
             if not row:raise ValueError('Connect Classroom first.')
             if type(data.get('version')) is not int or data['version']!=row['version']:return jsonify(error='Selection changed. Refresh.'),409
             if not set(ids).issubset({r['id'] for r in row['course_catalog']}):raise ValueError('Refresh your course list first.')
-            cur.execute('UPDATE classroom_connections SET selected_courses=%s,version=version+1,auto_sync_enabled=FALSE,next_sync_at=NULL WHERE user_id=%s',(Json(ids),uid));conn.commit()
+            cur.execute('UPDATE classroom_connections SET selected_courses=%s,version=version+1,auto_sync_enabled=FALSE,next_sync_at=NULL,submission_sync_at=NULL WHERE user_id=%s',(Json(ids),uid));conn.commit()
         return jsonify(ok=True)
 
     @app.post('/api/classroom/sync')

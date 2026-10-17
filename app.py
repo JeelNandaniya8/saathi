@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-18-inline-math"
+RELEASE_ID = "2026-10-18-classroom-chat"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2457,7 +2457,7 @@ def completed_regeneration(cur,user_id,conversation_id,request_id):
     return dict(assistant_message=message_to_dict(row,study_progress=study.get(row['id'])),replayed=True)
 
 
-def insert_local_exchange(cur, user_id, conversation_id, content, reply, request_id, now,fingerprint=None):
+def insert_local_exchange(cur, user_id, conversation_id, content, reply, request_id, now,fingerprint=None,source_labels=None):
     """Store both local turns together; actions still require separate read-back."""
     cur.execute(
         """
@@ -2470,14 +2470,14 @@ def insert_local_exchange(cur, user_id, conversation_id, content, reply, request
         ), assistant_turn AS (
             INSERT INTO messages (user_id, conversation_id, role, content,
                                   created_at, ai_mode, client_request_id, memory_labels)
-            SELECT %s, %s, 'assistant', %s, %s, 'normal', %s, '[]'::jsonb FROM user_turn
+            SELECT %s, %s, 'assistant', %s, %s, 'normal', %s, %s::jsonb FROM user_turn
             RETURNING id, role, content, created_at, ai_mode, memory_labels,
                       feedback, file_only, source_pages
         )
         SELECT * FROM user_turn UNION ALL SELECT * FROM assistant_turn
         """,
         (user_id, conversation_id, content, now, request_id,fingerprint,
-         user_id, conversation_id, reply, now, request_id),
+         user_id, conversation_id, reply, now, request_id,psycopg2.extras.Json(source_labels or [])),
     )
     rows = cur.fetchall()
     return (next(row for row in rows if row['role'] == 'user'),
@@ -2522,7 +2522,7 @@ def persist_streamed_exchange(
         local_pair = direct and not attachments
         if local_pair:
             user_message, assistant_message = insert_local_exchange(
-                cur, user_id, conversation_id, content, reply, request_id, now,fingerprint
+                cur, user_id, conversation_id, content, reply, request_id, now,fingerprint,direct.get('source_labels')
             )
         else:
             cur.execute(
@@ -2951,6 +2951,9 @@ def conversation_messages(conversation_id):
     memory_context, memory_labels = ("", []) if file_only or direct or study_reference.short_study(context,mode) else load_active_memory_bundle(user_id, None, mode, True, turn_context)
     try:
         if direct:
+            if direct.get('classroom_query'):
+                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language))
+                memory_labels=direct.get('source_labels',[])
             reply, ai_usage = direct['reply'], {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
         else:
             reply, ai_usage = generate_gemini_reply(context, memory_context, language, mode, include_usage=True, file_only=file_only)
@@ -3236,9 +3239,13 @@ def stream_conversation_message(conversation_id):
     def generate():
         provider = None
         chunks = []
+        reply_labels = memory_labels
         usage = {"prompt_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         try:
-            yield ndjson_event("ready", stage="saving" if direct and '<SAATHI_ACTION>' in direct['reply'] else "checking" if direct or local_reference else "waiting", allowance=map_allowance)
+            yield ndjson_event("ready", stage="classroom" if direct and direct.get('classroom_query') else "saving" if direct and '<SAATHI_ACTION>' in direct['reply'] else "checking" if direct or local_reference else "waiting", allowance=map_allowance)
+            if direct and direct.get('classroom_query'):
+                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language))
+                reply_labels=direct.get('source_labels',[])
             if direct or local_reference:
                 def direct_stream():
                     yield direct['reply'] if direct else local_reference
@@ -3266,7 +3273,7 @@ def stream_conversation_message(conversation_id):
             yield ndjson_event("stage",stage="saving")
             saved = persist_streamed_exchange(
                 user_id, conversation_id, conversation, content, user_wrote_content,
-                mode, request_id, attachments, reply, usage, memory_labels,
+                mode, request_id, attachments, reply, usage, reply_labels,
                 entitlement, is_first_user_message, file_only, direct,fingerprint,
             )
             yield ndjson_event("complete", data=saved)
@@ -5087,7 +5094,7 @@ def export_data():
         ("care_occurrences", "SELECT * FROM care_occurrences WHERE user_id=%s ORDER BY scheduled_for"),
         ("care_push_deliveries", "SELECT d.care_occurrence_id,d.scheduled_for,d.status,d.attempt_count,d.updated_at,d.sent_at FROM push_deliveries d JOIN reminders r ON r.id=d.reminder_id WHERE r.user_id=%s AND d.care_occurrence_id IS NOT NULL"),
         ("personal_context_fields", "SELECT category,field,value,source,use_in_ai,version,reviewed_at FROM personal_context_fields WHERE user_id=%s ORDER BY category,field"),
-        ("classroom_connections", "SELECT selected_courses,last_sync,last_error,created_at,auto_sync_enabled,next_sync_at,last_attempt,sync_failures FROM classroom_connections WHERE user_id=%s"),
+        ("classroom_connections", "SELECT selected_courses,last_sync,submission_sync_at,last_error,created_at,auto_sync_enabled,next_sync_at,last_attempt,sync_failures FROM classroom_connections WHERE user_id=%s"),
         ("classroom_assignments", "SELECT * FROM classroom_assignments WHERE user_id=%s ORDER BY id"),
         ("food_plans", "SELECT * FROM food_plans WHERE user_id=%s ORDER BY id"),
         ("care_shares", "SELECT * FROM care_shares WHERE owner_id=%s OR recipient_id=%s ORDER BY id"),

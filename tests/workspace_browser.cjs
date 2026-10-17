@@ -77,7 +77,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
      else if(pathname==='/api/classroom/status')data={configured:true,scheduler_ready:true,connected:classroomConnected,connection:{last_sync:null,last_error:null,version:1,auto_sync_enabled:!!classroomSchedules}};
      else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
-     else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
+     else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,course_id:'course1',submission_state:'NEW',title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
      else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
      else if(pathname==='/api/classroom/schedule'){assert.equal(body().confirmed,true);assert.equal(body().enabled,true);assert.equal(body().version,1);classroomSchedules++;data={ok:true}}
      else if(pathname==='/api/classroom/assignments/1/explain'){assert.equal(body().ai_confirmed,true);classroomExplains++;data={explanation:'Useful steps <script>unsafe</script>',saved:false,verified:false}}
@@ -234,6 +234,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('[data-classroom]').click();
    const classroom=page.getByRole('dialog',{name:'Google Classroom',exact:true});
    await classroom.getByText('No confirmed deadline',{exact:true}).waitFor();
+   await classroom.getByText('Not submitted',{exact:true}).waitFor();
+   await classroom.getByRole('article').getByText('English',{exact:true}).waitFor();
    assert.equal(await classroom.locator('script').count(),0);
    await classroom.getByRole('button',{name:'Explain requirements and steps',exact:true}).click();assert.equal(classroomExplains,0);
    await classroom.getByLabel('Send only this assignment to the AI provider for an explanation. No profile, memory or other assignments.',{exact:true}).check();
@@ -392,6 +394,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    });
    await page.locator('#sendButton').click();
    await page.locator('.request-stage').waitFor();assert.match(await page.locator('.request-stage').textContent(),/AI/);assert.equal(await page.locator('.thinking-dots').count(),0);
+   await page.evaluate(()=>setRequestStage('classroom'));
+   assert.equal(await page.locator('.request-stage').textContent(),'Checking Google Classroom…');
+   assert.equal(await page.locator('#sendButton').isDisabled(),false,'Stop stays available while Classroom is checked');
    assert.equal(await page.locator('#uploadStatus').isVisible(),false,'Text replies must not show upload status');
    assert.equal(await page.locator('.upload-progress').isVisible(),false,'No stray progress line');
    await page.screenshot({path:'/tmp/saathi-chat-'+width+'.png'});
