@@ -3576,12 +3576,15 @@ def correct_flashcard(message_id,card_index):
     front,back=data['front'].strip(),data['back'].strip()
     conn=get_db();cur=conn.cursor()
     try:
-        cur.execute("""SELECT m.content,p.progress FROM messages m JOIN study_progress p
-            ON p.message_id=m.id AND p.user_id=m.user_id
-            WHERE m.id=%s AND m.user_id=%s AND m.role='assistant' AND p.kind='flashcards'
-            FOR UPDATE OF m,p""",(message_id,user_id))
+        cur.execute("""SELECT content,conversation_id FROM messages
+            WHERE id=%s AND user_id=%s AND role='assistant' FOR UPDATE""",(message_id,user_id))
         row=cur.fetchone()
         if not row:return jsonify(error='Saved flashcards not found.'),404
+        cur.execute('SELECT kind,progress FROM study_progress WHERE message_id=%s AND user_id=%s FOR UPDATE',(message_id,user_id))
+        saved_progress=cur.fetchone()
+        if saved_progress and saved_progress['kind']!='flashcards':
+            return jsonify(error='Saved flashcards not found.'),404
+        row['progress']=saved_progress['progress'] if saved_progress else None
         cards=daily_workspace.flashcards(row['content'])
         if not 0<=card_index<len(cards):return jsonify(error='Flashcard not found.'),404
         original=(data['expected_front'],data['expected_back'])
@@ -3592,13 +3595,18 @@ def correct_flashcard(message_id,card_index):
         cards[card_index]=(front,back)
         block='[FLASHCARDS]\n'+'\n---\n'.join('Front: '+a+'\nBack: '+b for a,b in cards)+'\n[/FLASHCARDS]'
         content=re.sub(r'\[FLASHCARDS\][\s\S]*?\[/FLASHCARDS\]',lambda _:block,row['content'],count=1,flags=re.I)
-        progress=row['progress'] or {}
+        progress=row['progress'] or dict(current_index=0,known_indices=[],review_indices=[])
         progress={**progress,'corrected_indices':sorted(set(progress.get('corrected_indices',[]))|{card_index}),
                   'known_indices':[i for i in progress.get('known_indices',[]) if i!=card_index],
                   'review_indices':sorted(set(progress.get('review_indices',[]))|{card_index})}
         cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(content,message_id,user_id))
-        cur.execute('UPDATE study_progress SET progress=%s,updated_at=NOW() WHERE message_id=%s AND user_id=%s',
-                    (psycopg2.extras.Json(progress),message_id,user_id))
+        # Older readable cards can predate their progress row. Create it only
+        # after ownership, valid card text and the expected snapshot pass.
+        cur.execute("""INSERT INTO study_progress(user_id,conversation_id,message_id,kind,progress,created_at,updated_at)
+            VALUES(%s,%s,%s,'flashcards',%s,NOW(),NOW()) ON CONFLICT(message_id) DO UPDATE
+            SET progress=EXCLUDED.progress,updated_at=NOW()
+            WHERE study_progress.user_id=EXCLUDED.user_id AND study_progress.kind='flashcards'""",
+            (user_id,row['conversation_id'],message_id,psycopg2.extras.Json(progress)))
         cur.execute('UPDATE revision_items SET front=%s,back=%s,repetitions=0,next_review_at=NOW(),version=version+1 WHERE message_id=%s AND item_index=%s AND user_id=%s',
                     (front,back,message_id,card_index,user_id))
         # A separate read verifies the source and every existing revision copy.

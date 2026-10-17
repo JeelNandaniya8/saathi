@@ -213,6 +213,23 @@ def test_varied_critical_batch(db_app, monkeypatch, variant):
         owner(c, 1)
 
 
+@pytest.mark.parametrize('kind', ['user', 'plain_assistant', 'quiz'])
+def test_missing_progress_does_not_authorize_other_content(db_app, kind):
+    _, c, connect = db_app
+    cid = c.post('/api/conversations', json={}).json['conversation']['id']
+    content = 'Ordinary answer' if kind == 'plain_assistant' else '[FLASHCARDS]\nFront: Question\nBack: Original\n[/FLASHCARDS]'
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute('INSERT INTO messages(user_id,conversation_id,role,content,created_at) VALUES(1,%s,%s,%s,NOW()) RETURNING id', (cid, 'user' if kind == 'user' else 'assistant', content))
+            mid = cur.fetchone()['id']
+            if kind == 'quiz':
+                cur.execute("INSERT INTO study_progress(user_id,conversation_id,message_id,kind,progress,created_at,updated_at) VALUES(1,%s,%s,'quiz','{}',NOW(),NOW())", (cid, mid))
+    response = c.patch(f'/api/messages/{mid}/flashcards/0', json=dict(front='Question', back='Corrected', expected_front='Question', expected_back='Original'))
+    assert response.status_code == 404
+    assert one(connect, 'SELECT content FROM messages WHERE id=%s', (mid,))['content'] == content
+    assert one(connect, 'SELECT COUNT(*) AS n FROM study_progress')['n'] == (1 if kind == 'quiz' else 0)
+
+
 def test_critical_journey_sample_ledger(capsys):
     passed = [r for r in ROWS if r['outcome'] == 'passed']
     timings = sorted(r['ms'] for r in passed)
