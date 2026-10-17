@@ -133,7 +133,9 @@ function resetMindmapZoom(){
   // least 12px text and use the existing scroll/pan surface for larger maps.
   state.mmZoom=Math.max(12/14,Math.min(1,(vp.clientWidth-16)/layout.width,(vp.clientHeight-16)/layout.height));
   applyMindmapZoom();
-  vp.scrollLeft=0;vp.scrollTop=0;
+  const root=layout.nodes?.[0];
+  vp.scrollLeft=root?Math.max(0,root.x*state.mmZoom-vp.clientWidth/2):0;
+  vp.scrollTop=root?Math.max(0,root.y*state.mmZoom-vp.clientHeight/2):0;
   vp.title=window.SaathiI18n?.t('Readable view. Scroll to explore the map.')||'Readable view. Scroll to explore the map.';
 }
 

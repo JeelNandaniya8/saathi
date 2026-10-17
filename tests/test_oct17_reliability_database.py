@@ -6,7 +6,8 @@ import statistics
 from time import perf_counter
 from uuid import uuid4
 import pytest
-from PIL import Image
+import struct
+import zlib
 from test_database_flows import db_app,one,questions
 from test_audit_reliability_database import send
 
@@ -24,7 +25,10 @@ def fixture_reply(b,monkeypatch,reply='Fixture reply.',before=None):
 
 
 def upload(c,path,key,color='red',mode='normal',file_only=True):
-    image=io.BytesIO();Image.new('RGB',(8,8),color).save(image,format='PNG');image.seek(0)
+    pixel=b'\xff\x00\x00' if color=='red' else b'\x00\x00\xff'
+    def chunk(kind,data):return struct.pack('!I',len(data))+kind+data+struct.pack('!I',zlib.crc32(kind+data))
+    png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('!IIBBBBB',8,8,8,2,0,0,0))+chunk(b'IDAT',zlib.compress((b'\x00'+pixel*8)*8))+chunk(b'IEND',b'')
+    image=io.BytesIO(png)
     return c.post(path,data=dict(content='Read the fixture code.',mode=mode,request_id=key,file_only=str(file_only).lower(),attachments=(image,'same.png')),content_type='multipart/form-data')
 
 
