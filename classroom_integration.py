@@ -207,7 +207,7 @@ def format_chat_assignments(rows,connection,query,zone,language='en',now=None):
 def chat_reply(get_db,uid,query,language='en'):
     """Read this authenticated user's connection; no LLM or other user's data."""
     failure='Google Classroom data could not be fetched right now'
-    settings='[Study → Google Classroom](/dashboard#study)'
+    settings='Study → Google Classroom'
     conn=get_db();cur=conn.cursor()
     try:
         # Concurrent disconnect/course changes finish before a later read, and
