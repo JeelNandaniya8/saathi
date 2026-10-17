@@ -733,6 +733,8 @@ window.SaathiI18n.register({
   "Text recovered. Reattach your files before retrying.": "लिखा हुआ वापस मिला। फिर कोशिश से पहले फ़ाइलें दोबारा जोड़ें।",
   "Reattach the original files or discard them before sending.": "भेजने से पहले मूल फ़ाइलें दोबारा जोड़ें या हटा दें।",
   "Saving could not be confirmed. Retry checks the same request before saving.": "सेव होने की पुष्टि नहीं हुई। फिर कोशिश सेव करने से पहले उसी अनुरोध को जाँचेगी।",
+  "Reply stopped. Received text is kept here. No answer or action was saved for this request.": "उत्तर रोका गया। मिला हुआ पाठ यहाँ रखा है। इस अनुरोध का कोई उत्तर या कार्रवाई सेव नहीं हुई।",
+  "Reply stopped. Saved state is unconfirmed. Retry checks the same request.": "उत्तर रोका गया। सेव की स्थिति की पुष्टि नहीं हुई। दोबारा प्रयास इसी अनुरोध की जाँच करता है।",
   "Reply stopped. Received text is kept here. Checking whether anything was already saved.": "उत्तर रोका गया। मिला हुआ पाठ यहाँ रखा है। पहले से सेव हुआ है या नहीं, जाँच रहे हैं।",
   "Reattach the original files before retrying.": "फिर कोशिश से पहले मूल फ़ाइलें दोबारा जोड़ें।",
   "Saved before Stop; the verified result is shown.": "रोकने से पहले सेव हुआ था; जाँचा हुआ परिणाम दिख रहा है।",

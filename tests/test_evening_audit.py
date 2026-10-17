@@ -24,6 +24,14 @@ def test_contextual_reminder_with_no_source_asks_instead_of_guessing():
     assert 'Which topic' in result['reply'] and 'preview' not in result
 
 
+def test_contextual_reminder_does_not_trust_an_unreceipted_save_marker(monkeypatch):
+    monkeypatch.setattr(chat_actions,'load_receipts',lambda *a:None)
+    messages=[dict(role='assistant',id=999,content='Study plan saved to Planner.\n<SAATHI_ACTION>{}</SAATHI_ACTION>'),
+              dict(role='user',content='Remind me about this on 2030-10-18 at 6 PM IST')]
+    result=chat_actions.direct_reply(object(),1,messages)
+    assert 'Which topic' in result['reply'] and 'preview' not in result
+
+
 @pytest.mark.parametrize('front,back,wrong',[
  ('In which direction is the DNA template read?','5′→3′.',True),
  ('DNA replication direction?','The template strand is read in the 5\' to 3\' direction.',True),

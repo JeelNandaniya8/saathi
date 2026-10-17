@@ -21,7 +21,7 @@ def fact(text):
     if city:
         return {'kind': 'memory', 'title': 'Home city', 'text': 'Home city: ' + city[1].strip()}
     value = re.split(r'\s+(?:Save this personal fact|This is a demo audit fact)\b', value, flags=re.I)[0].strip(' .')
-    value=re.sub(r'(?:[.;!]\s*|\s+)(?:please\s+)?save (?:this|that)(?: fact| preference)? to (?:my )?memory[.!]?\s*$','',value,flags=re.I).strip(' .')
+    value=re.sub(r'(?:[.;!]\s*|\s+)(?:please\s+)?save (?:this|that)(?: fact| preference)? (?:to (?:my )?memory|as (?:a )?memory)[.!]?\s*$','',value,flags=re.I).strip(' .')
     if value:
         label='Study preference' if re.search(r'prefer.*(?:study|studying|learn)|(?:study|learning).*prefer',value,re.I) else 'Preference' if re.search(r'\bprefer\b',value,re.I) else 'Exam detail' if re.search(r'\bexam\b',value,re.I) else 'Personal detail'
         if label=='Preference':label=('Preference: '+' '.join(re.sub(r'^.*?\bprefer\s+','',value,flags=re.I).split()[:5]))[:60].rstrip()

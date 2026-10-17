@@ -65,3 +65,25 @@ CI [236](https://github.com/JeelNandaniya8/saathi/actions/runs/39025177674) was 
 Two uncovered audit cases were reproduced: the ten-minute helper missed the original Hindi NEET/mock prompt and omitted an explicit answer to a rank-guarantee question; vector map creation accepted unqualified `ax/bx = ay/by = az/bz` despite possible zero components. The follow-up recognises mock/NEET/JEE/board stress, explicitly declines requested guarantees, and honours an explicit reply-language choice. Both new map save paths reject the narrowly recognised unqualified component-ratio claim, while conditional ratios, division-free parallelism and existing saved-map reads remain available. The domain guard is not a general mathematical verifier.
 
 Targeted non-database checks pass 34/34, including explicit nonzero component lists and numeric denominator assignments. The full local run passes 481 and skips 184 PostgreSQL cases: no local database was available, so those skips are not passes. Added PostgreSQL cases cover failed new map saves without quota consumption or false receipts, both JSON/streamed chat paths, and unchanged legacy map reopening. Use the PR's current exact-commit CI result for their outcome. Physical devices, actual notification receipt, live generation and the eight independent live trust gates remain unverified. Render resource operations still require the user to identify the workspace; none was silently selected.
+
+
+## October 17 production verification and follow-up
+
+PR #49 was squash-merged as `05a9467816c8dbd9819aea69ee013876af981bda`. Render automatically deployed `dep-db9lh1vlk1mc73c292fg`, live at 11:15:04 UTC; the browser's `/api/health` showed `2026-10-17-reliability`, `ok`. No duplicate manual deploy or quota reset was used.
+
+Fresh signed-in Chrome evidence on that release:
+
+- October 17 Planner/chat agree exactly: three unfinished tasks, StrictAudit DNA Day 1 at 18:00, Audit evening DNA Day 1 at 19:00, Retest Vectors Day 2 at 20:00, Asia/Calcutta.
+- Normal chat saved map 9, Release17 JEE Vectors. It reopened from history; component ratios explicitly require nonzero denominators. Readable view opened at 86%. The disabled allowance check resolved to 2 remaining/reset, then the library showed 1 remaining after save.
+- Reminder 13 previews/reads back October 18 at 20:30. Future Snooze is disabled with a Reschedule tooltip. Background alerts remain explicitly Off. Actual delivery was not tested.
+- Note 31 saved, deep-linked, edited and reloaded with its exact title and body. Note 32 captured all three DNA cards through “Turn this into a private note”.
+- Fresh three-card DNA set correctly answers base pairing, RNA polymerase II, and 3′→5′ template / 5′→3′ synthesis. A fresh fraction and conditional-probability table rendered without raw LaTeX.
+- Paused memory 13 did not appear in a fresh answer. All six automatic context switches were Off; the answer withheld the unshared Planner count. This is visible behavioural evidence, not a new inspection of provider payloads.
+- A two-day plan saved tasks 22/23 for October 19/20 at 19:00. Its contextual reminder preview incorrectly quoted “Study plan saved to Planner.” The preview was not confirmed.
+- Memory capture retained trailing “Save this as a memory”. Stop restored the draft but left “Checking whether anything was already saved” after the check. These are newly reproduced issues, not passed gates.
+
+Follow-up changes resolve the saved source through its exact owned receipt, strip only a trailing memory-save command, and wait for the bounded Stop result before showing confirmed cancellation, saved receipt, or explicit uncertainty. Covers both response orders, response loss, draft retention and regeneration; locale bundles are refreshed. Existing saved memory content is not silently rewritten.
+
+Synthetic upload testing was blocked by the cloud browser's retained-credential file-chooser restriction. The documented existing-tab origin navigation restored ordinary observation. This is an environment limitation, not proof of a Saathi upload failure. Physical phones, notification receipt, production p95 and broad multilingual correctness remain open. No global success-rate claim follows from these small live samples.
+
+Local follow-up validation: 487 backend tests pass; 188 PostgreSQL cases remain skipped locally. All JavaScript regressions, including both Stop response orders, pass. CI with isolated PostgreSQL and real Chromium fixture journeys is pending; do not treat the preceding release's 665 tests as proof of this diff.
