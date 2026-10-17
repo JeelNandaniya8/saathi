@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-17-live-followup"
+RELEASE_ID = "2026-10-18-grounding"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -2196,12 +2196,11 @@ def cited_source_pages(reply, attachments, query="", mode="normal"):
         }
         for item in pdfs
     }
-    for name, page_text in re.findall(r"\[([^\]\n,]+),\s*Page\s+(\d+)\]", str(reply), re.I):
+    named_citation = re.compile(r"\[([^\]\n]+),\s*Page\s+(\d+)\]", re.I)
+    for name, page_text in named_citation.findall(str(reply)):
         page = int(page_text)
-        matched = next(
-            (item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()),
-            None,
-        )
+        matches = [item for item in pdfs if str(item.get("name") or "").lower() == name.strip().lower()]
+        matched = matches[0] if len(matches) == 1 else None
         if matched and page in allowed_pages.get(str(matched.get("name") or "").lower(), set()):
             key = (matched["name"], page)
             if key not in seen:
@@ -2209,7 +2208,10 @@ def cited_source_pages(reply, attachments, query="", mode="normal"):
                 sources.append({"name": matched["name"], "page": page})
     if len(pdfs) == 1:
         matched = pdfs[0]
-        for page_text in re.findall(r"\bPage\s+(\d+)\b", str(reply), re.I):
+        # A named reference to another file must not become a bare-page
+        # reference to this upload just because its page number exists here.
+        bare_text = named_citation.sub("", str(reply))
+        for page_text in re.findall(r"\bPage\s+(\d+)\b", bare_text, re.I):
             page = int(page_text)
             key = (matched["name"], page)
             if page in allowed_pages.get(str(matched.get("name") or "").lower(), set()) and key not in seen:
@@ -3572,12 +3574,15 @@ def correct_flashcard(message_id,card_index):
     front,back=data['front'].strip(),data['back'].strip()
     conn=get_db();cur=conn.cursor()
     try:
-        cur.execute("""SELECT m.content,p.progress FROM messages m JOIN study_progress p
-            ON p.message_id=m.id AND p.user_id=m.user_id
-            WHERE m.id=%s AND m.user_id=%s AND m.role='assistant' AND p.kind='flashcards'
-            FOR UPDATE OF m,p""",(message_id,user_id))
+        cur.execute("""SELECT content,conversation_id FROM messages
+            WHERE id=%s AND user_id=%s AND role='assistant' FOR UPDATE""",(message_id,user_id))
         row=cur.fetchone()
         if not row:return jsonify(error='Saved flashcards not found.'),404
+        cur.execute('SELECT kind,progress FROM study_progress WHERE message_id=%s AND user_id=%s FOR UPDATE',(message_id,user_id))
+        saved_progress=cur.fetchone()
+        if saved_progress and saved_progress['kind']!='flashcards':
+            return jsonify(error='Saved flashcards not found.'),404
+        row['progress']=saved_progress['progress'] if saved_progress else None
         cards=daily_workspace.flashcards(row['content'])
         if not 0<=card_index<len(cards):return jsonify(error='Flashcard not found.'),404
         original=(data['expected_front'],data['expected_back'])
@@ -3588,13 +3593,18 @@ def correct_flashcard(message_id,card_index):
         cards[card_index]=(front,back)
         block='[FLASHCARDS]\n'+'\n---\n'.join('Front: '+a+'\nBack: '+b for a,b in cards)+'\n[/FLASHCARDS]'
         content=re.sub(r'\[FLASHCARDS\][\s\S]*?\[/FLASHCARDS\]',lambda _:block,row['content'],count=1,flags=re.I)
-        progress=row['progress'] or {}
+        progress=row['progress'] or dict(current_index=0,known_indices=[],review_indices=[])
         progress={**progress,'corrected_indices':sorted(set(progress.get('corrected_indices',[]))|{card_index}),
                   'known_indices':[i for i in progress.get('known_indices',[]) if i!=card_index],
                   'review_indices':sorted(set(progress.get('review_indices',[]))|{card_index})}
         cur.execute('UPDATE messages SET content=%s WHERE id=%s AND user_id=%s',(content,message_id,user_id))
-        cur.execute('UPDATE study_progress SET progress=%s,updated_at=NOW() WHERE message_id=%s AND user_id=%s',
-                    (psycopg2.extras.Json(progress),message_id,user_id))
+        # Older readable cards can predate their progress row. Create it only
+        # after ownership, valid card text and the expected snapshot pass.
+        cur.execute("""INSERT INTO study_progress(user_id,conversation_id,message_id,kind,progress,created_at,updated_at)
+            VALUES(%s,%s,%s,'flashcards',%s,NOW(),NOW()) ON CONFLICT(message_id) DO UPDATE
+            SET progress=EXCLUDED.progress,updated_at=NOW()
+            WHERE study_progress.user_id=EXCLUDED.user_id AND study_progress.kind='flashcards'""",
+            (user_id,row['conversation_id'],message_id,psycopg2.extras.Json(progress)))
         cur.execute('UPDATE revision_items SET front=%s,back=%s,repetitions=0,next_review_at=NOW(),version=version+1 WHERE message_id=%s AND item_index=%s AND user_id=%s',
                     (front,back,message_id,card_index,user_id))
         # A separate read verifies the source and every existing revision copy.
@@ -5384,9 +5394,14 @@ def build_gemini_payload(
     if not GEMINI_API_KEY:
         raise ProviderError("AI_ACCESS", "Saathi is not connected yet. Please contact support so the AI connection can be configured.")
 
+    # File-only is a provider boundary, not just an instruction competing with
+    # older conversation text, uploads or a caller-supplied memory bundle.
+    history = messages[-1:] if file_only else messages
+    if file_only:
+        memory_context = ""
     selected = []
     remaining_characters = GEMINI_CONTEXT_CHARACTER_LIMIT
-    for message in reversed(messages[-30:]):
+    for message in reversed(history[-30:]):
         if not isinstance(message, dict):
             continue
         text = str(message.get("content", ""))[:5000].strip()
@@ -5512,7 +5527,7 @@ def build_gemini_payload(
         elif model == "gemini-3.8-flash":
             generation_config["thinkingConfig"] = {"thinkingLevel": "low"}
     latest_text = str(messages[-1].get("content", "")) if messages else ""
-    pending_scope = chat_intents.continuation(messages[:-1], latest_text)
+    pending_scope = None if file_only else chat_intents.continuation(messages[:-1], latest_text)
     latest_text = pending_scope or latest_text
     if chat_intents.automatic(latest_text, "plan") or chat_intents.automatic(latest_text, "mindmap"):
         generation_config["maxOutputTokens"] = max(generation_config["maxOutputTokens"], 3300)
