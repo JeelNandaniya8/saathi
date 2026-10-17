@@ -440,7 +440,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    const inlineMap=page.getByRole('dialog',{name:'Mindmap',exact:true});
    await inlineMap.getByLabel('Topic',{exact:true}).fill('Newton laws');
    await inlineMap.getByRole('button',{name:'Generate and save',exact:true}).click();
-   await inlineMap.getByText('Chat map branch',{exact:true}).waitFor();
+   await inlineMap.getByText('Chat map branch',{exact:true}).waitFor({timeout:5000}).catch(async error=>{
+    console.error('INLINE_MAP_FAILURE',JSON.stringify({width,errors,dialogs:await page.locator('dialog[open]').allTextContents(),requests:requests.slice(-20)}));
+    throw error;
+   });
    assert.equal(await inlineMap.locator('script').count(),0);
    assert.equal(requests.filter(p=>p==='/chat-study.js').length,1,'Both tools reuse one lazy module');
    await inlineMap.getByRole('button',{name:'Close',exact:true}).click();
