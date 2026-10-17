@@ -73,3 +73,11 @@ def test_exam_stress_step_does_not_intercept_crisis_or_other_requests():
 @pytest.mark.parametrize('text',['I am stressed about my exam; just listen, no advice.','Explain why exam stress causes chest pain','મને પરીક્ષાની ચિંતા છે, માત્ર સાંભળો','परीक्षा का तनाव है, सिर्फ सुनें'])
 def test_ten_minute_step_respects_listening_and_specific_requests(text):
     assert study_reference.exam_stress_step([dict(content=text)]) is None
+
+
+@pytest.mark.parametrize('language,word',[('en','Resets'),('gu','ફરી ઉપલબ્ધ'),('hi','फिर उपलब्ध')])
+def test_exhausted_quota_keeps_account_reset_in_each_language(language,word):
+    from study_tools import QuotaError
+    reset='2030-01-02, 05:30 AM · Asia/Kolkata'
+    text=QuotaError(dict(kind='map',reset_local=reset)).localized(language)
+    assert text.startswith('0 ') and word in text and reset in text

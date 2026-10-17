@@ -17,6 +17,11 @@ class QuotaError(ValueError):
         self.allowance=allowance
         super().__init__('0 '+allowance['kind']+' generations remaining. Resets '+allowance['reset_local']+'. Existing results remain available.')
 
+    def localized(self,language='en'):
+        if language=='gu':return '0 '+('માઇન્ડમેપ' if self.allowance['kind']=='map' else 'મોક ટેસ્ટ')+' બનાવટ બાકી. ફરી ઉપલબ્ધ: '+self.allowance['reset_local']+'. સાચવેલા પરિણામો ખોલી શકો છો.'
+        if language=='hi':return '0 '+('माइंडमैप' if self.allowance['kind']=='map' else 'मॉक टेस्ट')+' बनाना बाकी। फिर उपलब्ध: '+self.allowance['reset_local']+'। सहेजे परिणाम खोल सकते हैं।'
+        return str(self)
+
 
 def study_allowance(cur,uid,kind,pending=False):
     if kind not in {'mock','map'}:raise ValueError('Choose a study tool.')
@@ -151,7 +156,7 @@ def register(app,b):
             uid=b['require_user_id']()
             if not uid:return jsonify(error='Please log in first.'),401
             try:return fn(uid,*args,**kwargs)
-            except QuotaError as error:return jsonify(error=str(error),code='STUDY_QUOTA',allowance=error.allowance),429
+            except QuotaError as error:return jsonify(error=error.localized((request.get_json(silent=True) or {}).get('language','en')),code='STUDY_QUOTA',allowance=error.allowance),429
             except ValueError as error:return jsonify(error=str(error)),400
             except RuntimeError as error:return jsonify(error=str(error),code=getattr(error,'code','AI_UNAVAILABLE')),getattr(error,'status',503)
         return wrapped
