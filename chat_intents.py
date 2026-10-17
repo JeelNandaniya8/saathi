@@ -31,7 +31,8 @@ def source_query(text):
 def classroom_scope(text):
     """Quotes and a refusal to use school data cannot grant source access."""
     text=command(text)
-    if re.search(r'નહીં|નહિ|नहीं|मत|\bnahi\b',text,re.I):return ''
+    # Negating a read is different from asking about work not submitted yet.
+    if re.search(r'(?:બતાવ\S*|વાંચ\S*|તપાસ\S*|વાપર\S*)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ)\s*(?:બતાવ|વાંચ|તપાસ|વાપર)|(?:मत|नहीं)\s*(?:दिखा|पढ़|जाँच|देख|भेज)|(?:दिखा\S*|पढ़\S*|जाँच\S*|देख\S*|भेज\S*)\s*नहीं|\b(?:batav\S*|vanch\S*|use|read|show)\s+(?:nahi|mat)\b|\b(?:nahi|mat)\s+(?:batav|vanch|use|read|show)',text,re.I):return ''
     if re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b[^.;\n]*(?:classroom|assignments?|homework|coursework)",text,re.I):return ''
     text=source_query(text)
     text=re.split(r'\b(?:title|content|details)\s*:',text,maxsplit=1,flags=re.I)[0]
@@ -50,7 +51,7 @@ def classroom_read(text):
     bare = re.fullmatch(r"\s*(?:what(?: is|'s|’s) pending|show (?:my )?pending work)[?.!\s]*",text,re.I)
     school = re.search(r'\b(?:assignments?|homework|coursework|school (?:tasks?|work|to[ -]?do list)|to[ -]?do list (?:from |for )?(?:my )?school)\b|હોમવર્ક|ગૃહકાર્ય|અસાઇનમેન્ટ|હોમવક|होमवर्क|गृहकार्य|असाइनमेंट|असाइन्मेंट',text,re.I)
     classroom = re.search(r'classroom|ક્લાસરૂમ|क्लासरूम',text,re.I) and re.search(r'work|tasks?|assign|pending|due|left|remaining|કામ|બાકી|काम|बाकी',text,re.I)
-    read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any)\b|શું|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बाकी|लंबित',text,re.I)
+    read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any)\b|શું|કય|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बाकी|लंबित',text,re.I)
     return text.strip() if bare or (read and (school or classroom)) else ''
 
 

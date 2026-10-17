@@ -13,7 +13,8 @@ import classroom_integration as cc
     "What's pending?",'Do I have any homework?',
     'Show my to-do list from school','મારું હોમવર્ક શું બાકી છે?',
     'બાકી ગૃહકાર્ય બતાવો','maru homework shu baki che?',
-    'मेरा होमवर्क क्या बाकी है?','लंबित असाइनमेंट दिखाओ'])
+    'मेरा होमवर्क क्या बाकी है?','लंबित असाइनमेंट दिखाओ',
+    'कौन से असाइनमेंट जमा नहीं किए?','કયું હોમવર્ક હજી પૂરું નથી કર્યું?'])
 def test_school_queries_request_owned_classroom_even_when_auto_sharing_is_off(text):
     assert intents.classroom_read(text)
     assert 'classroom' in intents.sources(text)
@@ -38,7 +39,8 @@ def test_classroom_read_does_not_replace_planner_or_quote_permission(text):
     'Show pending homework. Do not use Classroom.',
     'Explain "Show my classroom assignments"',
     'મારું હોમવર્ક બતાવશો નહીં','मेरा होमवर्क मत दिखाओ',
-    'maru homework batavsho nahi'])
+    'maru homework batavsho nahi','Classroom ડેટા વાંચશો નહીં',
+    'Classroom मत पढ़ो','homework nahi batavsho'])
 def test_negative_or_quoted_school_requests_never_grant_the_source(text):
     assert not intents.classroom_read(text)
     assert 'classroom' not in intents.sources(text)
