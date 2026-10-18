@@ -27,7 +27,29 @@ too_many_items:['This course is too large to sync completely. No partial update 
 retained:['Previous imports are retained; they are not a current pending list.','અગાઉનાં imports રાખ્યાં છે; તે હાલનાં બાકી કામની યાદી નથી.','पिछले imports रखे गए हैं; वे अभी के बाकी काम की सूची नहीं हैं।'],
 invalidLink:['The connection link could not be verified. Try again.','જોડાણની link ચકાસી શકાઈ નથી. ફરી પ્રયત્ન કરો.','कनेक्शन की लिंक जाँची नहीं जा सकी। फिर कोशिश करें।']
 });
-function failure(e){const key=e.code==='missing_classroom_permissions'?'callbackPermissions':e.code;return words[key]?t(key)+' '+t('retained'):e.message}
+const validationCopy={
+'Confirm this Classroom action first.':['પહેલાં આ Classroom કાર્યવાહી માટે સંમતિ આપો.','पहले इस Classroom कार्रवाई की पुष्टि करें।'],
+'Choose up to three courses.':['ત્રણ સુધી courses પસંદ કરો.','अधिकतम तीन पाठ्यक्रम चुनें।'],
+'Choose whether to enable scheduled sync.':['આપમેળે sync ચાલુ રાખવું કે નહીં તે પસંદ કરો.','चुनें कि अपने आप सिंक चालू रखना है या नहीं।'],
+'Confirm sending only this assignment to the AI provider.':['ફક્ત આ અસાઇનમેન્ટ AIને મોકલવાની સંમતિ આપો.','केवल यह असाइनमेंट AI को भेजने की पुष्टि करें।'],
+'Choose English, Gujarati or Hindi.':['અંગ્રેજી, ગુજરાતી અથવા હિન્દી પસંદ કરો.','अंग्रेज़ी, गुजराती या हिंदी चुनें।'],
+'Choose whether to remove imported assignments. Planner tasks are retained.':['આયાત કરેલી અસાઇનમેન્ટ કાઢવી કે નહીં તે પસંદ કરો. Plannerનાં કામ રહેશે.','चुनें कि आयात असाइनमेंट हटाने हैं या नहीं। Planner के काम रहेंगे।'],
+'Disconnect the current Classroom account before connecting another.':['બીજું Classroom account જોડતાં પહેલાં હાલનું જોડાણ બંધ કરો.','दूसरा Classroom खाता जोड़ने से पहले वर्तमान कनेक्शन हटाएँ।'],
+'Sign in and reconnect Classroom.':['ફરી login કરીને Classroom ફરી જોડો.','फिर लॉग इन करके Classroom दोबारा जोड़ें।'],
+'Connect Classroom first.':['પહેલાં Classroom જોડો.','पहले Classroom जोड़ें।'],
+'Refresh your course list first.':['પહેલાં coursesની યાદી ફરી લોડ કરો.','पहले पाठ्यक्रम सूची ताज़ा करें।'],
+'Select courses first.':['પહેલાં courses પસંદ કરો.','पहले पाठ्यक्रम चुनें।'],
+'Automatic refresh is not available yet. You can sync manually.':['આપમેળે refresh હજી ઉપલબ્ધ નથી. તમે જાતે sync કરી શકો છો.','अपने आप अपडेट अभी उपलब्ध नहीं है। आप खुद सिंक कर सकते हैं।'],
+'Selected assignment not found.':['પસંદ કરેલી અસાઇનમેન્ટ મળી નથી.','चुना असाइनमेंट नहीं मिला।'],
+'Assignment or permission changed. Review it again.':['અસાઇનમેન્ટ અથવા પરવાનગી બદલાઈ છે. ફરી તપાસો.','असाइनमेंट या अनुमति बदल गई है। फिर जाँचें।'],
+'This assignment is no longer available. Check Classroom.':['આ અસાઇનમેન્ટ હવે ઉપલબ્ધ નથી. Classroom તપાસો.','यह असाइनमेंट अब उपलब्ध नहीं है। Classroom जाँचें।'],
+'Selection changed. Refresh.':['પસંદગી બદલાઈ છે. ફરી લોડ કરો.','चयन बदल गया है। फिर लोड करें।'],
+'Selection changed. Review again.':['પસંદગી બદલાઈ છે. ફરી તપાસો.','चयन बदल गया है। फिर जाँचें।'],
+'Sync just completed. Wait one minute before trying again.':['હમણાં જ sync પૂરું થયું. ફરી પ્રયત્ન પહેલાં એક મિનિટ રાહ જુઓ.','अभी सिंक पूरा हुआ। फिर कोशिश से पहले एक मिनट रुकें।'],
+'Assignment not found.':['અસાઇનમેન્ટ મળી નથી.','असाइनमेंट नहीं मिला।'],
+'Classroom could not complete this action. Your imported work is retained.':['Classroom આ કાર્યવાહી પૂરી કરી શક્યું નથી. આયાત કરેલું કામ રાખ્યું છે.','Classroom यह कार्रवाई पूरी नहीं कर सका। आयात किया काम रखा गया है।']
+};
+function failure(e){const key=e.code==='missing_classroom_permissions'?'callbackPermissions':e.code;return words[key]?t(key)+' '+t('retained'):(validationCopy[e.message]?.[({gu:0,hi:1})[document.documentElement.lang]]||window.SaathiI18n?.t(e.message)||e.message)}
 const needsReconnect=code=>['reconnect_required','missing_classroom_permissions','permission_or_admin_block'].includes(code);
 function node(tag,value,cls){const n=document.createElement(tag);if(value)n.textContent=value;if(cls)n.className=cls;return n}
 function button(label,fn){const b=node('button',label,'dw-button');b.type='button';b.onclick=fn;return b}
@@ -36,14 +58,14 @@ async function open(){
  const d=node('dialog',null,'dw-dialog');d.setAttribute('data-user-content','');d.style.overflowWrap='anywhere';const title=node('h2',t('open'));title.id='classroom-'+crypto.randomUUID();d.setAttribute('aria-labelledby',title.id);d.append(title,button(t('close'),()=>{if(!d.dataset.saving)d.close()}),node('p',t('notice'),'dw-muted'));const error=node('p',null,'dw-error');error.setAttribute('role','alert');const body=node('div');const progress=node('p',null,'dw-muted');progress.setAttribute('role','status');d.append(error,progress,body);document.body.append(d);d.showModal();d.addEventListener('close',()=>d.remove());d.addEventListener('cancel',e=>{if(d.dataset.saving)e.preventDefault()});let busy=false;
  async function run(fn){if(busy)return;busy=true;d.dataset.saving='true';d.setAttribute('aria-busy','true');progress.textContent=t('working');const controls=[...d.querySelectorAll('button,input,select,textarea')].map(n=>[n,n.disabled]);controls.forEach(([n])=>n.disabled=true);error.textContent='';try{await fn()}catch(e){if(needsReconnect(e.code)){try{await load()}catch(_){}}error.textContent=failure(e)}finally{busy=false;delete d.dataset.saving;d.removeAttribute('aria-busy');progress.textContent='';controls.forEach(([n,v])=>n.disabled=v)}}
  const post=(path,data)=>api('/api/classroom/'+path,{method:'POST',body:JSON.stringify({confirmed:true,...data})});
- function connectionControls(label){const consent=check(t('consent'));return[consent.wrap,button(label,()=>run(async()=>{if(!consent.el.checked){error.textContent=t('consent');return}const r=await post('connect',{});const u=new URL(r.url);if(u.origin!=='https://accounts.google.com')throw new Error(t('invalidLink'));location.assign(u.href)}))]}
+ function connectionControls(label,version){const consent=check(t('consent'));return[consent.wrap,button(label,()=>run(async()=>{if(!consent.el.checked){error.textContent=t('consent');return}const r=await post('connect',version===undefined?{}:{reconnect:true,version});const u=new URL(r.url);if(u.origin!=='https://accounts.google.com')throw new Error(t('invalidLink'));location.assign(u.href)}))]}
  function confirmButton(label,fn){let ready=false;const b=button(label,()=>{if(!ready){ready=true;b.textContent=t('confirm')+': '+label;return}run(fn)});return b}
  async function load(){
   const status=await api('/api/classroom/status');if(!d.isConnected)return;body.replaceChildren();if(!status.configured&&!status.connected){body.append(node('p',t('off')));return}
   if(!status.connected){body.append(...connectionControls(t('connect')));return}
   if(!status.configured){const remove=check(t('remove'));body.append(node('p',t('off')),remove.wrap,confirmButton(t('disconnect'),async()=>{await post('disconnect',{remove_imports:remove.el.checked});await load()}));return}
   body.append(node('p',t('last')+': '+(status.connection.last_sync?new Date(status.connection.last_sync).toLocaleString(document.documentElement.lang):t('never'))),node('p',t('stale'),'dw-muted'));
-  if(status.connection.last_error){body.append(node('p',t('syncError')+' '+failure({code:status.connection.last_error,message:''}),'dw-error'));if(needsReconnect(status.connection.last_error))body.append(...connectionControls(t('reconnect')))}
+  if(status.connection.last_error){body.append(node('p',t('syncError')+' '+failure({code:status.connection.last_error,message:''}),'dw-error'));if(needsReconnect(status.connection.last_error))body.append(...connectionControls(t('reconnect'),status.connection.version))}
   const courses=await api('/api/classroom/courses');if(!d.isConnected)return;const choices=node('fieldset'),legend=node('legend',t('courses'));choices.append(legend);const entries=[];for(const c of courses.courses){const entry=check(c.name);entry.el.checked=courses.selected.includes(c.id);entries.push([c.id,entry]);choices.append(entry.wrap)}body.append(button(t('refresh'),()=>run(async()=>{await api('/api/classroom/courses?refresh=1');await load()})),choices,button(t('save'),()=>run(async()=>{await post('select',{courses:entries.filter(([,c])=>c.el.checked).map(([id])=>id),version:courses.version});await load()})),button(t('sync'),()=>run(async()=>{await post('sync',{});await load()})));
   if(status.scheduler_ready||status.connection.auto_sync_enabled){const auto=check(t('schedule'));auto.el.checked=!!status.connection.auto_sync_enabled;if(!status.scheduler_ready){auto.el.disabled=true;body.append(node('p',t('autoOff'),'dw-muted'),button(t('scheduleSave'),()=>run(async()=>{await post('schedule',{enabled:false,version:status.connection.version});await load()})))}else body.append(auto.wrap,button(t('scheduleSave'),()=>run(async()=>{await post('schedule',{enabled:auto.el.checked,version:status.connection.version});await load()})));}else body.append(node('p',t('autoOff'),'dw-muted'));
   const data=await api('/api/classroom/assignments');if(!d.isConnected)return;if(!data.assignments.length)body.append(node('p',t('empty'),'dw-muted'));

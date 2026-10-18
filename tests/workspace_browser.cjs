@@ -77,7 +77,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
      else if(pathname==='/api/classroom/status')data={configured:true,scheduler_ready:true,connected:classroomConnected,connection:{last_sync:null,last_error:classroomError,version:1,auto_sync_enabled:!!classroomSchedules}};
-     else if(pathname==='/api/classroom/connect'){assert.equal(body().confirmed,true);classroomConnects++;data={url:'https://accounts.google.com/o/oauth2/v2/auth'}}
+     else if(pathname==='/api/classroom/connect'){assert.deepEqual(body(),{confirmed:true,reconnect:true,version:1});classroomConnects++;data={url:'https://not-google.example/blocked'}}
      else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
      else if(pathname==='/api/classroom/select'){assert.equal(body().confirmed,true);assert.deepEqual(body().courses,['course1']);assert.equal(body().version,1);classroomSelections++;data={ok:true}}
      else if(pathname==='/api/classroom/sync'){assert.equal(body().confirmed,true);classroomSyncs++;if(failClassroomSync){failClassroomSync=false;classroomError='reconnect_required';status=503;data={error:'Classroom could not complete this action. Your imported work is retained.',error_code:'reconnect_required'}}else{classroomError=null;data={ok:true}}}
@@ -266,12 +266,17 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     await classroom.getByText(labels.pending,{exact:true}).waitFor();
     await classroom.getByText(labels.due,{exact:true}).waitFor();
     assert.equal(await classroom.getByLabel('English',{exact:true}).isChecked(),true);
-    failClassroomSync=true;
+    const connectsBefore=classroomConnects;failClassroomSync=true;
     await classroom.getByRole('button',{name:labels.sync,exact:true}).click();
     await classroom.getByText(recovery[2],{exact:true}).waitFor();
     await classroom.getByRole('button',{name:recovery[0],exact:true}).click();
     await classroom.getByRole('alert').filter({hasText:recovery[1]}).waitFor();
-    assert.equal(classroomConnects,0,'Reauthorization cannot start without explicit consent');
+    assert.equal(classroomConnects,connectsBefore,'Reauthorization cannot start without explicit consent');
+    await classroom.getByLabel(recovery[1],{exact:true}).check();
+    await classroom.getByRole('button',{name:recovery[0],exact:true}).click();
+    const invalidLink={en:'The connection link could not be verified. Try again.',gu:'જોડાણની link ચકાસી શકાઈ નથી. ફરી પ્રયત્ન કરો.',hi:'कनेक्शन की लिंक जाँची नहीं जा सकी। फिर कोशिश करें।'}[labels.lang];
+    await classroom.getByText(invalidLink,{exact:true}).waitFor();assert.equal(classroomConnects,connectsBefore+1);
+    assert.equal(new URL(page.url()).origin,base,'A bad authorization URL cannot navigate away');
     assert.equal(await classroom.getByLabel('English',{exact:true}).isChecked(),true);
     assert.equal(await classroom.getByText('Original teacher instructions <script>unsafe</script>',{exact:true}).count(),1);
     const selectionsBefore=classroomSelections,syncsBefore=classroomSyncs;

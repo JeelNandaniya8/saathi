@@ -51,14 +51,19 @@ manual sync and one Normal chat request); both require authorization renewal.
 It is not a representative availability estimate and must not be omitted from
 the live results.
 
-Two source defects prevented that recovery: the dashboard dropped the API's
-`error_code`, and a connected dialog had no reconnect entry. More seriously,
-the OAuth callback used `ON CONFLICT DO NOTHING`, discarding renewed credentials
-for an existing connection. Repair the existing callback to replace only the
-encrypted authorization, invalidate the old submission snapshot, and increment
-the optimistic version while preserving course selection and imported records.
+The dashboard dropped the API's `error_code`, and a connected dialog had no
+reconnect entry. The connect endpoint also rejected an existing connection;
+the callback's `ON CONFLICT DO NOTHING` could not renew one. Add an explicit
+version-checked renewal path; keep the ordinary account-switch block. Bind the
+expected connection version inside the encrypted pending PKCE payload, without
+a schema change. Replace only the encrypted authorization, invalidate the old
+submission snapshot, and increment the optimistic version while preserving
+course selection and imported records. A changed or disconnected connection
+cannot be overwritten or recreated by an older renewal callback.
 Show native sanitized reasons and an explicit-consent reconnect control in all
-three languages, including immediately after an authorization failure. Required
+three languages, including immediately after an authorization failure. Translate
+critical selection, permission, stale-version and rate-limit validation errors.
+Required
 Google scopes are unchanged. New PostgreSQL coverage checks credential renewal,
 preserved imports/selection, version change and account isolation; Chromium
 fixtures cover `error_code` recovery and no reconnect without consent.
@@ -70,6 +75,10 @@ future once the real CI clock passed the fixed test time. Isolate that provider
 clock rather than weakening authentication or retry assertions. The fixture now
 also asserts authenticated conversation creation succeeded. A new green
 exact-head run is required; run 268 is not counted as passing validation.
+Run 269 then had **829 passed / 1 failed**: the new real-database renewal test
+reproduced the existing-connect HTTP400 block. The final version adds the
+explicit renewal flag and encrypted version binding, with a second regression
+for intervening selection changes/disconnects. Neither failed run is a pass.
 
 Local focused backend checks: **109 passed**. The repository JavaScript checks
 pass, including exact receipts and historical failures in EN/GU/HI. Full
