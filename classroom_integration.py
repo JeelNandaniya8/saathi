@@ -304,18 +304,23 @@ def register(app,b):
     @app.post('/api/classroom/connect')
     @private
     def connect(uid):
-        confirmed();config=configuration()
+        data=confirmed();config=configuration()
         if not config:raise ProviderError('not_configured')
         state=secrets.token_urlsafe(32);verifier=secrets.token_urlsafe(48)
         challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
         with db() as (conn,cur):
             cur.execute('SELECT id FROM users WHERE id=%s FOR UPDATE',(uid,))
-            cur.execute('SELECT user_id FROM classroom_connections WHERE user_id=%s',(uid,))
-            if cur.fetchone():raise ValueError('Disconnect the current Classroom account before connecting another.')
+            cur.execute('SELECT version FROM classroom_connections WHERE user_id=%s',(uid,));existing=cur.fetchone()
+            if existing:
+                if data.get('reconnect') is not True:raise ValueError('Disconnect the current Classroom account before connecting another.')
+                if type(data.get('version')) is not int or data['version']!=existing['version']:return jsonify(error='Selection changed. Refresh.'),409
+            # Bind a renewal to the existing connection version inside the
+            # authenticated PKCE payload; no schema or OAuth scope change.
+            verifier_payload=json.dumps({'verifier':verifier,'renew_version':existing['version']}) if existing else verifier
             cur.execute('''INSERT INTO classroom_oauth_requests(user_id,state_hash,verifier_cipher,session_version,expires_at)
                 VALUES(%s,%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET state_hash=EXCLUDED.state_hash,
                 verifier_cipher=EXCLUDED.verifier_cipher,session_version=EXCLUDED.session_version,expires_at=EXCLUDED.expires_at''',
-                (uid,hashlib.sha256(state.encode()).hexdigest(),cipher().encrypt(verifier.encode()).decode(),session.get('session_version'),datetime.now(timezone.utc)+timedelta(minutes=10)))
+                (uid,hashlib.sha256(state.encode()).hexdigest(),cipher().encrypt(verifier_payload.encode()).decode(),session.get('session_version'),datetime.now(timezone.utc)+timedelta(minutes=10)))
             conn.commit()
         return jsonify(url='https://accounts.google.com/o/oauth2/v2/auth?'+urlencode({'client_id':config[0],'redirect_uri':config[2],
             'response_type':'code','scope':' '.join(SCOPES),'access_type':'offline','prompt':'consent select_account',
@@ -338,6 +343,12 @@ def register(app,b):
         if not code or len(code)>4096:raise ValueError('Restart Classroom connection.')
         try:verifier=cipher().decrypt(pending['verifier_cipher'].encode()).decode()
         except InvalidToken:raise ProviderError('reconnect_required') from None
+        renew_version=None
+        if verifier.startswith('{'):
+            try:
+                renewal=json.loads(verifier);verifier=renewal['verifier'];renew_version=renewal['renew_version']
+                if not isinstance(verifier,str) or type(renew_version) is not int:raise ValueError()
+            except (ValueError,KeyError,TypeError):raise ProviderError('reconnect_required') from None
         tokens=provider_json('POST',TOKEN,data={'client_id':config[0],'client_secret':config[1],'redirect_uri':config[2],
             'code':code,'code_verifier':verifier,'grant_type':'authorization_code'})
         if not has_required_scopes(tokens.get('scope')):raise ProviderError('missing_classroom_permissions')
@@ -347,7 +358,13 @@ def register(app,b):
             cur.execute('SELECT session_version FROM users WHERE id=%s FOR UPDATE',(uid,))
             user=cur.fetchone()
             if not user or user['session_version']!=pending['session_version']:raise ValueError('Sign in and reconnect Classroom.')
-            cur.execute('INSERT INTO classroom_connections(user_id,refresh_cipher) VALUES(%s,%s) ON CONFLICT DO NOTHING',(uid,cipher().encrypt(refresh.encode()).decode()))
+            encrypted=cipher().encrypt(refresh.encode()).decode()
+            if renew_version is not None:
+                cur.execute('''UPDATE classroom_connections SET refresh_cipher=%s,last_error=NULL,
+                    submission_sync_at=NULL,version=version+1 WHERE user_id=%s AND version=%s RETURNING user_id''',
+                    (encrypted,uid,renew_version))
+                if not cur.fetchone():raise ValueError('Selection changed. Review again.')
+            else:cur.execute('INSERT INTO classroom_connections(user_id,refresh_cipher) VALUES(%s,%s) ON CONFLICT DO NOTHING',(uid,encrypted))
             conn.commit()
         return redirect('/dashboard#study')
 

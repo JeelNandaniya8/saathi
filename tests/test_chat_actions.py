@@ -3,6 +3,23 @@ import pytest
 import chat_actions as actions
 
 
+@pytest.mark.parametrize('detail',[
+    'Nothing was saved: no valid action was returned.',
+    'Save could not be read back. Retry.',
+    'ગુજરાતી: આ વિનંતી સાચવાઈ નથી.',
+    'हिन्दी: यह अनुरोध सेव नहीं हुआ।',
+])
+def test_reloaded_action_error_keeps_detail_without_display_prefix(detail):
+    class Cursor:
+        def execute(self,query,params):pass
+        def fetchall(self):return []
+    message={'id':61,'content':'Failed: '+detail+'\nRetry when ready.'}
+    actions.load_receipts(Cursor(),7,[message])
+    assert message['action_error']==detail
+    assert message['content']=='Failed: '+detail+'\nRetry when ready.'
+    assert 'action_receipt' not in message
+
+
 def test_action_validation_and_clarification():
     future=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()
     assert actions.validate_action(dict(kind='reminder',title='Read chapter',at=future))['at']==future

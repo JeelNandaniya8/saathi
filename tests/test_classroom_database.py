@@ -14,8 +14,8 @@ def configured(monkeypatch):
     monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'private-refresh','access_token':'private-access','scope':' '.join(cc.SCOPES)})
 
 
-def connect(c):
-    r=c.post('/api/classroom/connect',json={'confirmed':True});assert r.status_code==200,r.json
+def connect(c,**data):
+    r=c.post('/api/classroom/connect',json={'confirmed':True,**data});assert r.status_code==200,r.json
     query=parse_qs(urlparse(r.json['url']).query)
     assert query['code_challenge_method']==['S256'] and query['access_type']==['offline']
     state=query['state'][0];r=c.get('/api/classroom/callback',query_string={'code':'test-code','state':state})
@@ -38,6 +38,47 @@ def test_oauth_state_session_single_use_and_private_export(db_app,configured):
     assert c.get('/api/classroom/assignments').json['assignments']==[]
     assert c.post('/api/classroom/disconnect',json={'confirmed':True,'remove_imports':True}).json['ok']
     assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==1
+
+
+def test_reconnect_replaces_authorization_without_deleting_imports(db_app,configured,monkeypatch):
+    _,c,db=db_app;connect(c)
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE classroom_connections SET selected_courses='[\"course1\"]',last_error='reconnect_required' WHERE user_id=1")
+            cur.execute("INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions) VALUES(1,'course1','kept','Kept assignment','Teacher words')")
+    before=one(db,'SELECT refresh_cipher,version FROM classroom_connections WHERE user_id=1')
+    monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'renewed-private-refresh','access_token':'renewed-private-access','scope':' '.join(cc.SCOPES)})
+    assert c.post('/api/classroom/connect',json={'confirmed':True}).status_code==400
+    connect(c,reconnect=True,version=before['version'])
+    after=one(db,'SELECT refresh_cipher,version,selected_courses,last_error,submission_sync_at FROM classroom_connections WHERE user_id=1')
+    assert after['refresh_cipher']!=before['refresh_cipher']
+    assert cc.cipher().decrypt(after['refresh_cipher'].encode())==b'renewed-private-refresh'
+    assert after['version']==before['version']+1 and after['selected_courses']==['course1']
+    assert after['last_error'] is None and after['submission_sync_at'] is None
+    kept=one(db,'SELECT title,instructions FROM classroom_assignments WHERE user_id=1')
+    assert kept=={'title':'Kept assignment','instructions':'Teacher words'}
+    with c.session_transaction() as session:session['user_id']=2
+    assert c.get('/api/classroom/status').json['connected'] is False
+
+
+def test_reconnect_cannot_overwrite_a_changed_or_disconnected_connection(db_app,configured,monkeypatch):
+    _,c,db=db_app;connect(c)
+    before=one(db,'SELECT refresh_cipher FROM classroom_connections WHERE user_id=1')
+    def begin():
+        version=c.get('/api/classroom/status').json['connection']['version']
+        result=c.post('/api/classroom/connect',json={'confirmed':True,'reconnect':True,'version':version})
+        assert result.status_code==200,result.json
+        return parse_qs(urlparse(result.json['url']).query)['state'][0]
+    state=begin()
+    with db() as conn:
+        with conn.cursor() as cur:cur.execute('UPDATE classroom_connections SET version=version+1 WHERE user_id=1')
+    assert c.get('/api/classroom/callback',query_string={'code':'test-code','state':state}).location=='/dashboard?classroom_result=expired#study'
+    assert one(db,'SELECT refresh_cipher FROM classroom_connections WHERE user_id=1')==before
+    state=begin()
+    with db() as conn:
+        with conn.cursor() as cur:cur.execute('DELETE FROM classroom_connections WHERE user_id=1')
+    assert c.get('/api/classroom/callback',query_string={'code':'test-code','state':state}).location=='/dashboard?classroom_result=expired#study'
+    assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==0
 
 
 def test_selected_courses_sync_duplicate_update_missing_and_planner(db_app,configured,monkeypatch):
