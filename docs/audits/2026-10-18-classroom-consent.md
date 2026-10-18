@@ -1,5 +1,29 @@
 # Classroom consent follow-up — 18 October 2026
 
+## Normal-chat mindmap reproduction
+
+Fresh production quota resolved to **2 maps remaining**, reset October 19 at
+05:30 Asia/Calcutta; the older zero-quota observation was no longer current.
+One Normal-chat request for `Audit18C Probability` failed with
+`Nothing was saved: no valid action was returned.` The exact draft and Normal
+selection were preserved. There was no success receipt. The old failure handler
+discarded the provider's raw text, so its exact missing/invalid wrapper cannot be
+established from this observation.
+
+Four controlled transport/file-only cases reproduced rejection of a valid map
+JSON response without model-generated action tags. The fix uses the existing
+direct-generator JSON protocol, shared map instructions and validators; the
+server supplies the action wrapper and the existing transaction still verifies
+the saved map. It makes one provider call, preserves real usage and file-only
+payload restrictions, and leaves model/vendor/limits unchanged. Database cases
+cover exact reopen, replay without another call or map, busy/invalid output,
+zero false receipts and unchanged quota after failure.
+
+Content-free timing events now include fast streams as well as slow ones, plus
+study JSON response timing. The latter measures provider/JSON completion, not a
+database commit or first words. Production p95 and >=99% live success still need
+a representative workload; no fixture or single live call establishes either.
+
 ## Live retest follow-up
 
 PR56 passed CI256: 789 tests, no skips, JavaScript and all five Chromium widths.
