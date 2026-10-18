@@ -679,7 +679,7 @@ async function openLinkedRecord(kind,items=[]){
  const raw=new URLSearchParams(location.search).get(kind);if(!/^[1-9]\d*$/.test(raw||''))return;
  state.linkedResourceHandled??=new Set();if(state.linkedResourceHandled.has(kind))return;
  state.linkedResourceHandled.add(kind);const id=Number(raw);
- if(kind==='mindmap'){openMindmap(id);return}
+ if(kind==='mindmap')return loadSavedMindmap(id);
  let record=items.find(item=>item.id===id);if(!record&&['habit','journal','checkin'].includes(kind)){try{const config={habit:['/api/habits','habits'],journal:['/api/journal','entries'],checkin:['/api/check-ins','check_ins']}[kind],data=await api(config[0]+'?id='+id);record=data[config[1]]?.find(item=>item.id===id)}catch(error){state.linkedResourceHandled.delete(kind);toast(error.message,'error');return}}if(!record){toast('This saved item is no longer available.','error');return}
  if(kind==='habit'){editHabit(record);return}
  if(kind==='journal'){editJournal(record);return}
@@ -866,7 +866,7 @@ const workspaceSections=[
   {key:'memory',label:'Memory',url:'/api/memories',apply:data=>{state.memories=data.memories||[];renderMemories();openLinkedRecord('memory',state.memories)}},
   {key:'family',label:'Family Bridge',url:'/api/trusted-contacts',apply:data=>{state.contacts=data;renderContacts()}},
   {key:'mocktests',label:'Mock Tests',url:'/api/mock-tests/history',apply:data=>{state.mockTests=data.tests||[];state.mockHistoryReady=true;state.mockHistoryError=null;renderMockTestHistory()}},
-  {key:'mindmaps',label:'Mindmaps',url:'/api/mindmaps/history',apply:data=>{state.mindmaps=data.mindmaps||[];renderMindmapsHistory()}},
+  {key:'mindmaps',label:'Mindmaps',url:'/api/mindmaps/history',apply:async data=>{state.mindmaps=data.mindmaps||[];renderMindmapsHistory();await openLinkedRecord('mindmap',state.mindmaps)}},
   {key:'referrals',label:'Referrals',url:'/api/referrals',apply:data=>{state.referrals=data;renderReferralData()}}
 ];
 $('mockTestForm').addEventListener('submit',generateMockTest);

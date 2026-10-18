@@ -1,5 +1,22 @@
 # Classroom consent follow-up — 18 October 2026
 
+## Exact mindmap link follow-up
+
+On `e28009e3428819f81328442dfa9b6c08a84383f8`, the same Normal-chat request
+saved `Audit18C Probability` as map 12 and reduced remaining quota from 2 to 1.
+History opened its actual root, three branches and probability details. However,
+receipt navigation and a fresh reload of `/dashboard?mindmap=12#mindmaps`
+left only the list visible. This is a persisted-save pass and a deep-link failure,
+not a complete success. A new regression first failed with `openMindmap is not
+defined`; inspection also found the map section did not invoke the link handler.
+
+The minimal fix invokes the existing owned-record loader after the lazy tool and
+history load. Reopen never calls generation. Unit coverage checks the exact ID,
+one read, and an ID omitted from history; five-width Chromium coverage opens the
+cold deep link and asserts the actual viewer/title/content, with no new generation.
+The self-retest and final release proof belong in the PR and current audit report;
+there is no independent certification or production p95 claim.
+
 ## Normal-chat mindmap reproduction
 
 Fresh production quota resolved to **2 maps remaining**, reset October 19 at
