@@ -461,14 +461,21 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await inlineMap.locator('script').count(),0);
    assert.equal(requests.filter(p=>p==='/chat-study.js').length,1,'Both tools reuse one lazy module');
    await inlineMap.getByRole('button',{name:'Close',exact:true}).click();
-   for(const [lang,tools,map,topic,close] of [['gu','સાધનો','માઇન્ડમેપ','વિષય','બંધ કરો'],['hi','साधन','माइंडमैप','विषय','बंद करें']]){
+   const composerDraft=await page.locator('#chatInput').inputValue();
+   await page.locator('#chatInput').fill('Search');
+   for(const [lang,tools,map,topic,close,inputLabel,sendLabel] of [['gu','સાધનો','માઇન્ડમેપ','વિષય','બંધ કરો','Saathiને સંદેશ લખો','સંદેશ મોકલો'],['hi','साधन','माइंडमैप','विषय','बंद करें','साथी को संदेश भेजें','संदेश भेजें']]){
     await page.evaluate(lang=>SaathiI18n.setLanguage(lang),lang);
+    assert.equal(await page.locator('#chatInput').getAttribute('aria-label'),inputLabel);
+    assert.equal(await page.locator('#chatInput').inputValue(),'Search','Language changes cannot translate the student draft');
+    await page.evaluate(()=>updateComposer());
+    assert.equal(await page.locator('#sendButton').getAttribute('aria-label'),sendLabel,'Typing must keep the localized accessible name');
     await page.getByRole('button',{name:tools,exact:true}).click();
     await page.getByRole('dialog',{name:tools,exact:true}).getByRole('button',{name:map,exact:true}).click();
     await page.getByRole('dialog',{name:map,exact:true}).getByLabel(topic,{exact:true}).waitFor();
     await page.getByRole('dialog',{name:map,exact:true}).getByRole('button',{name:close,exact:true}).click();
    }
    await page.evaluate(()=>SaathiI18n.setLanguage('en'));
+   await page.locator('#chatInput').fill(composerDraft);
    const personalLoads=requests.filter(p=>p==='/personal-context.js').length;
    await page.getByRole('button',{name:'Tools',exact:true}).click();
    await page.getByRole('dialog',{name:'Tools',exact:true}).getByRole('button',{name:'Plan for an exam',exact:true}).click();

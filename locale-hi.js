@@ -1,5 +1,11 @@
 /* Hindi interface copy. User writing and AI answers remain excluded. */
 window.SaathiI18n.register({
+  "Explain simply": "आसान भाषा में समझाएँ",
+  "Deep study": "गहराई से पढ़ाई",
+  "Summarise": "सारांश दें",
+  "Flashcards": "दोहराव कार्ड",
+  "Stop waiting": "इंतज़ार रोकें",
+  "Voice": "आवाज़",
   "Your workspace · Saathi": "आपका कार्यक्षेत्र · साथी",
   "Skip to workspace": "कार्यक्षेत्र पर जाएँ",
   "Workspace navigation": "कार्यक्षेत्र नेविगेशन",

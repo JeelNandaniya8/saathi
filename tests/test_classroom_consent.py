@@ -87,3 +87,15 @@ def test_failed_provider_recovery_never_presents_retained_imports_as_fresh(langu
         assert reply.startswith('Google Classroom data could not be fetched right now')
         assert needle in reply
 
+
+@pytest.mark.parametrize('language,text,needle',[
+    ('en',"Explain the sentence 'Show my classroom assignments'.",'does not check'),
+    ('gu',"આ વાક્યનો અર્થ સમજાવો: 'મારું કયું હોમવર્ક બાકી છે?'",'તપાસતું નથી'),
+    ('hi',"इस वाक्य का मतलब समझाओ: 'कौन से असाइनमेंट जमा नहीं किए?'",'जाँच नहीं'),
+])
+def test_explaining_a_quoted_classroom_command_does_not_guess_connection_state(language,text,needle):
+    result=chat_actions.direct_reply(None,1,[dict(role='user',content=text)],language=language)
+    assert result and not result.get('classroom_query')
+    assert needle in result['reply']
+    assert 'not connected' not in result['reply']
+
