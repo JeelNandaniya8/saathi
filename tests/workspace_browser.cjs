@@ -13,7 +13,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let inlineSaved=null,inlineJobs=[],cardCorrections=0;
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
-   let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0;
+   let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0,failClassroomSync=false,classroomError=null,classroomConnects=0;
    const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',timezone:'Asia/Kolkata',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -76,10 +76,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
      else if(pathname==='/api/subject-spaces')data={spaces:[]};
      else if(pathname==='/api/revision')data={items:[],due:0,upcoming:0};
-     else if(pathname==='/api/classroom/status')data={configured:true,scheduler_ready:true,connected:classroomConnected,connection:{last_sync:null,last_error:null,version:1,auto_sync_enabled:!!classroomSchedules}};
+     else if(pathname==='/api/classroom/status')data={configured:true,scheduler_ready:true,connected:classroomConnected,connection:{last_sync:null,last_error:classroomError,version:1,auto_sync_enabled:!!classroomSchedules}};
+     else if(pathname==='/api/classroom/connect'){assert.equal(body().confirmed,true);classroomConnects++;data={url:'https://accounts.google.com/o/oauth2/v2/auth'}}
      else if(pathname==='/api/classroom/courses')data={courses:[{id:'course1',name:'English'}],selected:['course1'],version:1};
      else if(pathname==='/api/classroom/select'){assert.equal(body().confirmed,true);assert.deepEqual(body().courses,['course1']);assert.equal(body().version,1);classroomSelections++;data={ok:true}}
-     else if(pathname==='/api/classroom/sync'){assert.equal(body().confirmed,true);classroomSyncs++;data={ok:true}}
+     else if(pathname==='/api/classroom/sync'){assert.equal(body().confirmed,true);classroomSyncs++;if(failClassroomSync){failClassroomSync=false;classroomError='reconnect_required';status=503;data={error:'Classroom could not complete this action. Your imported work is retained.',error_code:'reconnect_required'}}else{classroomError=null;data={ok:true}}}
      else if(pathname==='/api/classroom/assignments')data={assignments:[{id:1,course_id:'course1',submission_state:'NEW',title:'Essay',instructions:'Original teacher instructions <script>unsafe</script>',original_url:'https://classroom.google.com/c/1',due_at:null,available:true,task_id:classroomAdds?9:null}]};
      else if(pathname==='/api/classroom/assignments/1/planner'){assert.equal(body().confirmed,true);classroomAdds++;data={task_id:9}}
      else if(pathname==='/api/classroom/schedule'){assert.equal(body().confirmed,true);assert.equal(body().enabled,true);assert.equal(body().version,1);classroomSchedules++;data={ok:true}}
@@ -255,14 +256,24 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    // Connected provider fixtures exercise the actual dialog in all supported
    // languages, including busy -> retry with selected-assignment consent kept.
    for(const labels of [
+    {lang:'en',close:'Close',pending:'Not submitted',due:'No confirmed deadline',save:'Save selection',sync:'Sync selected courses',added:'Already in Planner',consent:'Send only this assignment to the AI provider for an explanation. No profile, memory or other assignments.',explain:'Explain requirements and steps',busy:'AI is busy. Your request is kept. Retry shortly.'},
     {lang:'gu',close:'બંધ કરો',pending:'Submit કરેલું નથી',due:'નક્કી કરેલી છેલ્લી તારીખ નથી',save:'પસંદગી સેવ કરો',sync:'પસંદ કરેલા courses sync કરો',added:'Plannerમાં ઉમેરેલું છે',consent:'સમજાવવા માટે ફક્ત આ અસાઇનમેન્ટ AIને મોકલો. Profile, memory કે બીજી અસાઇનમેન્ટ નહીં.',explain:'જરૂરિયાત અને પગલાં સમજાવો',busy:'AI વ્યસ્ત છે. તમારી વિનંતી રાખી છે. થોડી વારમાં ફરી પ્રયત્ન કરો.'},
     {lang:'hi',close:'बंद करें',pending:'Submit नहीं किया',due:'पक्की समयसीमा नहीं',save:'चयन सेव करें',sync:'चुने पाठ्यक्रम सिंक करें',added:'Planner में पहले से है',consent:'समझाने के लिए केवल यह असाइनमेंट AI को भेजें। Profile, memory या अन्य असाइनमेंट नहीं।',explain:'आवश्यकताएँ और चरण समझाएँ',busy:'AI व्यस्त है। आपका अनुरोध रखा है। थोड़ी देर में फिर कोशिश करें।'}
    ]){
+    const recovery={en:['Reconnect Classroom','I agree to connect and store selected assignment information.','Google authorization needs renewal. Reconnect Classroom below; your selected courses and imports stay. Previous imports are retained; they are not a current pending list.'],gu:['Classroom ફરી જોડો','પસંદ કરેલી અસાઇનમેન્ટ માહિતી જોડવા અને સંગ્રહની મંજૂરી આપું છું.','Googleની મંજૂરી ફરી લેવી જરૂરી છે. નીચે Classroom ફરી જોડો; પસંદ કરેલા courses અને imports રહેશે. અગાઉનાં imports રાખ્યાં છે; તે હાલનાં બાકી કામની યાદી નથી.'],hi:['Classroom फिर जोड़ें','चुने असाइनमेंट की जानकारी जोड़ने और रखने की अनुमति देता/देती हूँ।','Google की अनुमति फिर चाहिए। नीचे Classroom फिर जोड़ें; चुने पाठ्यक्रम और imports रहेंगे। पिछले imports रखे गए हैं; वे अभी के बाकी काम की सूची नहीं हैं।']}[labels.lang];
     await page.evaluate(lang=>SaathiI18n.setLanguage(lang),labels.lang);
     await page.locator('[data-classroom]').click();
     await classroom.getByText(labels.pending,{exact:true}).waitFor();
     await classroom.getByText(labels.due,{exact:true}).waitFor();
     assert.equal(await classroom.getByLabel('English',{exact:true}).isChecked(),true);
+    failClassroomSync=true;
+    await classroom.getByRole('button',{name:labels.sync,exact:true}).click();
+    await classroom.getByText(recovery[2],{exact:true}).waitFor();
+    await classroom.getByRole('button',{name:recovery[0],exact:true}).click();
+    await classroom.getByRole('alert').filter({hasText:recovery[1]}).waitFor();
+    assert.equal(classroomConnects,0,'Reauthorization cannot start without explicit consent');
+    assert.equal(await classroom.getByLabel('English',{exact:true}).isChecked(),true);
+    assert.equal(await classroom.getByText('Original teacher instructions <script>unsafe</script>',{exact:true}).count(),1);
     const selectionsBefore=classroomSelections,syncsBefore=classroomSyncs;
     await classroom.getByRole('button',{name:labels.save,exact:true}).click();
     await page.waitForFunction(()=>!document.querySelector('dialog[open]').dataset.saving);
@@ -275,10 +286,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await classroom.getByText('Original teacher instructions <script>unsafe</script>',{exact:true}).count(),1);
     const attemptsBefore=classroomExplains;
     await classroom.getByRole('button',{name:labels.explain,exact:true}).click();
-    await classroom.getByRole('alert').getByText(labels.consent,{exact:true}).waitFor();assert.equal(classroomExplains,attemptsBefore);
+    await classroom.getByRole('alert').filter({hasText:labels.consent}).waitFor();assert.equal(classroomExplains,attemptsBefore);
     await classroom.getByLabel(labels.consent,{exact:true}).check();failClassroomExplain=true;
     await classroom.getByRole('button',{name:labels.explain,exact:true}).click();
-    await classroom.getByRole('alert').getByText(labels.busy,{exact:true}).waitFor();
+    await classroom.getByRole('alert').filter({hasText:labels.busy}).waitFor();
     assert.equal(await classroom.getByLabel(labels.consent,{exact:true}).isChecked(),true);
     assert.equal(await classroom.getByText('Raw provider detail must not appear',{exact:true}).count(),0);
     await classroom.getByRole('button',{name:labels.explain,exact:true}).click();

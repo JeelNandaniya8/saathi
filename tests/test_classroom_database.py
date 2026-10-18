@@ -40,6 +40,26 @@ def test_oauth_state_session_single_use_and_private_export(db_app,configured):
     assert one(db,'SELECT COUNT(*) n FROM classroom_connections')['n']==1
 
 
+def test_reconnect_replaces_authorization_without_deleting_imports(db_app,configured,monkeypatch):
+    _,c,db=db_app;connect(c)
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE classroom_connections SET selected_courses='[\"course1\"]',last_error='reconnect_required' WHERE user_id=1")
+            cur.execute("INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions) VALUES(1,'course1','kept','Kept assignment','Teacher words')")
+    before=one(db,'SELECT refresh_cipher,version FROM classroom_connections WHERE user_id=1')
+    monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:{'refresh_token':'renewed-private-refresh','access_token':'renewed-private-access','scope':' '.join(cc.SCOPES)})
+    connect(c)
+    after=one(db,'SELECT refresh_cipher,version,selected_courses,last_error,submission_sync_at FROM classroom_connections WHERE user_id=1')
+    assert after['refresh_cipher']!=before['refresh_cipher']
+    assert cc.cipher().decrypt(after['refresh_cipher'].encode())==b'renewed-private-refresh'
+    assert after['version']==before['version']+1 and after['selected_courses']==['course1']
+    assert after['last_error'] is None and after['submission_sync_at'] is None
+    kept=one(db,'SELECT title,instructions FROM classroom_assignments WHERE user_id=1')
+    assert kept=={'title':'Kept assignment','instructions':'Teacher words'}
+    with c.session_transaction() as session:session['user_id']=2
+    assert c.get('/api/classroom/status').json['connected'] is False
+
+
 def test_selected_courses_sync_duplicate_update_missing_and_planner(db_app,configured,monkeypatch):
     _,c,db=db_app;connect(c)
     items=[{'id':'work','title':'Essay','description':'Write it','alternateLink':'https://classroom.google.com/c/course1'}]

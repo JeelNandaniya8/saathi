@@ -3,9 +3,11 @@ import copy
 import io
 import json
 import os
+import time
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from unittest.mock import Mock
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -32,9 +34,12 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
             fixed = datetime.fromtimestamp(1792324800, timezone.utc)
             return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
     monkeypatch.setattr(b.chat_actions, 'datetime', ContextClock)
-    monkeypatch.setattr(transport.time, 'time', lambda: now[0])
+    # Replacing stdlib time.time also changes Flask's signed-session clock;
+    # fixtures run later than this fixed date then invalidate their own login.
+    system_time=time.time
+    monkeypatch.setattr(transport, 'time', SimpleNamespace(time=lambda: now[0],monotonic=time.monotonic,sleep=Mock()))
+    assert time.time is system_time
     monkeypatch.setattr(transport, '_choices', {})
-    monkeypatch.setattr(transport.time, 'sleep', Mock())
     monkeypatch.setattr(b, 'GEMINI_API_KEY', 'fixture')
     monkeypatch.setenv('GEMINI_MODEL', 'gemini-fixture-study')
     monkeypatch.setenv('GEMINI_FAST_MODEL', 'gemini-fixture-fast')
@@ -43,7 +48,9 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
     rejected = response(503, headers={'Retry-After': retry})
     post = Mock(return_value=rejected)
     monkeypatch.setattr(b, 'provider_post', post)
-    cid = c.post('/api/conversations', json={}).json['conversation']['id']
+    created = c.post('/api/conversations', json={})
+    assert created.status_code == 201, created.json
+    cid = created.json['conversation']['id']
     key = str(uuid4())
     path = f'/api/conversations/{cid}/messages' + ('/stream' if stream else '')
     pdf = io.BytesIO(); writer = PdfWriter(); writer.add_blank_page(width=200, height=200); writer.write(pdf)

@@ -1,4 +1,4 @@
-# Live retest and receipt copy — 18 October 2026
+# Connected Classroom recovery and live retest — 18 October 2026
 
 Scope: provider/upload recovery and citations, connected Classroom in EN/GU/HI,
 small UI/error copy, and measured acceptance gates. Existing stack, models,
@@ -29,14 +29,47 @@ an independent review.
 - Accept legacy prefixed errors in the client, render one native failure label
   in EN/GU/HI, and translate the known action-validation/read-back errors. Keep
   the Retry control and withhold saved-item links for unsaved actions.
-- Bust the chat-actions asset cache. Advance the health/smoke release together
-  to `2026-10-18-receipt-copy`.
+- Bust the chat-actions/Classroom asset caches. Advance the health/smoke release
+  together to `2026-10-18-classroom-recovery`.
 - Extend actual Chromium connected-Classroom fixtures across EN/GU/HI: selected
   course and assignment labels, save selection, sync, consent before AI,
   localized busy failure followed by retry, unchanged teacher instructions,
   retained selected-assignment consent, literal unsafe text, and one existing
   Planner task after reopening/syncing. These are isolated provider fixtures,
   not authenticated live Google results.
+
+## Connected account: reproduced recovery defect
+
+The owner then securely signed into an account with an existing Classroom
+connection and one selected course. Its old imports were visible, the last sync
+was flagged failed, and submission state was unavailable. One manual live sync
+failed with the generic retained-imports message. A Normal chat read returned
+the specific `Reconnect in Study → Google Classroom` recovery reason instead
+of inventing a current pending list. No assignment was sent to an AI provider.
+This debugging cohort has **0/2 successful fresh Classroom retrievals** (one
+manual sync and one Normal chat request); both require authorization renewal.
+It is not a representative availability estimate and must not be omitted from
+the live results.
+
+Two source defects prevented that recovery: the dashboard dropped the API's
+`error_code`, and a connected dialog had no reconnect entry. More seriously,
+the OAuth callback used `ON CONFLICT DO NOTHING`, discarding renewed credentials
+for an existing connection. Repair the existing callback to replace only the
+encrypted authorization, invalidate the old submission snapshot, and increment
+the optimistic version while preserving course selection and imported records.
+Show native sanitized reasons and an explicit-consent reconnect control in all
+three languages, including immediately after an authorization failure. Required
+Google scopes are unchanged. New PostgreSQL coverage checks credential renewal,
+preserved imports/selection, version change and account isolation; Chromium
+fixtures cover `error_code` recovery and no reconnect without consent.
+
+The first exact-head CI (run 268) stopped with **823 passed / 6 failed** before
+browser checks. The six dated-provider fixtures replaced the shared stdlib
+`time.time`, making their own Flask session signature appear issued in the
+future once the real CI clock passed the fixed test time. Isolate that provider
+clock rather than weakening authentication or retry assertions. The fixture now
+also asserts authenticated conversation creation succeeded. A new green
+exact-head run is required; run 268 is not counted as passing validation.
 
 Local focused backend checks: **109 passed**. The repository JavaScript checks
 pass, including exact receipts and historical failures in EN/GU/HI. Full
@@ -50,8 +83,9 @@ the local runtime; the attempted local browser run stopped before any journey.
   The documented existing-tab navigation succeeded; the chooser still refused.
   No alternate upload channel, credential access, or production-limit bypass
   was used. **Zero new live upload/provider/citation attempts completed**.
-- Classroom: the inspected demo account is configured but disconnected. The
-  owner offered an already-connected account; its secure sign-in is pending.
+- Classroom: the demo was disconnected, but the owner's second account was
+  securely authenticated and its existing connection tested as described above.
+  Renewed Google authorization and a successful fresh sync remain pending.
   Google sign-in selection alone did not establish an authenticated session.
   No new OAuth scopes or fabricated assignments were introduced.
 - Retrieved content-free provider timing/error logs from `11:41:39Z` through

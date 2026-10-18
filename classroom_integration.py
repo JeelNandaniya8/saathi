@@ -347,7 +347,10 @@ def register(app,b):
             cur.execute('SELECT session_version FROM users WHERE id=%s FOR UPDATE',(uid,))
             user=cur.fetchone()
             if not user or user['session_version']!=pending['session_version']:raise ValueError('Sign in and reconnect Classroom.')
-            cur.execute('INSERT INTO classroom_connections(user_id,refresh_cipher) VALUES(%s,%s) ON CONFLICT DO NOTHING',(uid,cipher().encrypt(refresh.encode()).decode()))
+            cur.execute('''INSERT INTO classroom_connections(user_id,refresh_cipher) VALUES(%s,%s)
+                ON CONFLICT(user_id) DO UPDATE SET refresh_cipher=EXCLUDED.refresh_cipher,
+                last_error=NULL,submission_sync_at=NULL,version=classroom_connections.version+1''',
+                (uid,cipher().encrypt(refresh.encode()).decode()))
             conn.commit()
         return redirect('/dashboard#study')
 
