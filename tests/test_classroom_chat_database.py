@@ -153,3 +153,55 @@ def test_opted_in_context_marks_status_course_and_freshness_without_more_queries
     assert c.patch('/api/chat-context',json=dict.fromkeys(chat_actions.SOURCES,False)).status_code==200
     off,_=b.load_active_memory_bundle(1,include_workspace=True,turn_content='Hello')
     assert 'School pending' not in off and 'Do not infer that Google Classroom is disconnected' in off
+
+
+@pytest.mark.parametrize('text', [
+    'Explain vectors without Classroom.',
+    'Classroom ન વાંચો. વેક્ટર સમજાવો.',
+    'Classroom न पढ़ो। वेक्टर समझाओ।',
+])
+def test_one_reply_refusal_excludes_sql_snapshot_without_changing_preferences(db_app,configured,monkeypatch,text):
+    b,c,db=db_app;school_fixture(c,monkeypatch)
+    assert c.post('/api/classroom/sync',json=dict(confirmed=True)).status_code==200
+    assert c.patch('/api/chat-context',json=dict.fromkeys(chat_actions.SOURCES,False)|dict(classroom=True)).status_code==200
+    with db() as conn:
+        with conn.cursor() as cur:
+            snapshot=chat_actions.context_snapshot(cur,1,text)
+            assert snapshot['sources']['classroom'] is None
+            assert snapshot['classroom_connection'] is None
+    context,labels=b.load_active_memory_bundle(1,include_workspace=True,turn_content=text)
+    assert 'School pending' not in context and 'classroom' not in ' '.join(labels).lower()
+    assert c.get('/api/chat-context').json['permissions']['classroom'] is True
+    allowed,_=b.load_active_memory_bundle(1,include_workspace=True,turn_content='Explain vectors')
+    assert 'School pending' in allowed,'A one-turn refusal must not change saved consent'
+
+
+@pytest.mark.parametrize('stream',[False,True])
+def test_refusal_reaches_both_transports_and_regeneration(db_app,configured,monkeypatch,stream):
+    b,c,db=db_app;school_fixture(c,monkeypatch)
+    assert c.post('/api/classroom/sync',json=dict(confirmed=True)).status_code==200
+    assert c.patch('/api/chat-context',json=dict.fromkeys(chat_actions.SOURCES,False)|dict(classroom=True)).status_code==200
+    monkeypatch.setattr(b,'GEMINI_API_KEY','fixture-key')
+    seen=[]
+    def inspect(messages,memory_context='',language='en',mode='normal',**kwargs):
+        payload=json.dumps(b.build_gemini_payload(messages,memory_context=memory_context,language=language,mode=mode))
+        assert 'School pending' not in payload and 'PRIVATE_SCHOOL_HISTORY' not in payload
+        seen.append(payload)
+    def reply(messages,memory_context='',language='en',mode='normal',**kwargs):
+        inspect(messages,memory_context,language,mode,**kwargs)
+        return 'Vector addition uses components.',dict(total_tokens=0)
+    def chunks(messages,memory_context='',language='en',mode='normal',**kwargs):
+        inspect(messages,memory_context,language,mode,**kwargs)
+        yield 'Vector addition uses components.'
+        return dict(total_tokens=0)
+    monkeypatch.setattr(b,'generate_gemini_reply',reply)
+    monkeypatch.setattr(b,'stream_gemini_reply',chunks)
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO messages(user_id,conversation_id,role,content,created_at) VALUES(1,%s,'user','What homework is pending?',NOW()),(1,%s,'assistant','PRIVATE_SCHOOL_HISTORY',NOW())",(cid,cid))
+    result=send(c,cid,'Explain vectors without Classroom.',stream)
+    assert 'classroom' not in ' '.join(result['assistant_message']['memory_labels']).lower()
+    response=c.post(f'/api/conversations/{cid}/regenerate',json=dict(request_id=str(uuid4())))
+    assert response.status_code==200,response.json
+    assert len(seen)==2

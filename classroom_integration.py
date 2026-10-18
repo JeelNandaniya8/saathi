@@ -185,7 +185,8 @@ def format_chat_assignments(rows,connection,query,zone,language='en',now=None):
     def stamp(value):return value.astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')+' · '+zone
     scope=(' · '+day.isoformat() if day else '')+(' · '+words['overdue'] if overdue else '')
     lines=['Google Classroom · '+str(len(pending))+' '+words['pending']+scope,
-           words['scope']+' · '+str(len(connection['selected_courses'])),words['checked']+': '+stamp(connection['submission_sync_at'])]
+           words['scope']+' · '+str(len(connection['selected_courses'])),
+           {'en':'Snapshot','gu':'સ્નેપશોટ','hi':'स्नैपशॉट'}[language]+' · '+words['checked']+': '+stamp(connection['submission_sync_at'])]
     def section(items,label=None,limit=50):
         if label:lines.append('\n'+label+': '+str(len(items)))
         for row in items[:limit]:
@@ -204,27 +205,38 @@ def format_chat_assignments(rows,connection,query,zone,language='en',now=None):
     return '\n'.join(lines)
 
 
+def chat_failure(reason,language='en'):
+    # Preserve the required lead-in; recovery and source freshness follow the
+    # selected UI language and never turn provider failure into an empty list.
+    copy={
+        'en':dict(connection='Check your connection in Study → Google Classroom.',selection='Choose courses in Study → Google Classroom.',configuration='Classroom is temporarily unavailable; your saved work is retained.',busy='A Classroom update is already running. Please retry shortly.',reconnect_required='Reconnect in Study → Google Classroom.',permission_or_admin_block='Classroom permission or a school administrator blocked access. Review the connection.',quota='Google Classroom is rate limited. Retry later.',time_budget='Google Classroom did not respond within the request deadline. Retry later.',other='Retry from Study → Google Classroom.',retained='Your previous imports were retained; they are not a current pending list.'),
+        'gu':dict(connection='Study → Google Classroomમાં તમારું જોડાણ તપાસો.',selection='Study → Google Classroomમાં courses પસંદ કરો.',configuration='Classroom અત્યારે ઉપલબ્ધ નથી; તમારું સાચવેલું કામ સુરક્ષિત છે.',busy='Classroom update ચાલી રહ્યું છે. થોડી વારે ફરી પ્રયાસ કરો.',reconnect_required='Study → Google Classroomમાં ફરી જોડાણ કરો.',permission_or_admin_block='Classroomની પરવાનગી અથવા શાળાના administratorએ પ્રવેશ રોક્યો છે. જોડાણ તપાસો.',quota='Google Classroomની request મર્યાદા આવી છે. થોડી વારે ફરી પ્રયાસ કરો.',time_budget='Google Classroomએ નક્કી સમયમર્યાદામાં જવાબ આપ્યો નથી. ફરી પ્રયાસ કરો.',other='Study → Google Classroomમાંથી ફરી પ્રયાસ કરો.',retained='અગાઉનાં imports રાખ્યાં છે; તે હાલનાં બાકી કામની યાદી નથી.'),
+        'hi':dict(connection='Study → Google Classroom में अपना कनेक्शन जाँचें।',selection='Study → Google Classroom में पाठ्यक्रम चुनें।',configuration='Classroom अभी उपलब्ध नहीं है; आपका सहेजा काम सुरक्षित है।',busy='Classroom अपडेट चल रहा है। थोड़ी देर में फिर कोशिश करें।',reconnect_required='Study → Google Classroom में फिर कनेक्ट करें।',permission_or_admin_block='Classroom की अनुमति या स्कूल administrator ने पहुँच रोकी है। कनेक्शन जाँचें।',quota='Google Classroom की request सीमा लगी है। थोड़ी देर में फिर कोशिश करें।',time_budget='Google Classroom ने तय समय में जवाब नहीं दिया। फिर कोशिश करें।',other='Study → Google Classroom से फिर कोशिश करें।',retained='पिछले imports रखे गए हैं; वे अभी के बाकी काम की सूची नहीं हैं।')
+    }.get(language)
+    if copy is None:return chat_failure(reason,'en')
+    suffix=copy.get(reason,copy['other'])
+    if reason not in {'connection','selection','configuration','busy'}:suffix+=' '+copy['retained']
+    return 'Google Classroom data could not be fetched right now. '+suffix
+
+
 def chat_reply(get_db,uid,query,language='en'):
     """Read this authenticated user's connection; no LLM or other user's data."""
-    failure='Google Classroom data could not be fetched right now'
-    settings='Study → Google Classroom'
     conn=get_db();cur=conn.cursor()
     try:
         # Concurrent disconnect/course changes finish before a later read, and
         # a busy refresh fails promptly rather than holding chat indefinitely.
         cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s FOR UPDATE NOWAIT',(uid,))
         row=cur.fetchone()
-        if not row:return dict(reply=failure+'. Check your connection in '+settings+'.')
-        if not row['selected_courses']:return dict(reply=failure+'. Choose courses in '+settings+'.')
-        if not configuration():return dict(reply=failure+'. Classroom is temporarily unavailable; your saved work is retained.')
+        if not row:return dict(reply=chat_failure('connection',language))
+        if not row['selected_courses']:return dict(reply=chat_failure('selection',language))
+        if not configuration():return dict(reply=chat_failure('configuration',language))
         now=datetime.now(timezone.utc)
         fresh=row['submission_sync_at'] and not row['last_error'] and timedelta(0)<=now-row['submission_sync_at']<timedelta(seconds=60)
         if not fresh:
             try:sync_connection(cur,row,seconds=12)
             except ProviderError as error:
                 sync_failed(cur,row,error.code);conn.commit()
-                action='Reconnect in ' if error.code=='reconnect_required' else 'Retry from '
-                return dict(reply=failure+'. '+action+settings+'. Your previous imports were retained; they are not a current pending list.')
+                return dict(reply=chat_failure(error.code,language))
             cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s',(uid,));row=cur.fetchone()
         # Connection-row lock keeps selection/disconnect atomic through this
         # snapshot; messages still use the existing cancellation/replay guard.
@@ -240,7 +252,7 @@ def chat_reply(get_db,uid,query,language='en'):
         return dict(reply=reply,source_labels=['Requested classroom for this reply'])
     except LockNotAvailable:
         conn.rollback()
-        return dict(reply=failure+'. A Classroom update is already running. Please retry shortly.')
+        return dict(reply=chat_failure('busy',language))
     finally:cur.close();conn.close()
 
 def sync_failed(cur,row,code):
