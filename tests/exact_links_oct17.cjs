@@ -1,6 +1,21 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 class Element{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={}}append(...nodes){this.children.push(...nodes)}prepend(...nodes){this.children.unshift(...nodes)}replaceChildren(...nodes){this.children=nodes}setAttribute(key,value){this.attrs??={};this.attrs[key]=value}focus(){this.focused=true}scrollIntoView(){}all(){return [this,...this.children.flatMap(n=>n.all())]}}
 const ui={window:{},document:{documentElement:{lang:'en'},createElement:tag=>new Element(tag)}};vm.createContext(ui);vm.runInContext(fs.readFileSync('chat-actions.js','utf8'),ui);
+// Actual live history returned its own "Failed:" prefix. Reopening must
+// render one localized label, keep the exact error detail and never imply a save.
+for(const [lang,label,detail,retry] of [
+ ['en','Failed','Nothing was saved: no valid action was returned.','Retry'],
+ ['gu','નિષ્ફળ','કંઈ સાચવાયું નથી: માન્ય કાર્યવાહી મળી નથી.','ફરી પ્રયત્ન કરો'],
+ ['hi','असफल','कुछ सेव नहीं हुआ: मान्य कार्रवाई नहीं मिली।','फिर कोशिश करें']
+])for(const prefix of ['','Failed: ','Failed: Failed: ']){
+ ui.document.documentElement.lang=lang;const box=new Element('div');
+ ui.window.SaathiChatActions.attach(box,{id:lang+prefix,content:'Failed: Nothing was saved: no valid action was returned.\nRetry when ready.',action_error:prefix+'Nothing was saved: no valid action was returned.'});
+ const all=box.all(),status=all.find(n=>n.tag==='p');
+ assert.equal(status.textContent,label+': '+detail,'Historical failures must use one native label');
+ assert.deepEqual(all.filter(n=>n.tag==='button').map(n=>n.textContent),[retry]);
+ assert.equal(all.filter(n=>n.tag==='a').length,0,'A failed action cannot offer a saved receipt link');
+}
+console.log('PASS reloaded failure copy and retry without false save in EN/GU/HI');
 for(const lang of ['en','gu','hi'])for(const [kind,view] of Object.entries({note:'notes',task:'tasks',memory:'memory',reminder:'reminders',mindmap:'mindmaps',habit:'habits',journal:'journal',checkin:'checkins'})){
  ui.document.documentElement.lang=lang;const box=new Element('div');ui.window.SaathiChatActions.attach(box,{id:kind+lang,content:'',action_receipt:{kind,resource_id:41},action_resource:{title:'Owned record',at:'2030-01-01T00:00:00Z'}});
  const links=box.all().filter(node=>node.tag==='a');assert.equal(links[0].href,kind==='note'?'/chat?note=41':'/dashboard?'+kind+'=41#'+view,'Saved receipt must link to its exact record');

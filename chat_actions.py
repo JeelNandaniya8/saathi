@@ -354,7 +354,7 @@ def load_receipts(cur, uid, messages):
                 message['content']=saved_content(proposal(message['content'],historical=True))
         except ValueError:candidates[receipt['message_id']]['action_error']='The saved item could not be opened.'
     for message in candidates.values():
-        if message['content'].startswith('Failed:') and not message.get('action_receipt'):message['action_error']=message['content'].split('\n',1)[0]
+        if message['content'].startswith('Failed:') and not message.get('action_receipt'):message['action_error']=message['content'].split('\n',1)[0][len('Failed:'):].lstrip()
 
 
 def proposal(content, historical=False):
