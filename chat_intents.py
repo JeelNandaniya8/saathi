@@ -72,6 +72,15 @@ def classroom_read(text):
     return text.strip() if bare or (read and (school or classroom)) else ''
 
 
+def classroom_definition(text):
+    """Explaining a quoted read command does not inspect connection state."""
+    text=command(text)
+    if classroom_read(text):return False
+    if not re.search(r'\bexplain\b|\bmeaning\b|\bwhat does\b|વાક્ય.*(?:અર્થ|સમજાવ)|वाक्य.*(?:मतलब|अर्थ|समझा)',text,re.I):return False
+    quotes=re.finditer(r'"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’|(?<!\w)\x27([^\x27\n]+)\x27(?!\w)|`([^`]+)`',text)
+    return any(classroom_read(next(group for group in match.groups() if group is not None)) for match in quotes)
+
+
 def mode(text, selected='normal'):
     text = command(text)
     study = study_output(text)

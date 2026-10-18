@@ -451,6 +451,13 @@ def direct_reply(cur,uid,messages,language='en'):
         # Fetch after releasing the initial chat connection. Streaming can
         # announce the real operation and enable Stop before Google responds.
         return {'reply':'','classroom_query':classroom_query}
+    if chat_intents.classroom_definition(text):
+        copy={
+            'en':'That sentence asks Saathi to list Google Classroom assignments for the signed-in student. Explaining it does not check your connection or fetch school data.',
+            'gu':'આ વાક્યમાં સાઇન ઇન કરેલા વિદ્યાર્થીનાં Google Classroom assignments બતાવવાની વિનંતી છે. તેનો અર્થ સમજાવવો જોડાણ તપાસતું નથી કે શાળાની માહિતી વાંચતું નથી.',
+            'hi':'यह वाक्य साइन इन किए विद्यार्थी के Google Classroom असाइनमेंट दिखाने का अनुरोध है। इसका मतलब समझाना कनेक्शन की जाँच नहीं करता और स्कूल का डेटा नहीं पढ़ता।'
+        }
+        return {'reply':copy.get(language,copy['en'])}
     query=chat_intents.command(text)
     if query and re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending|unfinished)|(?:કેટલ|શું|બતાવ).*(?:બાકી|કામ)|(?:क्या|कितना|दिखा).*(?:बाकी|काम)',query,re.I) and not chat_intents.explicit(query):
         if re.search(r'today|tomorrow|yesterday|\b\d{4}-\d{2}-\d{2}\b|planner|my plan|work|tasks?|આજ|કામ|યોજના|आज|काम|योजना',query,re.I):

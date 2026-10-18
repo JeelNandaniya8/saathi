@@ -205,3 +205,17 @@ def test_refusal_reaches_both_transports_and_regeneration(db_app,configured,monk
     response=c.post(f'/api/conversations/{cid}/regenerate',json=dict(request_id=str(uuid4())))
     assert response.status_code==200,response.json
     assert len(seen)==2
+
+
+@pytest.mark.parametrize('stream',[False,True])
+def test_quoted_command_explanation_uses_no_google_or_ai_even_with_auto_sharing(db_app,configured,monkeypatch,stream):
+    b,c,db=db_app;calls,_=school_fixture(c,monkeypatch)
+    assert c.patch('/api/chat-context',json=dict.fromkeys(chat_actions.SOURCES,True)).status_code==200
+    monkeypatch.setattr(b,'provider_send',lambda *a,**k:pytest.fail('A command explanation needs no AI'))
+    monkeypatch.setattr(b,'GEMINI_API_KEY','')
+    cid=c.post('/api/conversations',json={}).json['conversation']['id']
+    result=send(c,cid,"Explain the sentence 'Show my classroom assignments'.",stream)
+    assert 'does not check your connection' in result['assistant_message']['content']
+    assert result['assistant_message']['memory_labels']==[]
+    assert calls==[]
+    assert one(db,'SELECT COUNT(*) n FROM ai_usage_events')['n']==0

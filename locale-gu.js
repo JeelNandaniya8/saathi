@@ -1,5 +1,11 @@
 /* Gujarati interface copy. User writing and AI answers remain excluded. */
 window.SaathiI18n.register({
+  "Explain simply": "સરળ રીતે સમજાવો",
+  "Deep study": "ઊંડાણથી અભ્યાસ",
+  "Summarise": "સારાંશ આપો",
+  "Flashcards": "પુનરાવર્તન કાર્ડ",
+  "Stop waiting": "રાહ જોવાનું બંધ કરો",
+  "Voice": "અવાજ",
   "Plus plans · Coming soon": "Plus યોજનાઓ · ટૂંક સમયમાં",
   "Your workspace · Saathi": "તમારી કાર્યજગ્યા · Saathi",
   "Skip to workspace": "કાર્યજગ્યા પર જાઓ",

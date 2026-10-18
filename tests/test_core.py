@@ -500,7 +500,9 @@ def test_stream_timings_measure_first_text_without_logging_content(backend, monk
     clock = iter([100.0, 102.0, 113.0, 114.0])
     monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
     logger = Mock()
-    monkeypatch.setattr(backend.app, "logger", logger)
+    parent_logger = Mock()
+    parent_logger.getChild.return_value = logger
+    monkeypatch.setattr(backend.app, "logger", parent_logger)
 
     class Response:
         encoding = None
@@ -528,6 +530,8 @@ def test_stream_timings_measure_first_text_without_logging_content(backend, monk
         "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s profile=%s model=%s attachments=%s",
         2000, 13000, 14000, "complete" if ending == "complete" else "interrupted", "normal", backend.gemini_model("normal"), 0)
     logger.info.assert_not_called()
+    parent_logger.getChild.assert_called_once_with('ai_timing')
+    logger.setLevel.assert_called_once_with('INFO')
     response.close.assert_called_once()
 
 
@@ -538,7 +542,9 @@ def test_stream_timings_handle_failure_before_provider_headers(backend, monkeypa
     clock = iter([100.0, 101.0])
     monkeypatch.setattr(backend, "monotonic", lambda: next(clock))
     logger = Mock()
-    monkeypatch.setattr(backend.app, "logger", logger)
+    parent_logger = Mock()
+    parent_logger.getChild.return_value = logger
+    monkeypatch.setattr(backend.app, "logger", parent_logger)
 
     def failed_provider(*args, **kwargs):
         raise backend.requests.exceptions.Timeout("private provider error")
@@ -550,6 +556,8 @@ def test_stream_timings_handle_failure_before_provider_headers(backend, monkeypa
         "ai_stream_timing headers_ms=%s first_text_ms=%s elapsed_ms=%s outcome=%s profile=%s model=%s attachments=%s",
         None, None, 1000, "interrupted", "normal", backend.gemini_model("normal"), 0)
     logger.warning.assert_not_called()
+    parent_logger.getChild.assert_called_once_with('ai_timing')
+    logger.setLevel.assert_called_once_with('INFO')
 
 
 def test_real_http_stream_delivers_small_unicode_event_before_completion(backend, monkeypatch):

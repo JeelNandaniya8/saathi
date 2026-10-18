@@ -1,5 +1,51 @@
 # Classroom consent follow-up — 18 October 2026
 
+## Normal-chat mindmap reproduction
+
+Fresh production quota resolved to **2 maps remaining**, reset October 19 at
+05:30 Asia/Calcutta; the older zero-quota observation was no longer current.
+One Normal-chat request for `Audit18C Probability` failed with
+`Nothing was saved: no valid action was returned.` The exact draft and Normal
+selection were preserved. There was no success receipt. The old failure handler
+discarded the provider's raw text, so its exact missing/invalid wrapper cannot be
+established from this observation.
+
+Four controlled transport/file-only cases reproduced rejection of a valid map
+JSON response without model-generated action tags. The fix uses the existing
+direct-generator JSON protocol, shared map instructions and validators; the
+server supplies the action wrapper and the existing transaction still verifies
+the saved map. It makes one provider call, preserves real usage and file-only
+payload restrictions, and leaves model/vendor/limits unchanged. Database cases
+cover exact reopen, replay without another call or map, busy/invalid output,
+zero false receipts and unchanged quota after failure.
+
+Content-free timing events now include fast streams as well as slow ones, plus
+study JSON response timing. The latter measures provider/JSON completion, not a
+database commit or first words. Production p95 and >=99% live success still need
+a representative workload; no fixture or single live call establishes either.
+
+## Live retest follow-up
+
+PR56 passed CI256: 789 tests, no skips, JavaScript and all five Chromium widths.
+Its exact tree became live as `cc1aab968367a97fabf63a7b1a0d4bf219f08f39`,
+Render `dep-dba9bom7bikc73ed733g`. Fresh Normal-chat checks confirmed Roman
+Gujarati routing and Gujarati disconnected-source recovery. The quoted command
+now reached an explanation, but that model reply added an unsupported statement
+about the connection and an unsolicited stress question. This is disclosed as
+a partial retest, not a clean pass.
+
+This follow-up explains supported quoted Classroom commands locally in EN/GU/HI,
+without checking Google, personal context or AI. Three language regressions
+failed before the change; both chat transports also check zero Google/AI use.
+It does not supply synthetic assignments or replace actual school-work reads.
+
+The same live Gujarati UI exposed four English mode labels and English composer
+accessible names. The added catalog entries and composer attribute handling
+correct those labels; typed student text remains excluded from translation.
+The real-browser regressions check GU/HI accessible names after typing and keep
+the exact draft through language changes. Changed assets use a new cache key.
+Final follow-up CI and deployment remain recorded in its PR release evidence.
+
 This is a focused implementation ledger, not an independent product certification.
 Inspected baseline: `a00555c6b66cc5a7f32e613080d7ad2ae57fe201`,
 release `2026-10-18-classroom-chat`, live Render deployment
