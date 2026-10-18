@@ -24,6 +24,14 @@ pytestmark = pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'), reason=
 def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch, stream, kind):
     b, c, db = db_app
     now = [1792324800]
+    # Workspace context includes a current-time snapshot. Keep that fixture
+    # stable while the separate provider cooldown clock advances ninety seconds.
+    class ContextClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            fixed = datetime.fromtimestamp(1792324800, timezone.utc)
+            return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
+    monkeypatch.setattr(b.chat_actions, 'datetime', ContextClock)
     monkeypatch.setattr(transport.time, 'time', lambda: now[0])
     monkeypatch.setattr(transport, '_choices', {})
     monkeypatch.setattr(transport.time, 'sleep', Mock())
