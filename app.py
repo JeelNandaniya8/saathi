@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-18-classroom-chat"
+RELEASE_ID = "2026-10-18-classroom-consent"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -3371,7 +3371,7 @@ def regenerate_conversation_reply(conversation_id):
     conn.close()
     if stored_attachments:
         context[-1]["attachments"] = stored_attachments
-    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True)
+    memory_context, memory_labels = ("", []) if file_only else load_active_memory_bundle(user_id, None, mode, True, rows[last_user_index]['content'])
     def save_reply(reply, ai_usage):
         validate_study_reply(mode,reply,file_only)
         conn = get_db()
@@ -5403,7 +5403,10 @@ def build_gemini_payload(
 
     # File-only is a provider boundary, not just an instruction competing with
     # older conversation text, uploads or a caller-supplied memory bundle.
-    history = messages[-1:] if file_only else messages
+    latest_user=next((m for m in reversed(messages) if isinstance(m,dict) and m.get('role')=='user'),{})
+    # Earlier replies can contain imported school data even after sharing is
+    # refused. Keep only this turn rather than sending those hidden excerpts.
+    history = messages[-1:] if file_only or chat_intents.classroom_denied(latest_user.get('content')) else messages
     if file_only:
         memory_context = ""
     selected = []

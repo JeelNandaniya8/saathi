@@ -542,17 +542,18 @@ def context_snapshot(cur, uid, turn_content='', with_memory=False, profile_categ
       'exams':"SELECT title,exam_date,timezone,daily_minutes,jsonb_path_query_array(topics,'$[0 to 11]') AS topics,jsonb_array_length(topics) AS total_topics FROM exam_plans WHERE user_id=%s ORDER BY (exam_date<CURRENT_DATE),exam_date ASC,id DESC LIMIT 5"
     }
     params=dict(uid=uid,with_memory=with_memory,profile_category=profile_category,activity=activity,
-                requested_memories='memories' in requested)
+                requested_memories='memories' in requested,classroom_blocked=chat_intents.classroom_denied(turn_content))
     sources=[]
     for key in SOURCES:
         params['requested_'+key]=key in requested
         allowed='%(requested_'+key+')s' if key=='notes' else '(%(requested_'+key+')s OR COALESCE(cp.'+key+',FALSE))'
+        if key=='classroom':allowed='NOT %(classroom_blocked)s AND '+allowed
         query=queries[key].replace('%s','%(uid)s')
         sources.append("'"+key+"', CASE WHEN "+allowed+" THEN COALESCE((SELECT jsonb_agg(r) FROM ("+query+") r),'[]'::jsonb) ELSE NULL END")
     cur.execute("""
         SELECT COALESCE(to_jsonb(cp),'{}'::jsonb) AS permissions,
                COALESCE(wp.timezone,'Asia/Kolkata') AS timezone,
-               CASE WHEN %(requested_classroom)s OR COALESCE(cp.classroom,FALSE) THEN COALESCE((
+               CASE WHEN NOT %(classroom_blocked)s AND (%(requested_classroom)s OR COALESCE(cp.classroom,FALSE)) THEN COALESCE((
                    SELECT jsonb_build_object('connected',TRUE,'selected_courses',jsonb_array_length(selected_courses),
                        'last_sync',submission_sync_at,'last_error',last_error)
                    FROM classroom_connections WHERE user_id=%(uid)s
@@ -603,6 +604,9 @@ def workspace_context(cur, uid, turn_content='', snapshot=None):
     requested=chat_intents.sources(turn_content)
 
     for key in SOURCES:
+        if key=='classroom' and chat_intents.classroom_denied(turn_content):
+            parts.append('classroom: excluded for this reply; connection state has not been checked. Prior conversation is omitted to enforce this source restriction.')
+            continue
         if key in requested or (permission.get(key) and key!='notes'):
             rows=snapshot['sources'][key]
             if key=='classroom':
