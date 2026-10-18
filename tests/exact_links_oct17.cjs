@@ -7,6 +7,15 @@ for(const lang of ['en','gu','hi'])for(const [kind,view] of Object.entries({note
 }
 (async()=>{
  const source=fs.readFileSync('dashboard.html','utf8');
+ const mapReads=[];
+ const linkedMap={URLSearchParams,location:{search:'?mindmap=62'},state:{},loadSavedMindmap:async id=>mapReads.push(id)};
+ vm.createContext(linkedMap);vm.runInContext(source.slice(source.indexOf('async function openLinkedRecord('),source.indexOf('function openView(')),linkedMap);
+ await linkedMap.openLinkedRecord('mindmap');await linkedMap.openLinkedRecord('mindmap');
+ assert.deepEqual(mapReads,[62],'A receipt must reopen its exact persisted map once, without generation');
+ const sectionContext={api:()=>{},SaathiHub:{},state:{},renderMindmapsHistory:()=>{},openLinkedRecord:linkedMap.openLinkedRecord,$:()=>({addEventListener(){}})};
+ vm.createContext(sectionContext);vm.runInContext(source.slice(source.indexOf('const workspaceSections=['),source.indexOf("$('mockTestForm').addEventListener('submit',generateMockTest);"))+';this.mapSection=workspaceSections.find(section=>section.key===\'mindmaps\');',sectionContext);
+ linkedMap.state.linkedResourceHandled.clear();await sectionContext.mapSection.apply({mindmaps:[]});
+ assert.deepEqual(mapReads,[62,62],'Cold startup must resolve the ID even when the history list omits it');
  for(const [kind,collection] of [['habit','habits'],['journal','entries'],['checkin','check_ins']]){
   const calls=[],opened=[],list=new Element('div'),record={id:42,title:'Exact owned record'};
   const ctx={URLSearchParams,location:{search:'?'+kind+'=42'},state:{},api:async url=>{calls.push(url);return {[collection]:[record]}},toast:()=>assert.fail('Owned ID should resolve'),editHabit:r=>opened.push(r.id),editJournal:r=>opened.push(r.id),checkinItem:r=>{opened.push(r.id);return new Element('article')},document:{querySelector:()=>null},$:()=>list,requestAnimationFrame:fn=>fn()};vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('async function openLinkedRecord('),source.indexOf('function openView(')),ctx);
