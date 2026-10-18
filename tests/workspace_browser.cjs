@@ -3,7 +3,7 @@ const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve('.'),base='http://localhost:8765';
 const original={id:1,role:'user',content:'Search',created_at:'2026-09-19T08:00:00Z',attachments:[],ai_mode:'normal'};
-const answer={id:2,role:'assistant',content:'Search <script>not executable</script> ગુજરાતી',created_at:original.created_at,source_pages:[]};
+const answer={id:2,role:'assistant',content:'Search <script>not executable</script> ગુજરાતી',created_at:original.created_at,source_pages:[],memory_labels:['Requested classroom for this reply','Search']};
 const task={id:1,title:'Search',details:'Saved user writing',priority:'high',completed:false,due_at:null};
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
@@ -11,7 +11,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
   for(const width of [1280,768,390,360,320]){
    const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<=390,isMobile:width<=390,serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
-   let inlineSaved=null,inlineJobs=[],cardCorrections=0;
+   let inlineSaved=null,inlineJobs=[],cardCorrections=0,conversationCreateGate=null;
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0,failClassroomSync=false,classroomError=null,classroomConnects=0;
    const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
@@ -70,7 +70,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      }else if(pathname==='/api/focus/1'){
       const action=body().action;focus={...focus,status:action==='pause'?'paused':action==='resume'?'running':'cancelled',version:focus.version+1};data={session:focus};
      }else if(pathname==='/api/messages/991/flashcards/0'){assert.equal(method,'PATCH');assert.equal(body().expected_back,'5′→3′');assert.equal(body().back,'3′→5′');cardCorrections++;data={content:'[FLASHCARDS]\nFront: Template reading?\nBack: 3′→5′\n[/FLASHCARDS]',study_progress:{kind:'flashcards',progress:{corrected_indices:[0],review_indices:[0],known_indices:[]}}}}
-     else if(pathname==='/api/conversations'&&method==='POST'){await new Promise(resolve=>setTimeout(resolve,350));data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};}
+     else if(pathname==='/api/conversations'&&method==='POST'){if(conversationCreateGate)await conversationCreateGate;else await new Promise(resolve=>setTimeout(resolve,350));data={conversation:{id:8,title:'New conversation',updated_at:original.created_at}};}
      else if(pathname==='/api/conversations')data={conversations:[{id:7,title:'Search',preview:'Search',updated_at:original.created_at,is_archived:false}]};
      else if(pathname==='/api/conversations/7/messages')data={messages:[original,answer],has_more:false,conversation:{id:7,title:'Search'}};
      else if(pathname==='/api/response-timings')data={summary:{attempts:0,completed:0,errors:0,cancelled:0},recent:[]};
@@ -428,6 +428,24 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('#chatInput').inputValue(),'Keep my draft','Draft survives browser reload');
    await page.locator('#chatInput').fill('');
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
+   assert.equal(await page.locator('.memory-used summary').textContent(),'Sources read when this reply was created: 2');
+   for(const [locale,read,requested,preparing,pageLabel] of [
+    ['gu','આ જવાબ બનાવતી વખતે વાંચેલા સ્ત્રોત','આ જવાબ માટે માંગેલી Classroom માહિતી','તમારી ફાઇલ તૈયાર થઈ રહી છે…','પાનું'],
+    ['hi','यह जवाब बनाते समय पढ़े गए स्रोत','इस जवाब के लिए माँगी गई Classroom जानकारी','आपकी फ़ाइल तैयार हो रही है…','पृष्ठ']
+   ]){
+    await page.evaluate(locale=>SaathiI18n.setLanguage(locale),locale);
+    await page.evaluate(()=>{renderMessages();showRequestProgress('Preparing your upload…')});
+    assert.equal(await page.locator('.memory-used summary').textContent(),read+': 2');
+    assert.deepEqual(await page.locator('.memory-used li').allTextContents(),[requested,'Search'],'Only the fixed Classroom metadata is translated');
+    assert.equal(await page.locator('#uploadCopy').textContent(),preparing);
+    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
+    await page.evaluate(()=>{const n=state.messages.length;state.messages.push({role:'user',attachments:[{id:31,name:'Search.pdf',mime_type:'application/pdf',page_count:2}]});const body=document.createElement('div');body.id='localized-citation-fixture';addDisclosures(body,{source_pages:[{name:'Search.pdf',page:2},{name:'Search.pdf',page:99}]},n+1);state.messages.pop();document.body.append(body)});
+    assert.equal(await page.locator('#localized-citation-fixture a').count(),1,'Only a valid page of the owned file becomes a link');
+    assert.equal(await page.locator('#localized-citation-fixture a').textContent(),'Search.pdf · '+pageLabel+' 2');
+    assert.equal(await page.locator('#localized-citation-fixture a').getAttribute('href'),'/api/attachments/31/view#page=2');
+    await page.locator('#localized-citation-fixture').evaluate(node=>node.remove());
+   }
+   await page.evaluate(()=>{setBusy(false);return SaathiI18n.setLanguage('en')});
    await page.evaluate(()=>SaathiI18n.setLanguage('gu'));
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.message-tool')).some(el=>el.textContent==='બદલીને ફરી મોકલો'));
    assert.equal(await page.locator('.message.user .message-content').textContent(),'Search');
@@ -438,7 +456,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.equal(await page.locator('.message-more').count(),1);
    assert.equal(await page.locator('.message-more[open]').count(),0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Chat must fit mobile width');
-   await page.evaluate(()=>createConversation());
+   let releaseCreate;conversationCreateGate=new Promise(resolve=>{releaseCreate=resolve});
+   const creatingRequest=page.waitForRequest(request=>new URL(request.url()).pathname==='/api/conversations'&&request.method()==='POST');
+   const creating=page.evaluate(()=>createConversation());await creatingRequest;
+   try{
+    assert.equal(await page.locator('#attachButton').isDisabled(),true,'A file cannot be selected while the new chat would discard it');
+    assert.equal(await page.locator('#fileInput').isDisabled(),true,'The native file input follows the same readiness guard');
+   }finally{releaseCreate();await creating;conversationCreateGate=null}
+   assert.equal(await page.locator('#attachButton').isDisabled(),false,'Attachment selection resumes after the conversation exists');
+   await page.waitForFunction(()=>document.querySelector('#archiveLabel').textContent==='આર્કાઇવ કરેલી વાતચીતો');
    assert.equal(await page.locator('.message').count(),0);
    assert.ok(!requests.includes('/api/conversations/8/messages'),'A newly created empty chat needs no extra history request');
    await page.locator('#chatInput').fill('Hello');
