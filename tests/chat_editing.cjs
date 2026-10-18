@@ -6,7 +6,7 @@ class Element{
 }
 const $=id=>{if(!els.has(id))els.set(id,new Element());return els.get(id)};
 let sends=[],notices=[],fetcher;
-const ctx={document:{getElementById:$,createElement:()=>new Element(),createTextNode:text=>({textContent:text})},
+const ctx={document:{documentElement:{lang:'en'},getElementById:$,createElement:()=>new Element(),createTextNode:text=>({textContent:text})},
  state:{activeId:7,sending:false,selectedFiles:[],messages:[]},el:{input:{value:''}},AbortController,File,Error,Promise,
  showToast:message=>notices.push(message),sendContent:async(...args)=>sends.push(args),fetch:(...args)=>fetcher(...args)};
 vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('let editingMessage='),source.indexOf('\nasync function retryFailed')),ctx);

@@ -326,8 +326,8 @@ def test_chat_experience_features_are_real_and_safely_rendered():
         "window.openVoiceCall=",
         "SpeechRecognition||window.webkitSpeechRecognition",
         "speechSynthesis",
-        "Sources read when this reply was created: ",
-        " · exact page not confirmed",
+        "Sources read when this reply was created",
+        "exact page not confirmed",
         "/feedback",
     ):
         assert marker in chat
