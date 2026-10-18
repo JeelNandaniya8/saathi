@@ -5,6 +5,9 @@ import copy
 import logging
 import secrets
 import time
+import math
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 import requests
 
 _local = threading.local()
@@ -23,6 +26,23 @@ class ProviderError(RuntimeError):
         self.reference = secrets.token_hex(4)
 
 
+def retry_after_seconds(response):
+    """Honor both HTTP Retry-After forms without logging provider headers."""
+    value = str(getattr(response, 'headers', {}).get('Retry-After', '')).strip()
+    if not value:
+        return None
+    try:
+        if value.isascii() and value.isdigit():
+            # Do not expose an unbounded provider header as a huge JSON number.
+            return int(value) if len(value) <= 12 else None
+        until = parsedate_to_datetime(value)
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        return max(0, math.ceil(until.timestamp() - time.time()))
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 def provider_error(response):
     status = response.status_code
     try:
@@ -33,15 +53,13 @@ def provider_error(response):
     if status in (401, 403) or (status == 400 and any(word in text for word in ('api key', 'api_key', 'key expired'))):
         error = ProviderError('AI_ACCESS', 'Saathi’s AI connection needs attention. Please contact support; retrying this message will not fix the connection.', status)
     elif status == 429:
-        value = getattr(response, 'headers', {}).get('Retry-After', '')
-        retry_after = min(int(value), 3600) if str(value).isdigit() else None
-        error = ProviderError('AI_QUOTA', 'The AI service has reached its usage limit. Please try later. Your message is kept here.', status, retry_after)
+        error = ProviderError('AI_QUOTA', 'The AI service has reached its usage limit. Please try later. Your message is kept here.', status, retry_after_seconds(response))
     elif status == 404:
         error = ProviderError('AI_MODEL', 'The selected AI model is unavailable. Please contact support so the connection can be updated.', status)
     elif status == 400 and ('billing' in text or 'region' in text or 'location' in text):
         error = ProviderError('AI_CONFIGURATION', 'The AI service is not available with the current server setup. Please contact support.', status)
     elif status in (408, 500, 502, 503, 504):
-        error = ProviderError('AI_BUSY', 'The AI service is temporarily busy. Please retry in a moment; your message is kept here.', status)
+        error = ProviderError('AI_BUSY', 'The AI service is temporarily busy. Please retry in a moment; your message is kept here.', status, retry_after_seconds(response))
     else:
         error = ProviderError('AI_REQUEST', 'The AI service could not accept this message. Try a shorter message or remove the attachment.', status)
     # Never log provider bodies, prompts, response text or credentials.
@@ -106,8 +124,15 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
     if current != model or omit_thinking:
         body.get('generationConfig', {}).pop('thinkingConfig', None)
     deadline = time.monotonic() + (40 if fast else 65)
+    def remaining_time():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProviderError('AI_TIMEOUT', 'The AI service took too long to start. Please retry; your message is kept here.')
+        return remaining
+
     def switch_fast_model():
         nonlocal current, omit_thinking, body
+        remaining_time()
         candidate = discover_model(key, fast=True, exclude=current) or fallback
         if not candidate or candidate == current or 'flash' not in candidate:
             return False
@@ -123,8 +148,10 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
         url += ':streamGenerateContent?alt=sse' if stream else ':generateContent'
         response = None
         try:
+            remaining = remaining_time()
             read_limit = 15 if fast and attempt == 0 else 30 if fast else 45
-            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(5, min(read_limit, max(1, deadline - time.monotonic() - 5))))
+            connect_limit = min(5, remaining / 2)
+            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(connect_limit, min(read_limit, remaining - connect_limit)))
             if stream:
                 options['stream'] = True
             response = post_request(url, **options)
@@ -145,8 +172,8 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
             # A received 5xx rejection has no response output to replay. Recover once
             # within the same time budget; never replay ambiguous timeouts or quota.
             retry_value = getattr(rejected, 'headers', {}).get('Retry-After', '')
-            retry_delay = int(retry_value) if str(retry_value).isdigit() else 1
-            if attempt == 0 and rejected.status_code in (500, 502, 503, 504) and retry_delay <= 2 and deadline - time.monotonic() > retry_delay + 6:
+            retry_delay = retry_after_seconds(rejected) if retry_value else 1
+            if attempt == 0 and rejected.status_code in (500, 502, 503, 504) and retry_delay is not None and retry_delay <= 2 and deadline - time.monotonic() > retry_delay + 6:
                 rejected.close()
                 if fast:
                     switch_fast_model()
@@ -157,6 +184,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
             recover_thinking = rejected.status_code == 400 and 'thinking' in detail and 'thinkingConfig' in body.get('generationConfig', {})
             if attempt == 0 and (recover_model or recover_thinking):
                 rejected.close()
+                remaining_time()
                 if recover_model:
                     discovered = discover_model(key, fast=fast, exclude=current)
                     current = discovered or fallback
