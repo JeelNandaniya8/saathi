@@ -29,6 +29,7 @@ module.exports=async function reviewUI(page,width,base){
    await page.evaluate(view=>openView(view),view);
    await page.waitForFunction(()=>!state.sectionRequests?.size&&!state.failedTool);
    await fits(`${theme}/${view}`);
+   if(view==='healer')for(const control of ['#healerConsultBtn','#zenToggleBtn'])assert.ok(await contrast(control)>=4.5,`${theme} Care action text remains readable`);
    if(theme==='light')await capture(view);
   }
   await page.goto(base+'/dashboard?mindmap=62#mindmaps');

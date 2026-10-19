@@ -296,7 +296,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <header class="section-head"><span class="eyebrow">Account and privacy</span><h1>Your space stays yours.</h1><div class="care-actions"><button class="secondary" type="button" data-response-timings>Reply performance</button><button class="secondary" type="button" data-clear-drafts>Clear browser drafts</button></div><p class="helper">Unsent chat and note drafts can recover on this device for up to 24 hours. Browser copies clear when you log out.</p><p>Update your account details, protect your password, review policies, export your information or remove the account.</p></header>
 <div class="grid2">
 <article class="panel"><div class="profile-card"><span class="avatar" id="profileAvatar">S</span><div><h2 id="profileDisplayName">Saathi user</h2><p id="profileEmail">—</p></div></div><form id="profileForm"><div class="form-grid"><label class="field">Name<input id="profileName" maxlength="50" required></label><label class="field">Username<input id="profileUsername" maxlength="20" required></label></div><div class="form-actions"><button class="primary" type="submit">Save profile</button></div></form></article>
-<article class="panel plan-card"><span class="plan-badge" id="planBadge">Free plan</span><div class="panel-head"><div><h2 style="margin-top:14px" id="planHeaderTitle">Your Saathi plan</h2><p id="planStatus">Active</p></div></div><p id="planDescription">Your saved chats, daily tools and wellbeing space are included. Explore Plus for higher study limits.</p><div class="form-actions" id="planActions"><button class="primary" id="upgradeBtnAccount" type="button" onclick="openUpgradeModal()" style="background:linear-gradient(135deg,var(--gold),#8d6b1d);border-color:var(--gold);color:#fff">Plus plans · Coming soon</button></div></article>
+<article class="panel plan-card"><span class="plan-badge" id="planBadge">Free plan</span><div class="panel-head"><div><h2 style="margin-top:14px" id="planHeaderTitle">Your Saathi plan</h2><p id="planStatus">Active</p></div></div><p id="planDescription">Your saved chats, daily tools and wellbeing space are included. Explore Plus for higher study limits.</p><div class="form-actions" id="planActions"><button class="primary" id="upgradeBtnAccount" type="button" onclick="openUpgradeModal()" >Plus plans · Coming soon</button></div></article>
 </div>
 <div class="grid2" style="margin-top:12px">
 <article class="panel"><div class="panel-head"><div><span class="eyebrow">Security</span><h2>Change password</h2></div></div><form id="passwordForm"><div class="form-grid"><label class="field">Current password<input id="currentPassword" type="password" autocomplete="current-password" required></label><label class="field">New password<input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label></div><div class="form-actions"><button class="primary" type="submit">Change password</button></div></form></article>
@@ -444,8 +444,8 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
   <div class="mindmap-viewport-wrapper">
     <div class="mindmap-toolbar">
-      <button type="button" onclick="zoomMindmap(0.2)" title="Zoom In">🔍 +</button>
-      <button type="button" onclick="zoomMindmap(-0.2)" title="Zoom Out">🔍 -</button>
+      <button type="button" onclick="zoomMindmap(0.2)" title="Zoom In" aria-label="Zoom In">+</button>
+      <button type="button" onclick="zoomMindmap(-0.2)" title="Zoom Out" aria-label="Zoom Out">−</button>
       <button type="button" onclick="resetMindmapZoom()" title="Readable view">Readable view</button>
       <span style="font-size:11px;color:var(--muted);padding:0 4px" id="mindmapZoomIndicator">100%</span>
     </div>
@@ -526,7 +526,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
         <option value="en" selected>English</option>
         <option value="hi">हिन्दी</option>
       </select>
-      <button type="button" class="primary" id="healerConsultBtn" onclick="runHealerConsultation()" style="min-height:46px;padding:0 22px;border-radius:14px;background:var(--sage);border-color:var(--sage);color:#fff;font-weight:700">Prepare my next steps</button>
+      <button type="button" class="primary" id="healerConsultBtn" onclick="runHealerConsultation()" style="min-height:46px;padding:0 22px;border-radius:14px;background:var(--sage);border-color:var(--sage);color:var(--action-ink);font-weight:700">Prepare my next steps</button>
     </div>
 
     <!-- Healer Results Card Output -->
@@ -550,7 +550,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
         <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px" id="zenInstruction">
           Breathe in gently for 4 seconds and out for 6. No breath holding.
         </p>
-        <button type="button" class="primary" id="zenToggleBtn" onclick="toggleBreathingExercise()" style="background:var(--sage);border-color:var(--sage);color:#fff">
+        <button type="button" class="primary" id="zenToggleBtn" onclick="toggleBreathingExercise()" style="background:var(--sage);border-color:var(--sage);color:var(--action-ink)">
           ▶ Start Breathing Cycle
         </button>
       </div>
