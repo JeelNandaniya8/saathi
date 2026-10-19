@@ -453,6 +453,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('.selected-file button').getAttribute('aria-label'),native.remove);
     assert.ok((await page.locator('#native-file-fixture .attachment-copy small').textContent()).includes(native.pages));
     assert.equal(await page.locator('#native-file-fixture .attachment-copy b').textContent(),'Search.pdf','Literal filenames stay untouched');
+    assert.equal(await page.locator('#native-file-fixture .message-name').textContent(),locale==='gu'?'તમે':'आप');
+    assert.notEqual(await page.locator('#closeSidebar').getAttribute('aria-label'),'Collapse sidebar');
     assert.notEqual(await page.locator('.conversation-menu').first().getAttribute('aria-label'),'Options for Search');
     await page.evaluate(()=>{document.querySelector('.empty').remove();document.querySelector('#native-file-fixture').remove();clearSelectedFiles();el.input.value='';updateComposer()});
 

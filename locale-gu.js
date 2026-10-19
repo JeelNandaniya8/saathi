@@ -814,5 +814,14 @@ window.SaathiI18n.register({
   "Create a realistic study plan using the attached files.": "જોડેલી ફાઇલો પરથી વ્યવહારુ અભ્યાસ યોજના બનાવો.",
   "Please explain the attached files.": "જોડેલી ફાઇલો સમજાવો.",
   "You can attach up to {count} file within your current allowance.": "તમારી હાલની મર્યાદામાં {count} ફાઇલ સુધી જોડી શકો છો.",
-  "{count} mindmap remaining · Resets {reset}": "{count} માઇન્ડમેપ બાકી · ફરી ઉપલબ્ધ {reset}"
+  "{count} mindmap remaining · Resets {reset}": "{count} માઇન્ડમેપ બાકી · ફરી ઉપલબ્ધ {reset}",
+  "Collapse sidebar": "બાજુનું મેનુ બંધ કરો",
+  "Search workspace": "કાર્યજગ્યામાં શોધો",
+  "You": "તમે",
+  "Use a PDF, JPG, PNG or WebP file.": "PDF, JPG, PNG કે WebP ફાઇલ વાપરો.",
+  "Empty files cannot be attached.": "ખાલી ફાઇલ જોડી શકાતી નથી.",
+  "You have used today's attachment allowance.": "આજની ફાઇલ અપલોડ મર્યાદા પૂરી થઈ ગઈ છે.",
+  "Wait for the current reply before switching chats.": "વાતચીત બદલતાં પહેલાં હાલનો જવાબ પૂરો થવા દો.",
+  "Your workspace is still opening. Please wait a moment.": "તમારી કાર્યજગ્યા ખુલી રહી છે. થોડી વાર રાહ જુઓ.",
+  "Attach a photo or PDF (up to {size} MB)": "ફોટો કે PDF જોડો (વધુમાં વધુ {size} MB)"
 });
