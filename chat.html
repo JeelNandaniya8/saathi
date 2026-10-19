@@ -323,7 +323,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
-<link rel="stylesheet" href="/workspace-hub.css?v=20261020b">
+<link rel="stylesheet" href="/workspace-hub.css?v=20261020c">
 
 <style>.chat-study-dialog{width:min(680px,calc(100vw - 24px));max-height:85dvh;overflow:auto}.chat-study-dialog fieldset{margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:14px}.chat-study-dialog fieldset label{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:10px;background:var(--canvas);overflow-wrap:anywhere;cursor:pointer}.chat-study-dialog fieldset input{width:20px;height:20px;flex-shrink:0;padding:0;accent-color:var(--gold)}.chat-study-dialog legend{font-weight:600;overflow-wrap:anywhere}.chat-study-dialog details{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.chat-study-dialog summary{cursor:pointer;min-height:44px;align-content:center;font-weight:600}.chat-study-dialog .chat-map details details{margin-left:12px;border-left:3px solid var(--sage)}.chat-study-dialog a{display:inline-flex;min-height:44px;align-items:center;color:var(--gold)}.chat-study-dialog button{min-height:44px}.chat-study-dialog p{line-height:1.6}</style></head>
 <body class="chat-polish">
@@ -486,8 +486,8 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
-<script src="/i18n.js?v=20261020b"></script>
-<script src="/workspace-hub.js?v=20261020b"></script>
+<script src="/i18n.js?v=20261020c"></script>
+<script src="/workspace-hub.js?v=20261020c"></script>
 <script src="/recovery.js?v=20261019a"></script>
 <script src="/account-clock.js?v=20261014a"></script>
 <script src="/vendor/katex-0.19.0.min.js" defer></script>
@@ -689,16 +689,31 @@ async function selectConversation(id){
 
 function emptyView(){
   const empty=document.createElement('div');empty.className='empty';
-  const inner=document.createElement('div');inner.className='empty-inner';inner.innerHTML='<div class="empty-orb"><span class="orb"></span></div><h2 data-ui-text>How can Saathi help today?</h2><p data-ui-text>Talk through your day, find a small next step, or study something new. You choose what to share.</p>';
+  const inner=document.createElement('div');inner.className='empty-inner';
+  inner.innerHTML='<div class="empty-signature" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></div><h2 data-ui-text>Make room for a little clarity.</h2><p data-ui-text>Bring a question, a page, or a thought. Start wherever you are.</p>';
   const prompts=document.createElement('div');prompts.className='prompts';
-  [
-    ['♡','Talk it through','I would like to talk about how I am feeling. Please listen first and ask whether I want ideas.'],
-    ['□','Study plan','Help me make a focused study plan for this week.'],
-    ['◇','Organise my day','Help me put today’s tasks in a realistic order.'],
-    ['○','Understand a topic','Explain a difficult topic in simple steps.'],
-    ['✓','Think it through','Help me compare the options in a decision.']
-  ].forEach(([icon,title,prompt])=>{const button=document.createElement('button');button.className='prompt';button.type='button';button.innerHTML=`<span>${icon}</span><b></b><small></small>`;button.querySelector('b').textContent=title;button.querySelector('small').setAttribute('data-ui-text','');button.querySelector('small').textContent=chatText(prompt);button.addEventListener('click',()=>{if(title==='Talk it through'){el.mode.value='care';updateModeDescription()}el.input.value=chatText(prompt);updateComposer();el.input.focus()});prompts.append(button)});
-  inner.append(prompts);empty.append(inner);return empty;
+  const secondary=document.createElement('div');secondary.className='prompt-secondary';
+  const entries=[
+    {title:'Understand a topic',caption:'Break it into simple steps.',prompt:'Explain a difficult topic in simple steps.',icon:'<path d="M3 4h7a2 2 0 0 1 2 2v15a3 3 0 0 0-3-2H3Zm18 0h-7a2 2 0 0 0-2 2v15a3 3 0 0 1 3-2h6Z"/>'},
+    {title:'Study plan',caption:'Find a manageable next step.',prompt:'Help me make a focused study plan for this week.',icon:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h4"/>'},
+    {title:'Organise my day',caption:'Put the important things first.',prompt:'Help me put today’s tasks in a realistic order.',icon:'<path d="m3 6 2 2 4-4m3 3h9M3 13h6m3 0h9M3 19h6m3 0h9"/>'},
+    {title:'Talk it through',prompt:'I would like to talk about how I am feeling. Please listen first and ask whether I want ideas.',secondary:true},
+    {title:'Think it through',prompt:'Help me compare the options in a decision.',secondary:true}
+  ];
+  for(const entry of entries){
+    const button=document.createElement('button');button.className='prompt';button.type='button';
+    button.dataset.startPrompt=entry.title;
+    if(entry.icon){const icon=document.createElement('span');icon.className='prompt-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+entry.icon+'</svg>';button.append(icon)}
+    const title=document.createElement('b');title.textContent=entry.title;button.append(title);
+    if(entry.caption){const caption=document.createElement('small');caption.setAttribute('data-ui-text','');caption.textContent=entry.caption;button.append(caption)}
+    button.addEventListener('click',()=>{
+      if(el.input.value.trim()){showToast(chatText('Send or keep your current draft first.'));el.input.focus();return}
+      if(entry.title==='Talk it through'&&state.chatModes.some(mode=>mode.id==='care')){el.mode.value='care';updateModeDescription()}
+      el.input.value=chatText(entry.prompt);updateComposer();el.input.focus();
+    });
+    (entry.secondary?secondary:prompts).append(button);
+  }
+  inner.append(prompts,secondary);empty.append(inner);return empty;
 }
 
 function appendInline(target,text){window.SaathiMarkup?SaathiMarkup.inline(target,text):target.replaceChildren(document.createTextNode(text))}
@@ -1170,7 +1185,7 @@ function runChatBreathCycle(phase, seconds){
   }, 1000);
 }
 
-function renderChatLoading(){el.list.innerHTML='<div class="chat-placeholder" role="status" aria-label="Loading conversation"><i></i><i></i></div>'}
+function renderChatLoading(){el.list.innerHTML='<div class="chat-placeholder" role="status"><p data-ui-text>Loading conversation…</p><div class="chat-skeleton" aria-hidden="true"><i></i><i></i><i></i></div></div>'}
 async function init(){
   SaathiTheme.refresh();renderChatLoading();el.input.disabled=true;el.send.disabled=true;
   const historyRequest=api('/api/conversations?archived=false&search=').then(data=>{const requested=new URLSearchParams(location.search).get('conversation');const id=requested&&/^\d+$/.test(requested)?Number(requested):data.conversations?.[0]?.id;if(id)startupMessages={id,promise:api(`/api/conversations/${id}/messages?limit=100`).then(data=>({data}),error=>({error}))};return {data}},error=>({error}));

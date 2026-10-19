@@ -226,7 +226,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/daily-workspace.css?v=20260927c">
-<link rel="stylesheet" href="/workspace-hub.css?v=20261020b">
+<link rel="stylesheet" href="/workspace-hub.css?v=20261020c">
 </head>
 <body class="workspace-polish">
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
@@ -261,8 +261,10 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
   <aside class="today-aside" aria-label="Your day at a glance">
     <article class="panel today-reminder"><div class="panel-head"><h2>Coming up</h2><button class="quiet" data-open="reminders">Manage <span aria-hidden="true">↗</span></button></div><div id="overviewReminder" aria-busy="true" aria-label="Loading your next reminder"><span class="today-skeleton" aria-hidden="true"><i></i><i></i></span></div></article>
     <article class="panel today-conversation"><div class="panel-head"><h2>Pick up a thought</h2><span class="surface-symbol lavender" aria-hidden="true">↗</span></div><div id="todayResume" aria-busy="true" aria-label="Loading your conversation"><span class="today-skeleton" aria-hidden="true"><i></i><i></i></span></div></article>
-    <article class="panel" id="todayRevisionCard" hidden><h2 id="todayRevision">Revision ready</h2><button class="secondary" data-open="study" type="button">Review now</button></article>
+    <div class="today-support">
+    <article class="revision-strip" id="todayRevisionCard" hidden><h2 id="todayRevision">Revision ready</h2><button class="secondary" data-open="study" type="button">Review now</button></article>
     <button class="focus-shortcut" type="button" data-focus-session><span class="surface-symbol mint" aria-hidden="true">◷</span><span><b data-ui-text>Make a little room to focus</b><small data-ui-text>Open your focus timer</small></span><span aria-hidden="true">→</span></button>
+    </div>
   </aside>
 </div>
 <nav class="workspace-shortcuts" aria-label="Your study tools">
@@ -660,9 +662,9 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 </nav>
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/i18n.js?v=20261020b"></script>
+<script src="/i18n.js?v=20261020c"></script>
 <script src="/lazy-tools.js?v=20261020a"></script>
-<script src="/workspace-hub.js?v=20261020b"></script>
+<script src="/workspace-hub.js?v=20261020c"></script>
 <script src="/recovery.js?v=20261019a"></script>
 <script src="/account-clock.js?v=20261014a"></script>
 <script src="/vendor/katex-0.19.0.min.js" defer></script>

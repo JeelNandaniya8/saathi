@@ -30,13 +30,28 @@ module.exports=async function reviewUI(page,width,base){
  await page.waitForFunction(()=>document.querySelector('.hub-dialog select')?.value==='1');
  await page.keyboard.press('Escape');
  await focusDialog.waitFor({state:'detached'});
+ let releaseCompletion;
+ const completionGate=new Promise(resolve=>releaseCompletion=resolve);
+ await page.route('**/api/tasks/1',async route=>{await completionGate;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture save failure'})})});
+ const complete=page.locator('.hub-task-complete').first();
+ await complete.click();
+ assert.equal(await complete.getAttribute('aria-busy'),'true','Task completion distinguishes the pending write');
+ assert.ok(await complete.isDisabled(),'Pending completion cannot be submitted twice');
+ releaseCompletion();
+ await page.waitForFunction(()=>{const button=document.querySelector('.hub-task-complete');return button&&!button.disabled&&!button.hasAttribute('aria-busy')});
+ assert.equal(await page.locator('#todayFocusTitle').textContent(),'Search','A failed completion keeps the real task visible');
+ await page.unroute('**/api/tasks/1');
  for(const theme of ['light','dark']){
   await page.evaluate(theme=>SaathiTheme.apply(theme),theme);
   for(const view of views){
    await page.evaluate(view=>openView(view),view);
    await page.waitForFunction(()=>!state.sectionRequests?.size&&!state.failedTool);
    await fits(`${theme}/${view}`);
-   if(view==='overview')assert.ok(await contrast('#todayFocusStart')>=4.5,`${theme} focus action remains readable`);
+   if(view==='overview'){
+    assert.ok(await contrast('#todayFocusStart')>=4.5,`${theme} focus action remains readable`);
+    const complete=await page.locator('.hub-task-complete').first().boundingBox();
+    assert.ok(complete.width>=44&&complete.height>=44,'Completing a task has a distinct full-size touch target');
+   }
    if(view==='tasks'){
     await page.locator('.planning-head button').click();
     assert.equal(await page.evaluate(()=>document.activeElement.id),'taskTitle','Add task focuses the actual planner form');
@@ -93,6 +108,35 @@ module.exports=async function reviewUI(page,width,base){
    assert.ok(controls.font>=14&&controls.modeWidth>=120,`${language} mode name has room to read: ${JSON.stringify(controls)}`);
    assert.ok(controls.modeHeight>=44&&controls.contextHeight>=44&&controls.contextVisible&&!controls.overlap,'Mode and context are named, separate touch targets');
    await capture(`${language}-${theme}-chat`);
+  }
+  for(const theme of ['light','dark']){
+   await page.evaluate(theme=>SaathiTheme.apply(theme),theme);
+   const savedMessages=await page.evaluate(()=>state.messages);
+   await page.evaluate(()=>renderChatLoading());
+   await page.waitForFunction(()=>document.querySelector('.chat-placeholder p').textContent===SaathiI18n.t('Loading conversation…'));
+   assert.ok(await page.locator('.chat-placeholder').isVisible(),'Loading state includes a visible native label');
+   await page.evaluate(()=>{state.messages=[];renderMessages()});
+   await fits(`${language}/empty-chat`);
+   assert.equal(await page.locator('.prompts>.prompt').count(),3);
+   assert.equal(await page.locator('.prompt-secondary>.prompt:visible').count(),2,'Secondary starting points remain reachable on mobile');
+   await capture(`${language}-${theme}-empty-chat`);
+   await page.locator('.prompts>.prompt').first().click();
+   const starter=await page.locator('#chatInput').inputValue();
+   assert.ok(starter.length>0,'Starting point prepares a draft without sending it');
+   const mode=await page.locator('#chatMode').inputValue();
+   await page.locator('[data-start-prompt="Talk it through"]').click();
+   assert.equal(await page.locator('#chatInput').inputValue(),starter,'Another starting point cannot overwrite an existing draft');
+   assert.equal(await page.locator('#chatMode').inputValue(),mode,'A protected draft also retains its mode');
+   await page.locator('#chatInput').fill('');
+   await page.locator('[data-start-prompt="Talk it through"]').click();
+   assert.ok(await page.locator('#chatMode').inputValue(),'Starting points cannot select a mode missing from the account');
+   for(const prompt of await page.locator('[data-start-prompt]').all()){
+    await page.locator('#chatInput').fill('');
+    await prompt.click();
+    assert.ok((await page.locator('#chatInput').inputValue()).trim(),'Every starting point prepares a usable draft');
+   }
+   await page.locator('#chatInput').fill('');
+   await page.evaluate(messages=>{state.messages=messages;renderMessages()},savedMessages);
   }
  }
  if(width<=390){

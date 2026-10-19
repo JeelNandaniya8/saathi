@@ -456,10 +456,10 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('#localized-citation-fixture a').textContent(),'Search.pdf · '+pageLabel+' 2');
     assert.equal(await page.locator('#localized-citation-fixture a').getAttribute('href'),'/api/attachments/31/view#page=2');
     await page.locator('#localized-citation-fixture').evaluate(node=>node.remove());
-    const native=locale==='gu'?{welcome:'આજે સાથી કેવી રીતે મદદ કરી શકે?',prompt:'આ અઠવાડિયા માટે ધ્યાનથી અનુસરી શકાય તેવી અભ્યાસ યોજના બનાવવામાં મદદ કરો.',today:'આજ',remove:'Search.pdf દૂર કરો',pages:'શોધી શકાય એવાં 2 પાનાં'}:{welcome:'आज साथी कैसे मदद कर सकता है?',prompt:'इस सप्ताह के लिए ध्यान से पढ़ने की योजना बनाने में मदद करें।',today:'आज',remove:'Search.pdf हटाएँ',pages:'2 खोजने योग्य पृष्ठ'};
+    const native=locale==='gu'?{welcome:'થોડી સ્પષ્ટતા માટે જગ્યા બનાવો.',caption:'એક કરી શકાય એવું પગલું શોધો.',prompt:'આ અઠવાડિયા માટે ધ્યાનથી અનુસરી શકાય તેવી અભ્યાસ યોજના બનાવવામાં મદદ કરો.',today:'આજ',remove:'Search.pdf દૂર કરો',pages:'શોધી શકાય એવાં 2 પાનાં'}:{welcome:'थोड़ी स्पष्टता के लिए जगह बनाएँ।',caption:'एक सहज अगला कदम खोजें।',prompt:'इस सप्ताह के लिए ध्यान से पढ़ने की योजना बनाने में मदद करें।',today:'आज',remove:'Search.pdf हटाएँ',pages:'2 खोजने योग्य पृष्ठ'};
     await page.evaluate(()=>{document.body.append(emptyView());renderConversations();state.selectedFiles=[{file:new File(['fixture'],'Search.pdf',{type:'application/pdf'})}];renderSelectedFiles();const fixture=messageElement({id:800,role:'user',content:'Search',attachments:[{id:31,name:'Search.pdf',mime_type:'application/pdf',size_bytes:7,extracted_page_count:2,url:'/api/attachments/31'}]},0);fixture.id='native-file-fixture';document.body.append(fixture)});
     await page.waitForFunction(text=>document.querySelector('.empty h2')?.textContent===text,native.welcome);
-    assert.equal(await page.locator('.empty .prompt small').nth(1).textContent(),native.prompt);
+    assert.equal(await page.locator('.empty .prompt small').nth(1).textContent(),native.caption);
     await page.locator('.empty .prompt').nth(1).click();assert.equal(await page.locator('#chatInput').inputValue(),native.prompt,'The selected prompt is sent in the saved language');
     assert.equal(await page.evaluate(()=>formatDateGroup(new Date().toISOString())),native.today);
     assert.equal(await page.locator('.selected-file button').getAttribute('aria-label'),native.remove);
