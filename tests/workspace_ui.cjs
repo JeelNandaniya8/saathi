@@ -34,6 +34,8 @@ module.exports=async function reviewUI(page,width,base){
  const completionGate=new Promise(resolve=>releaseCompletion=resolve);
  await page.route('**/api/tasks/1',async route=>{await completionGate;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture save failure'})})});
  const complete=page.locator('.hub-task-complete').first();
+ await complete.hover();
+ assert.equal(await complete.evaluate(button=>getComputedStyle(button,'::after').content),'none','Hover must not depict an unfinished task as completed');
  await complete.click();
  assert.equal(await complete.getAttribute('aria-busy'),'true','Task completion distinguishes the pending write');
  assert.ok(await complete.isDisabled(),'Pending completion cannot be submitted twice');
@@ -124,6 +126,10 @@ module.exports=async function reviewUI(page,width,base){
    const starter=await page.locator('#chatInput').inputValue();
    assert.ok(starter.length>0,'Starting point prepares a draft without sending it');
    const mode=await page.locator('#chatMode').inputValue();
+   const recovered=await page.evaluate(()=>SaathiRecovery.getDraft('chat',state.activeId));
+   assert.equal(recovered.content,starter,'A prepared starting point is persisted before leaving the page');
+   assert.equal(recovered.mode,mode,'Starting-point recovery retains the selected mode');
+   assert.equal(recovered.request_id,null,'A new starting point cannot reuse an earlier failed request ID');
    await page.locator('[data-start-prompt="Talk it through"]').click();
    assert.equal(await page.locator('#chatInput').inputValue(),starter,'Another starting point cannot overwrite an existing draft');
    assert.equal(await page.locator('#chatMode').inputValue(),mode,'A protected draft also retains its mode');
