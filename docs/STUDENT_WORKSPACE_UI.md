@@ -12,6 +12,8 @@ Modified CSS, JavaScript and language catalogs have versioned asset URLs for exi
 
 The Dashboard groups revision and timer actions into one support surface. Task completion has an individually named 44px control; its pending state ends when the request settles. Chat presents three study starting points and two secondary actions on both desktop and mobile. A starting point prepares a draft, preserves existing writing and only selects modes actually returned for the account. The loading skeleton includes visible translated status text. Shared warm surface and accent tokens also cover dark mode.
 
+Dashboard focus uses a restrained tinted surface, an explicit footer and consistent inline SVG tool icons. Unfinished tasks keep an empty completion ring, including on hover; a pending write uses the existing busy state. Dashboard skeletons include visible translated labels. Chat uses the Saathi symbol for assistant avatars, a consistent reading rhythm, touch-sized source disclosures and distinct, quiet starting-point icons. Starting points immediately use the existing draft recovery store, including the selected mode, and clear any obsolete request ID. No request is sent by choosing a starting point.
+
 ## Verification
 
 ```sh

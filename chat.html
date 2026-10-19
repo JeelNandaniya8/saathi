@@ -323,7 +323,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 </style>
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
-<link rel="stylesheet" href="/workspace-hub.css?v=20261020c">
+<link rel="stylesheet" href="/workspace-hub.css?v=20261020d">
 
 <style>.chat-study-dialog{width:min(680px,calc(100vw - 24px));max-height:85dvh;overflow:auto}.chat-study-dialog fieldset{margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:14px}.chat-study-dialog fieldset label{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:10px;background:var(--canvas);overflow-wrap:anywhere;cursor:pointer}.chat-study-dialog fieldset input{width:20px;height:20px;flex-shrink:0;padding:0;accent-color:var(--gold)}.chat-study-dialog legend{font-weight:600;overflow-wrap:anywhere}.chat-study-dialog details{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.chat-study-dialog summary{cursor:pointer;min-height:44px;align-content:center;font-weight:600}.chat-study-dialog .chat-map details details{margin-left:12px;border-left:3px solid var(--sage)}.chat-study-dialog a{display:inline-flex;min-height:44px;align-items:center;color:var(--gold)}.chat-study-dialog button{min-height:44px}.chat-study-dialog p{line-height:1.6}</style></head>
 <body class="chat-polish">
@@ -709,7 +709,7 @@ function emptyView(){
     button.addEventListener('click',()=>{
       if(el.input.value.trim()){showToast(chatText('Send or keep your current draft first.'));el.input.focus();return}
       if(entry.title==='Talk it through'&&state.chatModes.some(mode=>mode.id==='care')){el.mode.value='care';updateModeDescription()}
-      el.input.value=chatText(entry.prompt);updateComposer();el.input.focus();
+      state.draftRequestId=null;el.input.value=chatText(entry.prompt);updateComposer();saveChatDraft();el.input.focus();
     });
     (entry.secondary?secondary:prompts).append(button);
   }
@@ -777,7 +777,7 @@ function readMessage(text,button){
 function visibleMessage(message){if(message.failed||message.streaming)return{text:window.SaathiChatActions?.clean(message.content)||message.content||''};const content=window.SaathiChatActions?.clean(message.content)||'',quiz=parseQuiz(content),flash=parseFlashcards(content);return{quiz,flash,text:(message.action_receipt||message.action_error)?'':quiz?quiz.clean:flash?flash.clean:content}}
 function messageElement(message,index){
   const article=document.createElement('article'),assistant=message.role==='assistant';article.className='message '+(assistant?'assistant':'user')+(message.failed?' failed':'')+(message.streaming?' streaming':'');article.dataset.messageId=message.id;if(message.streaming)article.setAttribute('aria-live','polite');
-  const avatar=document.createElement('div');avatar.className='message-avatar';if(assistant)avatar.textContent='S';else SaathiWorkspace.renderAvatar(avatar,state.user);
+  const avatar=document.createElement('div');avatar.className='message-avatar';avatar.setAttribute('aria-hidden','true');if(assistant)avatar.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg>';else SaathiWorkspace.renderAvatar(avatar,state.user);
   const body=document.createElement('div');body.className='message-body';const name=document.createElement('p');name.className='message-name';name.textContent=assistant?'Saathi':chatText('You');body.append(name);
   if(assistant&&!message.action_receipt&&!message.action_error&&message.ai_mode&&message.ai_mode!=='normal'){const mode=state.chatModes.find(item=>item.id===message.ai_mode);const badge=document.createElement('span');badge.className='mode-badge';badge.textContent=mode?.label||message.ai_mode.replaceAll('_',' ');body.append(badge)}
   if(message.attachments?.length){const files=document.createElement('div');files.className='message-attachments';message.attachments.forEach(attachment=>{const link=document.createElement('a');link.className='message-attachment';link.href=attachment.url||'#';if(!attachment.local){link.target='_blank';link.rel='noopener'}else link.addEventListener('click',event=>event.preventDefault());if(attachment.mime_type?.startsWith('image/')){const preview=document.createElement('img');preview.src=attachment.url;preview.alt=attachment.name;preview.loading='lazy';link.append(preview)}else{const icon=document.createElement('span');icon.className='attachment-icon';icon.textContent='PDF';link.append(icon)}const copy=document.createElement('span');copy.className='attachment-copy';const title=document.createElement('b');title.textContent=attachment.name;const detail=document.createElement('small');const extracted=Number(attachment.extracted_page_count)||0;detail.textContent=readableSize(attachment.size_bytes)+(extracted?' · '+chatText(extracted===1?'{count} searchable page':'{count} searchable pages',{count:extracted}):'');copy.append(title,detail);link.append(copy);files.append(link)});body.append(files)}
@@ -802,7 +802,7 @@ function renderMessages(showTyping=false){
   if(!state.messages.length&&!showTyping){el.list.append(emptyView());return}
   if(state.hasMore&&!showTyping){const older=document.createElement('button');older.className='load-older';older.type='button';older.textContent='Load older messages';older.addEventListener('click',loadOlderMessages);el.list.append(older)}
   const fragment=document.createDocumentFragment();state.messages.forEach((message,index)=>fragment.append(messageElement(message,index)));el.list.append(fragment);
-  if(showTyping){const article=document.createElement('article');article.className='message assistant';article.id='typingMessage';article.innerHTML='<div class="message-avatar">S</div><div class="message-body"><p class="message-name">Saathi</p><div class="typing" aria-label="Saathi is preparing a reply"><i></i><i></i><i></i></div></div>';el.list.append(article)}
+  if(showTyping){const article=document.createElement('article');article.className='message assistant';article.id='typingMessage';article.innerHTML='<div class="message-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></div><div class="message-body"><p class="message-name">Saathi</p><div class="typing" aria-label="Saathi is preparing a reply"><i></i><i></i><i></i></div></div>';el.list.append(article)}
 }
 
 // Bound Markdown/layout work during streams; paint the first chunk immediately.
