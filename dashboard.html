@@ -156,15 +156,15 @@ body.navigation-open{overflow:hidden}.skip-link{position:fixed;z-index:100;left:
 
 /* ── Visual Mindmap Studio & Referral ────────────────────────── */
 .mindmap-viewport-wrapper{position:relative;border:1.5px solid var(--line);border-radius:24px;background:var(--paper);overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.04);margin-top:20px}
-.mindmap-toolbar{position:relative;top:auto;right:auto;width:fit-content;max-width:calc(100% - 24px);margin:12px 12px 12px auto;z-index:20;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:6px 10px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
-.mindmap-toolbar button{min-height:36px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:720;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:all .15s}
+.mindmap-toolbar{position:relative;top:auto;right:auto;width:fit-content;max-width:calc(100% - 24px);margin:12px 12px 12px auto;z-index:20;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:6px 10px;background:var(--paper);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.mindmap-toolbar button{min-height:36px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:720;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;transition:all .15s}
 .mindmap-toolbar button:hover{background:var(--canvas);border-color:var(--accent);transform:translateY(-1px)}
 .mindmap-viewport{width:100%;min-height:560px;height:65vh;overflow:auto;position:relative;cursor:grab;background:radial-gradient(var(--line) 1.2px,transparent 1.2px) 0 0/24px 24px}
 .mindmap-viewport:active{cursor:grabbing}
 .mindmap-stage{position:absolute;top:0;left:0;min-width:1400px;min-height:900px;transform-origin:0 0;transition:transform .12s ease-out}
 .mindmap-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .mindmap-nodes-layer{position:absolute;inset:0;pointer-events:auto}
-.mm-node{position:absolute;transform:translate(-50%,-50%);padding:12px 18px;border-radius:18px;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border:2px solid #5b7cfa;box-shadow:0 8px 24px rgba(0,0,0,.07);max-width:260px;cursor:pointer;transition:all .2s cubic-bezier(.16,1,.3,1)}
+.mm-node{position:absolute;transform:translate(-50%,-50%);padding:12px 18px;border-radius:18px;background:var(--paper);backdrop-filter:blur(14px);border:2px solid #5b7cfa;box-shadow:0 8px 24px rgba(0,0,0,.07);max-width:260px;cursor:pointer;transition:all .2s cubic-bezier(.16,1,.3,1)}
 .mm-node:hover{transform:translate(-50%,-50%) scale(1.05);box-shadow:0 12px 30px rgba(0,0,0,.12);z-index:10}
 .mm-node.root{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border-color:#6366f1;border-width:2.5px;padding:16px 24px;border-radius:22px;box-shadow:0 12px 36px rgba(99,102,241,.25)}
 .mm-node.root .mm-title{color:#fff;font-size:17px;font-weight:800}
@@ -226,7 +226,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/daily-workspace.css?v=20260927c">
-<link rel="stylesheet" href="/workspace-hub.css?v=20261009b">
+<link rel="stylesheet" href="/workspace-hub.css?v=20261020a">
 </head>
 <body class="workspace-polish">
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
@@ -437,8 +437,8 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button type="button" class="secondary" onclick="newMindmapPrompt()">+ New Topic</button>
-      <button type="button" class="primary" onclick="exportMindmapPng()" style="background:var(--gold);border-color:var(--gold);color:#fff">Download PNG</button>
-      <button type="button" class="primary" onclick="shareMindmapWhatsApp()" style="background:#25D366;border-color:#25D366;color:#fff">Share on WhatsApp</button>
+      <button type="button" class="primary" onclick="exportMindmapPng()">Download PNG</button>
+      <button type="button" class="secondary" onclick="shareMindmapWhatsApp()">Share on WhatsApp</button>
     </div>
   </div>
 
@@ -628,7 +628,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <canvas id="confettiCanvas"></canvas>
 
 <script src="/i18n.js?v=20261019a"></script>
-<script src="/lazy-tools.js?v=20261015h"></script>
+<script src="/lazy-tools.js?v=20261020a"></script>
 <script src="/workspace-hub.js?v=20261014f"></script>
 <script src="/recovery.js?v=20261019a"></script>
 <script src="/account-clock.js?v=20261014a"></script>

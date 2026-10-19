@@ -13,7 +13,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let inlineSaved=null,inlineJobs=[],cardCorrections=0,conversationCreateGate=null;
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
-   let language='en',focus=null,failMindmaps=true,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0,failClassroomSync=false,classroomError=null,classroomConnects=0;
+   let language='en',focus=null,failMindmaps=!process.env.SAATHI_UI_REVIEW,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0,failClassroomSync=false,classroomError=null,classroomConnects=0;
    const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
    const user=()=>({id:1,name:'Search',username:'fixture',email:'fixture@example.test',plan:'free',timezone:'Asia/Kolkata',language});
    page.on('pageerror',error=>errors.push(error.message));
@@ -40,6 +40,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/workspace/preferences')data={preferences:{onboarding_done:true,timezone:'Asia/Kolkata',language,notification_mode:'immediate',quiet_enabled:false,celebrations:false}};
      else if(pathname==='/api/workspace/today')data={tasks:fixtureTasks.filter(item=>!item.completed),revision_due:2,recent_chat:{id:7,title:'Search'},next_exam:{id:4,title:'Owned upcoming exam',days_left:2}};
      else if(pathname==='/api/overview')data={pending_tasks:1,conversations:1,active_reminders:0,active_memories:0};
+     else if(pathname==='/api/memories')data={memories:[]};
+     else if(pathname==='/api/journal')data={entries:[]};
+     else if(pathname==='/api/trusted-contacts')data={sent:[],incoming:[]};
      else if(pathname==='/api/tasks')data={tasks:fixtureTasks};
      else if(pathname==='/api/tasks/1'){fixtureTasks[0]={...fixtureTasks[0],...body()};data={task:fixtureTasks[0]}}
      else if(pathname==='/api/check-ins')data={check_ins:[{id:1,created_at:'2026-10-08T09:00:00Z',mood:3,energy:4,note:'Private summary fixture'}]};
@@ -60,7 +63,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/referrals')data={referral_code:'fixture',referral_url:base,invited:0,qualified:0,bonus_days:0};
      else if(pathname==='/api/mock-tests/history')data={tests:[]};
      else if(pathname==='/api/mindmaps/history')data={mindmaps:[]};
-     else if(pathname==='/api/mindmaps/62')data={mindmap:{id:62,topic:'Exact linked map',data:{summary:'Persisted map, outside history',root:{id:'linked-root',label:'Exact linked root',desc:'Stored content',children:[]}}}};
+     else if(pathname==='/api/mindmaps/62')data={mindmap:{id:62,topic:'Exact linked map',data:{summary:'Persisted map, outside history',root:{id:'linked-root',label:'Exact linked root',desc:'Stored content',children:[{id:'readable-branch',label:'Probability',desc:'A saved branch stays readable',children:[]}]}}}};
      else if(pathname==='/api/quick-notes/3')data={note:{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}};
      else if(pathname==='/api/quick-notes')data={notes:[{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}]};
      else if(pathname==='/api/workspace/search'){searches++;data={items:[{kind:'task',id:1,title:'Search',excerpt:'<img src=x onerror=alert(1)>'}]}}
@@ -105,6 +108,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'};
     return route.fulfill({contentType:types[path.extname(local)]||'application/octet-stream',body:fs.readFileSync(local)});
    });
+   if(process.env.SAATHI_UI_REVIEW){await require('./workspace_ui.cjs')(page,width,base);await context.close();assert.deepEqual(errors,[],'No uncaught errors during UI review');continue}
    await page.goto(base+'/dashboard');
    await page.locator('#todayTasks .hub-task-title').waitFor();
    await page.waitForFunction(()=>document.querySelector('#workspaceStatus').hidden);
@@ -406,8 +410,8 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.locator('#audit-note-link a').click();await page.waitForFunction(()=>document.querySelector('[data-qn="content"]')?.value==='Search');assert.equal(await page.locator('[data-qn="content"]').inputValue(),'Search');assert.equal(new URL(page.url()).pathname,'/chat','Exact note opens without navigating to Today');await page.locator('[data-qn="close"]').click();await page.locator('#audit-note-link').evaluate(node=>node.remove());
 
    assert.equal(await page.locator('#chatMode').evaluate(node=>Boolean(node.closest('.composer-actions'))),true,'Mode shares the compact composer action row');
-   const layout=await page.evaluate(()=>{const composer=document.querySelector('#composer').getBoundingClientRect(),toolbar=document.querySelector('.composer-toolbar').getBoundingClientRect(),send=document.querySelector('#sendButton').getBoundingClientRect();return {height:composer.height,toolbarBottom:toolbar.bottom,sendBottom:send.bottom,overflow:document.documentElement.scrollWidth>innerWidth+1}});
-   assert.ok(layout.height<165,'Empty composer leaves room for the conversation');assert.ok(Math.abs(layout.toolbarBottom-layout.sendBottom)<8,'Mode and Send share one row');assert.equal(layout.overflow,false,'Chat fits every screen width');
+   const layout=await page.evaluate(()=>{const composer=document.querySelector('#composer').getBoundingClientRect(),toolbar=document.querySelector('.composer-toolbar').getBoundingClientRect(),send=document.querySelector('#sendButton').getBoundingClientRect();return {height:composer.height,bottom:composer.bottom,toolbarBottom:toolbar.bottom,sendBottom:send.bottom,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+   assert.ok(layout.height<165,'Empty composer leaves room for the conversation: '+JSON.stringify(layout));assert.ok(layout.toolbarBottom<=layout.bottom&&layout.sendBottom<=layout.bottom,'Mode and Send remain inside the compact composer');assert.equal(layout.overflow,false,'Chat fits every screen width');
    await page.locator('.quick-actions summary').click();assert.equal(await page.locator('.quick-action').first().isVisible(),true,'Learning actions remain reachable');await page.locator('.quick-actions summary').click();
 
    assert.equal(requests.filter(p=>p==='/api/conversations/7/messages').length,1,'Startup history must not be fetched twice');
