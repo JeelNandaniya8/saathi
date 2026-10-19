@@ -68,7 +68,12 @@
     })();
     return notesRequest;
   }
-  async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.heading.focus()}
+  async function openNotes(){
+    if(!state.user)return;
+    buildDialog();
+    if(!dialog.open){dialog.showModal();ui.heading.focus()}
+    if(!state.loaded)await loadNotes();
+  }
   async function openNote(id){
     if(!state.user||state.busy)return;buildDialog();if(!dialog.open)dialog.showModal();if(!canSwitch())return;
     ui.search.value='';renderList();

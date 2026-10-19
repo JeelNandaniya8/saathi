@@ -4,7 +4,7 @@ const {webcrypto}=require('node:crypto');
 class Element {
   constructor(){this.value='';this.children=[];this.dataset={};this.events={};this.attrs={};this.hidden=false;this.disabled=false;this.textContent='';this.style={};this.open=false;this.classList={toggle(){}}}
   setAttribute(k,v){this.attrs[k]=v}hasAttribute(k){return k in this.attrs}
-  addEventListener(k,fn){this.events[k]=fn}focus(){}getBoundingClientRect(){return {left:0,right:600,top:0,bottom:700}}
+  addEventListener(k,fn){this.events[k]=fn}focus(){this.focusCount=(this.focusCount||0)+1}getBoundingClientRect(){return {left:0,right:600,top:0,bottom:700}}
   replaceChildren(...nodes){this.children=nodes;nodes.forEach(node=>node.parentNode=this);this.textContent=''}
   append(...nodes){nodes.forEach(node=>node.parentNode=this);this.children.push(...nodes)}
   set innerHTML(value){this.html=value;this.parts={};for(const name of value.matchAll(/data-qn="([^"]+)"/g)){const el=new Element();el.dataset.qn=name[1];this.parts[name[1]]=el}}
@@ -115,5 +115,16 @@ function workspaceEnvironment(api,storage=null){
   const afterReload=workspaceEnvironment(noteApi,storage);afterReload.controller.connect({user:{id:1},api:noteApi});await afterReload.controller.openNote(8);
   const restored=afterReload.body.children[0].parts;assert.equal(restored.content.value,'My unsaved edit');await restored.form.events.submit({preventDefault(){}});assert.equal(recoveredVersion,1);assert.equal(restored.content.value,'My unsaved edit');
   restored.discard.onclick();assert.equal(restored.content.value,'Server content');assert.equal(storage.getItem('saathi-draft-v1:1:note:8'),null);
-  console.log('PASS: note reload recovery, conflict/draft retention, deletion, avatars, opt-in push/logout, theme preferences, private push display and safe click routing');
+  // A delayed notes read must not steal focus after the student starts a new note.
+  let resolveNotes;
+  const delayedApi=()=>new Promise(resolve=>resolveNotes=resolve);
+  const delayed=workspaceEnvironment(delayedApi);
+  delayed.controller.connect({user:{id:1},api:delayedApi});
+  const opening=delayed.controller.openNotes(),delayedUi=delayed.body.children[0].parts;
+  assert.equal(delayedUi.heading.focusCount,1,'The heading receives focus before the read completes');
+  delayedUi.new.onclick();
+  assert.equal(delayedUi.title.focusCount,1,'New note explicitly focuses its title');
+  resolveNotes({notes:[]});await opening;
+  assert.equal(delayedUi.heading.focusCount,1,'A late read does not move focus away from the editor');
+  console.log('PASS: note reload recovery, conflict/draft retention, deletion, avatars, opt-in push/logout, theme preferences, private push display, safe click routing and delayed-read focus');
 })().catch(error=>{console.error(error);process.exitCode=1});
