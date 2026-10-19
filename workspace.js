@@ -17,10 +17,10 @@
   function buildDialog(){
     if(dialog)return;
     dialog=document.createElement('dialog');dialog.className='quick-notes-dialog';dialog.setAttribute('aria-labelledby','quickNotesTitle');
-    dialog.innerHTML='<header class="qn-header"><div><h2 id="quickNotesTitle">Quick notes</h2><p>Private notes, close at hand.</p></div><button type="button" data-qn="close" aria-label="Close quick notes">×</button></header><div class="qn-toolbar"><button type="button" data-qn="new">New note</button><button type="button" data-qn="reload">Refresh</button><button type="button" data-qn="exportpdf" title="Export current note as PDF">Export PDF</button><input type="search" data-qn="search" placeholder="Find a note" aria-label="Search quick notes"></div><div class="qn-layout"><div class="qn-list" data-qn="list" aria-label="Saved notes"></div><form class="qn-editor" data-qn="form"><label>Title<input data-qn="title" maxlength="80" placeholder="A title, if you like"></label><label class="qn-content-label">Note<textarea data-qn="content" maxlength="10000" required placeholder="An idea, a question, something to remember…"></textarea></label><div class="qn-meta"><span data-qn="counter">0 / 10,000</span><span>Only visible to you</span></div><p class="qn-status" data-qn="status" role="status" aria-live="polite"></p><div class="qn-actions"><button class="qn-save" data-qn="save" type="submit">Save note</button><button data-qn="discard" type="button" hidden>Discard edits</button><button class="qn-delete" data-qn="delete" type="button" hidden>Delete note</button></div></form></div>';
+    dialog.innerHTML='<header class="qn-header"><div><h2 id="quickNotesTitle" data-qn="heading" tabindex="-1">Your notes</h2><p>Private notes, close at hand.</p></div><button type="button" data-qn="close" aria-label="Close quick notes">×</button></header><div class="qn-toolbar"><button type="button" data-qn="new">New note</button><button type="button" data-qn="reload">Refresh</button><button type="button" data-qn="exportpdf" title="Export current note as PDF">Export PDF</button><input type="search" data-qn="search" placeholder="Find a note" aria-label="Search quick notes"></div><div class="qn-layout"><div class="qn-list" data-qn="list" aria-label="Saved notes"></div><form class="qn-editor" data-qn="form"><label>Title<input data-qn="title" maxlength="80" placeholder="A title, if you like"></label><label class="qn-content-label">Note<textarea data-qn="content" maxlength="10000" required placeholder="An idea, a question, something to remember…"></textarea></label><div class="qn-meta"><span data-qn="counter">0 / 10,000</span><span>Only visible to you</span></div><p class="qn-status" data-qn="status" role="status" aria-live="polite"></p><div class="qn-actions"><button class="qn-save" data-qn="save" type="submit">Save note</button><button data-qn="discard" type="button" hidden>Discard edits</button><button class="qn-delete" data-qn="delete" type="button" hidden>Delete note</button></div></form></div>';
     document.body.append(dialog);dialog.querySelectorAll('[data-qn]').forEach(node=>ui[node.dataset.qn]=node);
     ui.close.onclick=()=>dialog.close();dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close()}});
-    ui.new.onclick=()=>selectNote(null);ui.reload.onclick=()=>loadNotes(true);ui.search.oninput=renderList;
+    ui.new.onclick=()=>{if(selectNote(null))ui.title.focus()};ui.reload.onclick=()=>loadNotes(true);ui.search.oninput=renderList;
     ui.exportpdf.onclick=exportCurrentNotePdf;
     ui.form.addEventListener('submit',saveNote);ui.delete.onclick=deleteNote;
     ui.discard.onclick=()=>{if(state.busy)return;window.SaathiRecovery?.removeDraft('note',noteDraftKey());state.dirty=false;selectNote(state.notes.find(note=>note.id===state.selected?.id)||state.selected,true)};
@@ -39,7 +39,7 @@
     ui.counter.textContent=ui.content.value.length+' / 10,000';status(note?'Saved to your account.':'Capture a thought. Save when you’re ready.');renderList();
     const draft=window.SaathiRecovery?.getDraft('note',noteDraftKey());
     if(draft&&typeof draft.content==='string'&&typeof draft.title==='string'){ui.title.value=draft.title.slice(0,80);ui.content.value=draft.content.slice(0,10000);state.clientId=draft.client_id||state.clientId;state.draftVersion=Number.isInteger(draft.version)?draft.version:null;state.dirty=true;ui.discard.hidden=false;ui.counter.textContent=ui.content.value.length+' / 10,000';status('Browser draft recovered. Review it before saving.')}
-    if(dialog.open)ui.content.focus();
+    return true;
   }
   function renderList(){
     if(!ui.list)return;ui.list.replaceChildren();const query=ui.search.value.trim().toLocaleLowerCase();
@@ -68,7 +68,12 @@
     })();
     return notesRequest;
   }
-  async function openNotes(){if(!state.user)return;buildDialog();if(!dialog.open)dialog.showModal();if(!state.loaded)await loadNotes();ui.content.focus()}
+  async function openNotes(){
+    if(!state.user)return;
+    buildDialog();
+    if(!dialog.open){dialog.showModal();ui.heading.focus()}
+    if(!state.loaded)await loadNotes();
+  }
   async function openNote(id){
     if(!state.user||state.busy)return;buildDialog();if(!dialog.open)dialog.showModal();if(!canSwitch())return;
     ui.search.value='';renderList();
