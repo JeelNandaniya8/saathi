@@ -51,15 +51,34 @@
     const visible=()=>{if(!document.hidden&&d.open)refresh().catch(error=>showError(status,error))};document.addEventListener('visibilitychange',visible);d.addEventListener('close',()=>{clearInterval(interval);document.removeEventListener('visibilitychange',visible)});
     try{const [saved,planner]=await Promise.all([state.api('/api/focus'),state.api('/api/tasks')]);if(!d.open)return;const none=node('option',t('No task selected'));none.value='';tasks.append(none);for(const task of planner.tasks.filter(task=>!task.completed)){const option=node('option',task.title);option.value=task.id;option.setAttribute('data-user-content','');tasks.append(option)}tasks.value=String(saved.session?.task_id||taskId||'');render(saved.session)}catch(error){showError(status,error);actions.append(button('Retry',()=>{d.close();focus(taskId)}))}
   }
+  function renderFocus(data){
+    const title=document.getElementById('todayFocusTitle');
+    const start=document.getElementById('todayFocusStart');
+    if(!title||!start)return;
+    const task=data.tasks.find(item=>!item.completed);
+    title.textContent=task?task.title:t('A little space to begin.');
+    document.getElementById('todayFocusDetail').textContent=t(task?'Choose one manageable task. Give it your full attention.':'Add a small next step, or leave room for rest.');
+    start.textContent=t(task?'Start focus':'Open planner');
+    start.onclick=()=>task?focus(task.id):state.openView('tasks');
+    start.disabled=false;
+  }
   function renderToday(data){
+    renderFocus(data);
     const box=document.getElementById('todayTasks');if(!box)return;box.removeAttribute('aria-label');box.setAttribute('aria-busy','false');box.replaceChildren();if(data.next_exam){const c=({gu:['નજીકની પરીક્ષા','દિવસ બાકી'],hi:['आने वाली परीक्षा','दिन बाकी']}[document.documentElement.lang]||['Upcoming exam','days left']);const exam=node('p',undefined,'helper'),link=node('a',data.next_exam.title+' · '+data.next_exam.days_left+' '+c[1]);link.setAttribute('data-user-content','');link.href='/dashboard#study';exam.append(node('span',c[0]+': '),link);box.append(exam)}
     if(!data.tasks.length){box.append(node('p',t('No tasks due. Add a small next step or leave room for rest.'),'helper'));box.append(button('Open planner',()=>state.openView('tasks')));}
     for(const task of data.tasks){const row=node('div',null,'hub-task'),title=node('button',task.title,'hub-task-title');title.type='button';title.onclick=()=>openItem({kind:'task',id:task.id});const done=button('Complete',async()=>{done.disabled=true;try{await state.api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:true})});await state.refreshToday()}catch(error){done.disabled=false;state.notify(t(error.message),'error')}});const copy=node('div');copy.style.flex='1';copy.style.minWidth='0';const deadline=node('small');deadline.style.display='block';deadline.style.color='var(--muted)';const labels=({gu:['સમય વીતી ગયો','સમયમર્યાદા','સમયમર્યાદા નથી'],hi:['समय सीमा बीत गई','समय सीमा','समय सीमा नहीं']}[document.documentElement.lang]||['Overdue','Due','No deadline']);deadline.textContent=task.due_at?(labels[new Date(task.due_at)<new Date()?0:1]+' · '+(window.SaathiClock?.format(task.due_at)||new Date(task.due_at).toLocaleString())):labels[2];copy.append(title,deadline);row.append(copy,button('Focus',()=>focus(task.id)),done);box.append(row)}
     const revisionCard=document.getElementById('todayRevisionCard');if(revisionCard)revisionCard.hidden=!(data.revision_due>0);const revisionLabel=node('span','Revision ready');revisionLabel.setAttribute('data-ui-text','');document.getElementById('todayRevision').replaceChildren(revisionLabel,node('span',': '+data.revision_due));
     const recent=document.getElementById('todayResume');recent.removeAttribute('aria-label');recent.setAttribute('aria-busy','false');recent.replaceChildren();if(data.recent_chat){const link=node('a',data.recent_chat.title,'secondary');link.href='/chat?conversation='+data.recent_chat.id;recent.append(link)}else{const link=node('a',t('Open conversation'),'secondary');link.href='/chat';recent.append(node('p',t('Your latest conversation will appear here.'),'helper'),link);}
   }
+  function viewChanged(id){
+    document.querySelectorAll('.workspace-bottom-nav [data-open]').forEach(button=>{
+      const active=button.dataset.open===id;
+      button.classList.toggle('active',active);
+      if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+    });
+  }
   function connect(options){Object.assign(state,options);document.querySelectorAll('[data-workspace-search]').forEach(el=>el.onclick=search);document.querySelectorAll('[data-focus-session]').forEach(el=>el.onclick=()=>focus());}
   document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();search()}});
-  window.SaathiHub={connect,search,focus,renderToday};
+  window.SaathiHub={connect,search,focus,renderToday,viewChanged};
 })();
 

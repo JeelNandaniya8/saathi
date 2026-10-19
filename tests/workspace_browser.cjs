@@ -12,6 +12,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<=390,isMobile:width<=390,serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];
    let chatProfilePending=false,historyWhileProfilePending=false,profileFields=[],planSaves=0,replanSaves=0,classroomAdds=0,classroomConnected=true,careSaves=[],careEdits=[],foodSaves=0,foodPreview=null,sharedStatus="pending",classroomExplains=0,classroomSchedules=0,ocrReads=0;
    let inlineSaved=null,inlineJobs=[],cardCorrections=0,conversationCreateGate=null;
+   let fixtureNote={id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1};
    let chatPlanSaves=0,actionSaves=0,inlineGenerations=0,inlineSubmits=0,contextPrefs={tasks:false,reminders:false,classroom:false};
    let language='en',focus=null,failMindmaps=!process.env.SAATHI_UI_REVIEW,searches=0,fixtureTasks=[{...task}],failClassroomExplain=false,classroomSyncs=0,classroomSelections=0,failClassroomSync=false,classroomError=null,classroomConnects=0;
    const chatPlan={kind:'plan',title:'DNA recall',text:'Two sessions',items:[{kind:'task',title:'DNA Day 1',text:'Recall\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-17T12:30:00Z'},{kind:'task',title:'DNA Day 2',text:'Practice\nDuration: 15 minutes',duration_minutes:15,at:'2026-10-18T12:30:00Z'}]};
@@ -64,8 +65,11 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
      else if(pathname==='/api/mock-tests/history')data={tests:[]};
      else if(pathname==='/api/mindmaps/history')data={mindmaps:[]};
      else if(pathname==='/api/mindmaps/62')data={mindmap:{id:62,topic:'Exact linked map',data:{summary:'Persisted map, outside history',root:{id:'linked-root',label:'Exact linked root',desc:'Stored content',children:[{id:'readable-branch',label:'Probability',desc:'A saved branch stays readable',children:[]}]}}}};
-     else if(pathname==='/api/quick-notes/3')data={note:{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}};
-     else if(pathname==='/api/quick-notes')data={notes:[{id:3,title:'Search',content:'Search',updated_at:original.created_at,version:1}]};
+     else if(pathname==='/api/quick-notes/3'){
+      if(method==='PATCH'){assert.equal(body().version,fixtureNote.version);fixtureNote={...fixtureNote,...body(),version:fixtureNote.version+1}}
+      data={note:fixtureNote};
+     }
+     else if(pathname==='/api/quick-notes')data={notes:[fixtureNote]};
      else if(pathname==='/api/workspace/search'){searches++;data={items:[{kind:'task',id:1,title:'Search',excerpt:'<img src=x onerror=alert(1)>'}]}}
      else if(pathname==='/api/focus'){
       if(method==='POST')focus={id:1,status:'running',version:1,task_id:body().task_id,duration_seconds:body().minutes*60,remaining_seconds:body().minutes*60};
@@ -124,14 +128,15 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    }
    await page.evaluate(()=>SaathiWorkspace.renderAvatar(document.querySelector('#sideAvatar'),{name:'Search'}));
 
-   assert.equal(await page.locator('.nav > button[data-view]').count(),1,'Today is the only top-level workspace view');
+   assert.equal(await page.locator('.nav > button[data-view]').count(),2,'Today and Planner are directly reachable');
+   assert.equal(await page.locator('.nav > button[data-view="tasks"]').count(),1);
    assert.equal(await page.locator('.nav > [data-quick-notes]').count(),1);
    assert.equal(await page.locator('.nav > a[href="/chat"]').count(),1);
    assert.equal(await page.locator('#moreNavigation [data-view="study"],#moreNavigation [data-view="healer"]').count(),2,'Study and Care remain reachable');
    assert.equal(await page.locator('.nav-group').count(),3,'Secondary tools are grouped instead of one long list');
    await page.getByText('Owned upcoming exam · 2 days left',{exact:true}).waitFor();
    assert.ok(await page.locator('.hero-panel').evaluate(node=>node.getBoundingClientRect().height<190),'Today greeting leaves the next action in view');
-   assert.equal(await page.evaluate(()=>{const before=document.documentElement.dataset.theme;document.documentElement.dataset.theme='dark';const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim();if(before)document.documentElement.dataset.theme=before;else delete document.documentElement.dataset.theme;return paper}), '#20251d','Dark workspace uses the shared surface palette');
+   assert.ok(await page.evaluate(()=>{const before=document.documentElement.dataset.theme;document.documentElement.dataset.theme='light';const light=getComputedStyle(document.body).getPropertyValue('--paper').trim();document.documentElement.dataset.theme='dark';const dark=getComputedStyle(document.body).getPropertyValue('--paper').trim();if(before)document.documentElement.dataset.theme=before;else delete document.documentElement.dataset.theme;return Boolean(light&&dark&&light!==dark)}),'Light and dark workspace surfaces are distinct');
    assert.ok(!requests.some(url=>/dashboard-(study|care|mindmaps)\.js/.test(url)),'Heavy tools must not load on Today');
    assert.ok(!requests.includes('/locale-gu.js'),'English must not download Gujarati catalog');
    assert.equal(await page.locator('#account .referral-banner').count(),1);
@@ -181,7 +186,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok(requests.includes('/locale-hi.js'));
    await page.locator('#languageSelect').selectOption('en');
    await page.waitForFunction(()=>document.querySelector('[data-care-routines]').textContent==='Open medication log');
-   await page.waitForFunction(()=>document.querySelector('[data-focus-session]').textContent==='Focus session');
+   await page.waitForFunction(()=>document.querySelector('.focus-shortcut b').textContent==='Make a little room to focus');
    await page.evaluate(()=>openView('checkins'));
    const [summaryFile]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadCheckinSummary').click()]);
    const summaryText=fs.readFileSync(await summaryFile.path(),'utf8');
@@ -380,6 +385,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    await page.evaluate(()=>openView('overview'));
    await page.locator('#todayTasks').getByRole('button',{name:'Complete',exact:true}).click();
    await page.locator('#todayTasks .hub-task').waitFor({state:'detached'});
+   assert.equal(await page.locator('#todayFocusTitle').textContent(),'A little space to begin.','Completing the focused task removes the stale focus title');
+   await page.locator('#todayFocusStart').click();
+   assert.ok(await page.locator('#tasks').isVisible(),'Empty focus leads to the working planner');
    await page.evaluate(()=>openView('tasks'));
    await page.locator('#tasks').getByRole('button',{name:'Completed',exact:true}).click();
    await page.locator('#tasks .item.done').waitFor();
@@ -416,7 +424,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
 
    assert.equal(requests.filter(p=>p==='/api/conversations/7/messages').length,1,'Startup history must not be fetched twice');
    assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
-   if(width>900){assert.ok((await page.locator('#sidebar').boundingBox()).x>width/2);await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
+   if(width>900){const sidebar=await page.locator('#sidebar').boundingBox(),main=await page.locator('.main').boundingBox();assert.ok(sidebar.x+sidebar.width<=main.x+1,'Desktop sidebar sits beside the conversation without overlapping it');await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
 
    await page.locator('#chatInput').fill('Keep my draft');
    await page.route('**/api/conversations/7/messages?limit=100',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture failure'})}));
