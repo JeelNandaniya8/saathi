@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-EXPECTED_RELEASE = "2026-10-18-upload-readiness"
+EXPECTED_RELEASE = "2026-10-19-retry-language-evidence"
 
 
 def fetch(base_url, path, timeout):

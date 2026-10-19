@@ -44,7 +44,7 @@ function fixture({delayedAbort=false,regenerating=false}={}){
         assert.equal(ctx.el.input.value,'Keep my question');assert.match(failed.content,/Partial answer/);
         assert.doesNotMatch(failed.content,/Checking whether/,'The check must reach an honest terminal state');
         if(outcome==='cancelled'){
-          assert.match(failed.content,/No answer or action was saved/);assert.equal(ctx.state.messages[0].cancelled,true);
+          assert.match(failed.content,/No answer or action was saved/);assert.equal(ctx.state.messages[0].cancelled,true);assert.equal(ctx.state.draftRequestId,null,'Composer resend after a confirmed Stop needs a fresh request ID');assert.equal(f.drafts.get(1).request_id,null,'Reload must not recover the cancelled request ID');
         }else{
           assert.match(failed.content,/Saved state is unconfirmed/);assert.doesNotMatch(failed.content,/No answer or action was saved/);
           assert.notEqual(ctx.state.messages[0].cancelled,true,'An unconfirmed Stop must retry the same request');

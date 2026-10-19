@@ -444,6 +444,20 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     assert.equal(await page.locator('#localized-citation-fixture a').textContent(),'Search.pdf · '+pageLabel+' 2');
     assert.equal(await page.locator('#localized-citation-fixture a').getAttribute('href'),'/api/attachments/31/view#page=2');
     await page.locator('#localized-citation-fixture').evaluate(node=>node.remove());
+    const native=locale==='gu'?{welcome:'આજે સાથી કેવી રીતે મદદ કરી શકે?',prompt:'આ અઠવાડિયા માટે ધ્યાનથી અનુસરી શકાય તેવી અભ્યાસ યોજના બનાવવામાં મદદ કરો.',today:'આજ',remove:'Search.pdf દૂર કરો',pages:'શોધી શકાય એવાં 2 પાનાં'}:{welcome:'आज साथी कैसे मदद कर सकता है?',prompt:'इस सप्ताह के लिए ध्यान से पढ़ने की योजना बनाने में मदद करें।',today:'आज',remove:'Search.pdf हटाएँ',pages:'2 खोजने योग्य पृष्ठ'};
+    await page.evaluate(()=>{document.body.append(emptyView());renderConversations();state.selectedFiles=[{file:new File(['fixture'],'Search.pdf',{type:'application/pdf'})}];renderSelectedFiles();const fixture=messageElement({id:800,role:'user',content:'Search',attachments:[{id:31,name:'Search.pdf',mime_type:'application/pdf',size_bytes:7,extracted_page_count:2,url:'/api/attachments/31'}]},0);fixture.id='native-file-fixture';document.body.append(fixture)});
+    await page.waitForFunction(text=>document.querySelector('.empty h2')?.textContent===text,native.welcome);
+    assert.equal(await page.locator('.empty .prompt small').nth(1).textContent(),native.prompt);
+    await page.locator('.empty .prompt').nth(1).click();assert.equal(await page.locator('#chatInput').inputValue(),native.prompt,'The selected prompt is sent in the saved language');
+    assert.equal(await page.evaluate(()=>formatDateGroup(new Date().toISOString())),native.today);
+    assert.equal(await page.locator('.selected-file button').getAttribute('aria-label'),native.remove);
+    assert.ok((await page.locator('#native-file-fixture .attachment-copy small').textContent()).includes(native.pages));
+    assert.equal(await page.locator('#native-file-fixture .attachment-copy b').textContent(),'Search.pdf','Literal filenames stay untouched');
+    assert.equal(await page.locator('#native-file-fixture .message-name').textContent(),locale==='gu'?'તમે':'आप');
+    assert.notEqual(await page.locator('#closeSidebar').getAttribute('aria-label'),'Collapse sidebar');
+    assert.notEqual(await page.locator('.conversation-menu').first().getAttribute('aria-label'),'Options for Search');
+    await page.evaluate(()=>{document.querySelector('.empty').remove();document.querySelector('#native-file-fixture').remove();clearSelectedFiles();el.input.value='';updateComposer()});
+
    }
    await page.evaluate(()=>{setBusy(false);return SaathiI18n.setLanguage('en')});
    await page.evaluate(()=>SaathiI18n.setLanguage('gu'));

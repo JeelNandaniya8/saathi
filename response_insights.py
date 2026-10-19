@@ -77,6 +77,7 @@ def register(app, b):
             conn.commit()
             cur.execute('''SELECT COUNT(*) AS attempts,COUNT(*) FILTER(WHERE outcome='complete') AS completed,
                 COUNT(*) FILTER(WHERE outcome='error') AS errors,COUNT(*) FILTER(WHERE outcome='cancelled') AS cancelled,
+                COUNT(first_text_ms) FILTER(WHERE outcome='complete') AS first_text_samples,
                 percentile_cont(0.5) WITHIN GROUP(ORDER BY first_text_ms) FILTER(WHERE outcome='complete') AS first_text_ms,
                 percentile_cont(0.5) WITHIN GROUP(ORDER BY total_ms) FILTER(WHERE outcome='complete') AS total_ms,
                 percentile_cont(0.95) WITHIN GROUP(ORDER BY first_text_ms) FILTER(WHERE outcome='complete') AS p95_first_text_ms

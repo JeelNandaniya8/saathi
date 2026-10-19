@@ -1,5 +1,6 @@
 """Prevent silent language gaps in the registered legacy UI catalog."""
 import json
+import re
 from pathlib import Path
 
 
@@ -14,5 +15,7 @@ def test_gujarati_and_hindi_have_matching_complete_catalogs():
     for data in (gu,hi):
         assert all(isinstance(v,str) and v.strip() for v in data.values())
         assert all('<script' not in v.casefold() for v in data.values())
+        for key,value in data.items():
+            assert sorted(re.findall(r'\{\w+\}',key))==sorted(re.findall(r'\{\w+\}',value)),key
     for key in ('Please log in first.','Your workspace is ready.','Delete account permanently','The request took too long. Please retry.'):
         assert gu[key]!=key and hi[key]!=key

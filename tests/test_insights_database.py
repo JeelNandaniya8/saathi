@@ -42,6 +42,22 @@ def test_timings_are_owned_idempotent_bounded_exportable_and_deletable(db_app):
         assert client.get(path).status_code == 401
 
 
+def test_first_word_percentile_discloses_its_actual_denominator(db_app):
+    _,client,_db=db_app
+    cid=client.post('/api/conversations',json={}).json['conversation']['id']
+    for outcome,first,total in [('complete',1000,2000),('complete',None,3000),('error',500,2500),('cancelled',None,800),('complete',6000,7000)]:
+        result=client.post('/api/response-timings',json=dict(request_id=str(uuid.uuid4()),conversation_id=cid,first_text_ms=first,total_ms=total,outcome=outcome))
+        assert result.status_code==200
+    summary=client.get('/api/response-timings').json['summary']
+    assert (summary['attempts'],summary['completed'],summary['errors'],summary['cancelled'])==(5,3,1,1)
+    assert summary['first_text_samples']==2
+    assert summary['first_text_ms']==3500
+    assert summary['p95_first_text_ms']==5750
+    with client.session_transaction() as session:session['user_id']=2
+    empty=client.get('/api/response-timings').json['summary']
+    assert empty['first_text_samples']==0 and empty['p95_first_text_ms'] is None
+
+
 def test_weekly_completion_is_not_redated_by_edits_and_reopen_is_excluded(db_app, monkeypatch):
     backend, client, db = db_app
     monkeypatch.setattr(backend, 'generate_study_json', lambda *args: pytest.fail('Review must not call Gemini'))
