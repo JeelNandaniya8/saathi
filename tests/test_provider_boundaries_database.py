@@ -23,7 +23,8 @@ pytestmark = pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'), reason=
 
 @pytest.mark.parametrize('stream', [False, True])
 @pytest.mark.parametrize('kind', ['png', 'pdf', 'map'])
-def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch, stream, kind):
+@pytest.mark.parametrize('code',['AI_BUSY','AI_TIMEOUT'])
+def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch, stream, kind, code):
     b, c, db = db_app
     now = [1792324800]
     # Workspace context includes a current-time snapshot. Keep that fixture
@@ -46,7 +47,7 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
     monkeypatch.setattr(b, 'provider_send', transport.send)
     retry = format_datetime(datetime.fromtimestamp(now[0] + 90, timezone.utc), usegmt=True)
     rejected = response(503, headers={'Retry-After': retry})
-    post = Mock(return_value=rejected)
+    post = Mock(return_value=rejected,side_effect=transport.requests.Timeout() if code=='AI_TIMEOUT' else None)
     monkeypatch.setattr(b, 'provider_post', post)
     created = c.post('/api/conversations', json={})
     assert created.status_code == 201, created.json
@@ -64,7 +65,8 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
                     content_type='multipart/form-data', buffered=True)
     failed = request()
     error = json.loads(failed.data.splitlines()[-1]) if stream else failed.json
-    assert error['code'] == 'AI_BUSY' and error['retry_after'] == 90
+    assert error['code']==code
+    assert error.get('retry_after')==(90 if code=='AI_BUSY' else None)
     assert post.call_count == 1
     assert '/gemini-fixture-study:' in post.call_args.args[0]
     original = copy.deepcopy(post.call_args.kwargs['json'])
@@ -78,6 +80,7 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
     result = dict(candidates=[dict(content=dict(parts=[dict(text=text)]), finishReason='STOP')])
     good = response(200); good.json.return_value = result
     good.iter_lines.side_effect = lambda **kwargs: iter(['data: ' + json.dumps(result)])
+    post.side_effect=None
     post.return_value = good
     saved = request()
     assert saved.status_code == 200, saved.data

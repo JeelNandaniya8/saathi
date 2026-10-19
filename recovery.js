@@ -36,10 +36,11 @@
     Promise.resolve().then(()=>{if(sample.user===state.user?.id)return state.api('/api/response-timings',{method:'POST',body:JSON.stringify({request_id:sample.request_id,conversation_id:sample.conversation_id,first_text_ms:sample.first_text_ms,total_ms,outcome,error_code})})}).catch(()=>{});
   }
   function voiceFor(language){const voices=window.speechSynthesis?.getVoices?.()||[],base=String(language||'en').split('-')[0].toLowerCase();return voices.find(v=>v.lang?.toLowerCase()===String(language).toLowerCase())||voices.find(v=>v.lang?.toLowerCase().split('-')[0]===base)||null}
-  function node(tag,text,className){const el=document.createElement(tag);if(text!=null)el.textContent=text;if(className)el.className=className;return el}
+  function copy(text,values={}){return(window.SaathiI18n?.t(text)||text).replace(/\{(\w+)\}/g,(match,key)=>Object.hasOwn(values,key)?String(values[key]):match)}
+  function node(tag,text,className){const el=document.createElement(tag);if(text!=null)el.textContent=typeof text==='string'?copy(text):text;if(className)el.className=className;return el}
   function button(label,action){const el=node('button',label,'secondary');el.type='button';el.onclick=action;return el}
   function metric(label,value){const card=node('article',null,'recovery-metric');card.append(node('span',label),node('strong',value));return card}
-  const seconds=value=>value==null?'No sample':(value/1000).toFixed(1)+' s';
+  const seconds=value=>value==null?copy('No sample'):(value/1000).toFixed(1)+' s';
   async function insights(kind){
     const isWeekly=kind==='weekly',dialog=node('dialog',null,'recovery-dialog'),header=node('header'),content=node('div');
     const title=node('h2',isWeekly?'Your week, at a glance':'Reply performance');title.id='recoveryDialogTitle';dialog.setAttribute('aria-labelledby',title.id);
@@ -58,8 +59,8 @@
         }else{
           content.append(node('p','Your latest 100 attempts within 30 days. Timings are measured in your browser and include network, server and AI waiting time.','helper'));
           grid.append(metric('Typical first words',seconds(summary.first_text_ms)),metric('Typical full reply',seconds(summary.total_ms)),metric('Completed',summary.completed+'/'+summary.attempts),metric('Errors / stopped',summary.errors+' / '+summary.cancelled));
-          content.append(grid,node('p',summary.completed?'95% of successful replies started within '+seconds(summary.p95_first_text_ms)+'. With few samples, this may vary.':'Send a message to collect the first timing sample.','helper'));
-          const list=node('ul',null,'recovery-results');for(const item of data.recent)list.append(node('li',`${item.outcome} · first words ${seconds(item.first_text_ms)} · total ${seconds(item.total_ms)}${item.error_code?' · '+item.error_code:''}`));content.append(list);
+          content.append(grid,node('p',summary.first_text_samples?copy('p95 first words: {time} · {count} completed replies with first-word timings. Completions without first words are excluded.',{time:seconds(summary.p95_first_text_ms),count:summary.first_text_samples}):'No completed reply has a first-word timing sample yet.','helper'));
+          const list=node('ul',null,'recovery-results');for(const item of data.recent)list.append(node('li',copy('{outcome} · first words {first} · total {total}',{outcome:copy({complete:'Completed',error:'Error',cancelled:'Stopped'}[item.outcome]||item.outcome),first:seconds(item.first_text_ms),total:seconds(item.total_ms)})+(item.error_code?' · '+item.error_code:'')));content.append(list);
           content.append(node('p','Only durations, outcomes and error codes are recorded. Message and file contents are not included.','helper'));
           content.append(button('Clear timing history',async()=>{try{await state.api('/api/response-timings',{method:'DELETE',body:'{}'});await load()}catch(error){state.notify(error.message,'error')}}));
         }
