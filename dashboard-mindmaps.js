@@ -108,7 +108,7 @@ function createNodeEl(container,label,desc,x,y,type,color){
 
   const titleEl=document.createElement('div');
   titleEl.className='mm-title';
-  if(type==='pillar')titleEl.style.color=color;
+  // Branch colour belongs to the border; reading text follows the active theme.
   if(window.SaathiMarkup)window.SaathiMarkup.inline(titleEl,label);else titleEl.textContent=label;
 
   el.appendChild(titleEl);
@@ -153,7 +153,7 @@ function renderMindmapsHistory(){
   box.innerHTML='';
   const items=state.mindmaps||[];
   if(!items.length){
-    box.innerHTML='<div class="item" style="color:var(--muted);padding:18px">No mindmaps created yet. Enter a topic above to generate your first concept tree!</div>';
+    box.innerHTML='<div class="empty">No mindmaps created yet. Enter a topic above to generate your first concept tree!</div>';
     return;
   }
   items.forEach(m=>{
