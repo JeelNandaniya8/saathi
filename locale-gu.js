@@ -846,5 +846,11 @@ window.SaathiI18n.register({
   "A lighter load on your mind.": "મનનો ભાર થોડો હળવો.",
   "A little space to begin.": "શરૂઆત માટે થોડી જગ્યા.",
   "Add a small next step, or leave room for rest.": "એક નાનું પગલું ઉમેરો અથવા આરામ માટે સમય રાખો.",
-  "Your notes": "તમારી નોંધો"
+  "Your notes": "તમારી નોંધો",
+  "Make room for a little clarity.": "થોડી સ્પષ્ટતા માટે જગ્યા બનાવો.",
+  "Bring a question, a page, or a thought. Start wherever you are.": "પ્રશ્ન, પાનું કે વિચાર લાવો. તમે જ્યાં છો ત્યાંથી શરૂ કરો.",
+  "Break it into simple steps.": "સરળ પગલાંમાં સમજો.",
+  "Find a manageable next step.": "એક કરી શકાય એવું પગલું શોધો.",
+  "Put the important things first.": "મહત્ત્વનાં કામ પહેલાં રાખો.",
+  "Send or keep your current draft first.": "પહેલાં હાલનો ડ્રાફ્ટ મોકલો અથવા સાચવી રાખો."
 });

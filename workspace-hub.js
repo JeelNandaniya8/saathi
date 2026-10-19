@@ -62,11 +62,39 @@
     start.onclick=()=>task?focus(task.id):state.openView('tasks');
     start.disabled=false;
   }
+  function todayTask(task){
+    const row=node('div',null,'hub-task');
+    const title=node('button',task.title,'hub-task-title');
+    title.id='today-task-'+task.id;
+    title.type='button';
+    title.onclick=()=>openItem({kind:'task',id:task.id});
+    const done=button('Complete',async()=>{
+      done.disabled=true;
+      done.setAttribute('aria-busy','true');
+      try{
+        await state.api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:true})});
+        await state.refreshToday();
+      }catch(error){done.disabled=false;state.notify(t(error.message),'error')}
+      finally{done.removeAttribute('aria-busy')}
+    },'hub-task-complete');
+    done.setAttribute('aria-label',t('Complete'));
+    done.setAttribute('aria-describedby',title.id);
+    done.replaceChildren();
+    const copy=node('div',null,'hub-task-copy');
+    const deadline=node('small',null,'hub-task-deadline');
+    const labels=({gu:['સમય વીતી ગયો','સમયમર્યાદા','સમયમર્યાદા નથી'],hi:['समय सीमा बीत गई','समय सीमा','समय सीमा नहीं']}[document.documentElement.lang]||['Overdue','Due','No deadline']);
+    deadline.textContent=task.due_at
+      ?labels[new Date(task.due_at)<new Date()?0:1]+' · '+(window.SaathiClock?.format(task.due_at)||new Date(task.due_at).toLocaleString())
+      :labels[2];
+    copy.append(title,deadline);
+    row.append(done,copy,button('Focus',()=>focus(task.id),'secondary hub-task-focus'));
+    return row;
+  }
   function renderToday(data){
     renderFocus(data);
     const box=document.getElementById('todayTasks');if(!box)return;box.removeAttribute('aria-label');box.setAttribute('aria-busy','false');box.replaceChildren();if(data.next_exam){const c=({gu:['નજીકની પરીક્ષા','દિવસ બાકી'],hi:['आने वाली परीक्षा','दिन बाकी']}[document.documentElement.lang]||['Upcoming exam','days left']);const exam=node('p',undefined,'helper'),link=node('a',data.next_exam.title+' · '+data.next_exam.days_left+' '+c[1]);link.setAttribute('data-user-content','');link.href='/dashboard#study';exam.append(node('span',c[0]+': '),link);box.append(exam)}
     if(!data.tasks.length){box.append(node('p',t('No tasks due. Add a small next step or leave room for rest.'),'helper'));box.append(button('Open planner',()=>state.openView('tasks')));}
-    for(const task of data.tasks){const row=node('div',null,'hub-task'),title=node('button',task.title,'hub-task-title');title.type='button';title.onclick=()=>openItem({kind:'task',id:task.id});const done=button('Complete',async()=>{done.disabled=true;try{await state.api('/api/tasks/'+task.id,{method:'PATCH',body:JSON.stringify({completed:true})});await state.refreshToday()}catch(error){done.disabled=false;state.notify(t(error.message),'error')}});const copy=node('div');copy.style.flex='1';copy.style.minWidth='0';const deadline=node('small');deadline.style.display='block';deadline.style.color='var(--muted)';const labels=({gu:['સમય વીતી ગયો','સમયમર્યાદા','સમયમર્યાદા નથી'],hi:['समय सीमा बीत गई','समय सीमा','समय सीमा नहीं']}[document.documentElement.lang]||['Overdue','Due','No deadline']);deadline.textContent=task.due_at?(labels[new Date(task.due_at)<new Date()?0:1]+' · '+(window.SaathiClock?.format(task.due_at)||new Date(task.due_at).toLocaleString())):labels[2];copy.append(title,deadline);row.append(copy,button('Focus',()=>focus(task.id)),done);box.append(row)}
+    for(const task of data.tasks)box.append(todayTask(task));
     const revisionCard=document.getElementById('todayRevisionCard');if(revisionCard)revisionCard.hidden=!(data.revision_due>0);const revisionLabel=node('span','Revision ready');revisionLabel.setAttribute('data-ui-text','');document.getElementById('todayRevision').replaceChildren(revisionLabel,node('span',': '+data.revision_due));
     const recent=document.getElementById('todayResume');recent.removeAttribute('aria-label');recent.setAttribute('aria-busy','false');recent.replaceChildren();if(data.recent_chat){const link=node('a',data.recent_chat.title,'secondary');link.href='/chat?conversation='+data.recent_chat.id;recent.append(link)}else{const link=node('a',t('Open conversation'),'secondary');link.href='/chat';recent.append(node('p',t('Your latest conversation will appear here.'),'helper'),link);}
   }
