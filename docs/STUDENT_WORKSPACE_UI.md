@@ -6,6 +6,8 @@ Dashboard, Chat, Notes and Planner retain the existing Flask pages and vanilla J
 
 Dashboard uses a full-width focus section above the returned plan, a reminder/conversation rail and compact tool shortcuts. Task completion retains a separate 44px control and the existing pending/error states. Focus is derived from returned account data; no progress or saved object is invented.
 
+Dashboard and Chat use the existing `saathi-icon.svg` brand asset. Chat history and its toggle are on the right; the mobile drawer opens from that same edge.
+
 Chat uses an open assistant reading area and right-aligned user bubbles. Author labels remain available to assistive technology. Empty and active conversations share one actual composer; it is never cloned or moved. Drafts, files, file-only selection, modes, quotas, streaming, Stop and retries stay connected to their existing controllers. Starting points prepare and persist a draft without sending a request. Short viewports retain the scrolling conversation arrangement.
 
 Notes and Planner use the same neutral surfaces, typography and controls. Notes retains version checks, read-back and draft recovery. Planner retains its forms, handlers and mobile list-before-form order. Native scripts, larger-text preferences and reduced motion remain supported.

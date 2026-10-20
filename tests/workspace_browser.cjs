@@ -424,7 +424,17 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
 
    assert.equal(requests.filter(p=>p==='/api/conversations/7/messages').length,1,'Startup history must not be fetched twice');
    assert.equal(await page.locator('#voiceOpenBtn').evaluate(el=>Boolean(el.closest('#composer'))),true,'Voice belongs in composer');
-   if(width>900){const sidebar=await page.locator('#sidebar').boundingBox(),main=await page.locator('.main').boundingBox();assert.ok(sidebar.x+sidebar.width<=main.x+1,'Desktop sidebar sits beside the conversation without overlapping it');await page.locator('#closeSidebar').click();assert.equal(await page.locator('#sidebar').isVisible(),false);await page.locator('#openSidebar').click()}
+   if(width<=900)await page.locator('#openSidebar').click();
+   await page.waitForFunction(()=>Math.abs(document.querySelector('#sidebar').getBoundingClientRect().right-innerWidth)<1);
+   const sidebar=await page.locator('#sidebar').boundingBox(),main=await page.locator('.main').boundingBox();
+   assert.ok(sidebar.x>0&&Math.abs(sidebar.x+sidebar.width-width)<1,'Chat history is anchored to the right edge');
+   if(width>900)assert.ok(main.x+main.width<=sidebar.x+1,'Desktop history sits to the right without overlapping the conversation');
+   assert.equal(await page.locator('#sidebar .brand img').getAttribute('src'),'/saathi-icon.svg','Chat uses the existing Saathi logo');
+   await page.locator('#closeSidebar').click();
+   assert.equal(await page.locator('#sidebar').isVisible(),false);
+   await page.locator('#openSidebar').click();
+   assert.equal(await page.locator('#sidebar').isVisible(),true,'History can be reopened from the right-side control');
+   if(width<=900)await page.keyboard.press('Escape');
 
    await page.locator('#chatInput').fill('Keep my draft');
    await page.route('**/api/conversations/7/messages?limit=100',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Temporary fixture failure'})}));
