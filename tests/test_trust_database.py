@@ -67,9 +67,22 @@ def test_clarified_mindmap_checks_quota_before_calling_ai(db_app,monkeypatch,str
             for _ in range(2):cur.execute("INSERT INTO mindmaps(user_id,topic,data_json,created_at) VALUES(1,'Allowance used',%s,NOW())",(json.dumps(map_data()),))
     def blocked(*a,**k):pytest.fail('Clarification follow-up must precheck quota')
     monkeypatch.setattr(b,'generate_gemini_reply',blocked);monkeypatch.setattr(b,'stream_gemini_reply',blocked)
-    result=send(c,cid,'Probability',stream)['assistant_message']
-    assert '0 map generations remaining' in result['content'] and 'Asia/Kolkata' in result['content']
-    assert not result.get('action_receipt') and not result.get('action_error')
+    path=f'/api/conversations/{cid}/messages'+('/stream' if stream else '')
+    response=c.post(path,json=dict(content='Probability',mode='normal',request_id=str(uuid4())))
+    if stream:
+        events=[json.loads(line) for line in response.data.splitlines()]
+        assert not any(event.get('type')=='complete' for event in events)
+        error=next(event for event in events if event.get('type')=='error')
+        allowance=next(event['allowance'] for event in events if event.get('type')=='ready')
+    else:
+        assert response.status_code==429
+        error=response.json
+        allowance=error['allowance']
+    assert error['code']=='AI_QUOTA'
+    assert '0 map generations remaining' in error['error'] and 'Asia/Kolkata' in error['error']
+    assert allowance['remaining']==0 and allowance['reset_at']
+    assert one(connect,'SELECT COUNT(*) AS n FROM messages')['n']==2
+    assert one(connect,'SELECT COUNT(*) AS n FROM chat_action_receipts')['n']==0
     assert one(connect,'SELECT COUNT(*) AS n FROM mindmaps')['n']==2
 
 

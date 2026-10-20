@@ -18,6 +18,8 @@ The added tests cover the exact privacy-prefixed request; twelve no-save/preview
 
 The first repaired candidate CI run [39484372589](https://github.com/JeelNandaniya8/saathi/actions/runs/39484372589) passed 877 tests and failed the two exhausted-quota transport assertions, exposing the existing direct-reply short-circuit (HTTP 200 instead of the error contract). The follow-up carries that quota condition through to endpoint rejection and additionally requires zero persisted messages and unchanged allowance.
 
+Run [39485505352](https://github.com/JeelNandaniya8/saathi/actions/runs/39485505352) passed all 23 newly added regressions (881 passed overall). Its two failures were existing clarification-quota tests expecting a persisted ordinary assistant response. Those assertions now require the intentional quota error contract, reset metadata, no additional messages, no receipt and unchanged map count; the provider-must-not-run assertion remains.
+
 Exact candidate CI and release/live results are recorded in [PR #73](https://github.com/JeelNandaniya8/saathi/pull/73). CI success is staging evidence, not a production success-rate estimate.
 
 ## Live evidence and limits before this repair
