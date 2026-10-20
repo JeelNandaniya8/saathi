@@ -4,7 +4,7 @@ function el(tag,text){const n=document.createElement(tag);if(text)n.textContent=
 async function result(api,kind,id){return api((kind==='mock'?'/api/mock-tests/':'/api/mindmaps/')+id)}
 async function readAllowance(kind,api){const data=await api('/api/study-allowance?kind='+kind),a=data.allowance;if(!a||!Number.isInteger(a.remaining)||typeof a.reset_local!=='string')throw Error('Allowance could not be checked. Retry.');return a}
 async function allowance(kind,api){const a=await readAllowance(kind,api);if(a.remaining<=0){const c={gu:['બાકી નથી. ફરી ઉપલબ્ધ: ','સાચવેલા પરિણામો ખોલી શકો છો.'],hi:['बाकी नहीं। फिर उपलब्ध: ','सहेजे परिणाम खोल सकते हैं।']}[document.documentElement.lang];throw Error(c?'0 '+(kind==='map'?(document.documentElement.lang==='gu'?'માઇન્ડમેપ ':'माइंडमैप '):(document.documentElement.lang==='gu'?'મોક ટેસ્ટ ':'मॉक टेस्ट '))+c[0]+a.reset_local+'. '+c[1]:'0 '+kind+' generations remaining. Resets '+a.reset_local+'. Existing results remain available.')}return a}
-const allowanceWatches=new WeakMap(),pendingCreates=new Map();
+const allowanceWatches=new WeakMap(),pendingCreates=new Map(),activeCreates=new WeakMap();
 function showAllowance(box,kind,api,onChange=()=>{}){
  if(!box)return;allowanceWatches.get(box)?.();let sequence=0,disposed=false;
  const lang=document.documentElement.lang,copy=({gu:['મર્યાદા તપાસાય છે…','બાકી','ફરી ઉપલબ્ધ','ફરી તપાસો','માઇન્ડમેપ','મોક ટેસ્ટ'],hi:['सीमा जाँची जा रही है…','बाकी','फिर उपलब्ध','फिर जाँचें','माइंडमैप','मॉक टेस्ट']}[lang])||['Checking allowance…','remaining','Resets','Retry allowance check','mindmap','mock test'];
@@ -13,7 +13,15 @@ function showAllowance(box,kind,api,onChange=()=>{}){
  const stop=()=>{disposed=true;window.removeEventListener('saathi-study-job',refresh)};allowanceWatches.set(box,stop);window.addEventListener('saathi-study-job',refresh);refresh();return stop
 }
 function samePayload(a,b){return JSON.stringify(Object.entries(a).filter(([key])=>key!=='job_id').sort())===JSON.stringify(Object.entries(b).sort())}
-async function create(kind,payload,api,onStart=()=>{}){
+function create(kind,payload,api,onStart=()=>{}){
+ let active=activeCreates.get(api);if(!active){active=new Map();activeCreates.set(api,active)}
+ const snapshot=JSON.parse(JSON.stringify(payload)),key=kind+JSON.stringify(Object.entries(snapshot).sort());
+ if(active.has(key)){onStart('waiting');return active.get(key)}
+ const work=runCreate(kind,snapshot,api,onStart);active.set(key,work);
+ const release=()=>{if(active.get(key)===work)active.delete(key)};work.then(release,release);
+ return work;
+}
+async function runCreate(kind,payload,api,onStart){
  const key=kind+JSON.stringify(Object.entries(payload).sort()),recovery=window.SaathiRecovery,stored=recovery?.getDraft('study-job',kind)?.request;
  let refreshTimer,request=pendingCreates.get(key)||(stored&&samePayload(stored,payload)?stored:null);
  const changed=()=>window.dispatchEvent(new Event('saathi-study-job'));

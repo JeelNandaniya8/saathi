@@ -52,4 +52,6 @@ node tests/math_tables.cjs
 node tests/reliability_retry_oct17.cjs
 node tests/stop_receipts_oct17.cjs
 node tests/quota_recovery_oct17.cjs
+node tests/study_job_races.cjs
+node tests/study_status.cjs
 node tests/exact_links_oct17.cjs

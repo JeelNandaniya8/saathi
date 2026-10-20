@@ -94,7 +94,7 @@ async function generateMockTest(event){
     language:$('testLanguage').value||'en'
   };
   try{
-    const res=window.SaathiJobs?await SaathiJobs.create('mock',payload,api,()=>{btn.textContent='Generating exam with AI…'}):await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
+    const res=window.SaathiJobs?await SaathiJobs.create('mock',payload,api,phase=>{const text=phase==='waiting'?'Waiting for result…':'Generating exam with AI…';btn.textContent=window.SaathiI18n?.t(text)||text}):await api('/api/mock-tests/generate',{method:'POST',body:JSON.stringify(payload)});
     state.activeTest=res.test;
     state.activeTest.questions=res.test.questions||[];
     if(!state.activeTest.questions.length)throw new Error('This test has no questions. Please retry.');
