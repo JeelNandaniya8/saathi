@@ -5,7 +5,7 @@ module.exports=async function reviewUI(page,width,base){
  const artifacts=process.env.SAATHI_UI_ARTIFACTS;
  if(artifacts)fs.mkdirSync(artifacts,{recursive:true});
  await page.emulateMedia({reducedMotion:'reduce'});
- async function capture(name){if(artifacts&&[1280,360].includes(width))await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:true,animations:'disabled'})}
+ async function capture(name){if(artifacts&&[1280,360].includes(width)){await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0)});await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:true,animations:'disabled'})}}
  async function fits(name){
   const size=await page.evaluate(()=>({viewport:innerWidth,scroll:document.documentElement.scrollWidth}));
   assert.ok(size.scroll<=size.viewport+1,`${name} fits ${width}px: ${JSON.stringify(size)}`);

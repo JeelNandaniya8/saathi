@@ -175,8 +175,8 @@ html:is([lang="gu"],[lang="hi"]) .chat-polish.study-desk .main:has(.message-list
   .workspace-polish.study-desk .sidebar { width: min(280px,88vw); }
   .workspace-polish.study-desk .topbar { top: 0; border-radius: 0; padding-inline: 12px; }
   .workspace-polish.study-desk .content { width: calc(100% - 32px); padding: 28px 0 calc(100px + env(safe-area-inset-bottom)); }
-  .workspace-polish.study-desk .workspace-hero { gap: 12px; align-items: flex-start; margin-bottom: 24px; }
-  .workspace-polish.study-desk .workspace-hero h1 { font-size: 34px; }
+  .workspace-polish.study-desk .workspace-hero { gap: 8px; align-items: flex-start; margin-bottom: 24px; }
+  .workspace-polish.study-desk .workspace-hero h1 { font-size: 32px; line-height: 1.2; margin: 8px 0; }
   .workspace-polish.study-desk .workspace-hero .workspace-date { padding: 0; border: 0; background: transparent; }
   .workspace-polish.study-desk .today-layout { grid-template-columns: 1fr; gap: 20px; }
   .study-desk .focus-card { grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; padding: 24px; }
@@ -187,6 +187,10 @@ html:is([lang="gu"],[lang="hi"]) .chat-polish.study-desk .main:has(.message-list
   .study-desk .workspace-shortcuts { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
 @media(max-width:540px) {
+  .study-desk .focus-card { padding: 20px; gap: 12px; }
+  .study-desk .focus-card-footer { padding-top: 16px; }
+  .study-desk .focus-caption { display: none; }
+  .study-desk .focus-card-footer .primary { width: 100%; }
   .chat-polish.study-desk .composer-zone { padding: 8px 12px max(12px,env(safe-area-inset-bottom)); }
   .chat-polish.study-desk .composer { padding: 10px; border-radius: 16px; }
   .chat-polish.study-desk .composer textarea { min-height: 44px; padding: 6px; }
