@@ -324,14 +324,15 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <link rel="stylesheet" href="/experience.css?v=20260912">
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20261020d">
+<link rel="stylesheet" href="/study-desk.css?v=20261020e">
 
 <style>.chat-study-dialog{width:min(680px,calc(100vw - 24px));max-height:85dvh;overflow:auto}.chat-study-dialog fieldset{margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:14px}.chat-study-dialog fieldset label{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:10px;background:var(--canvas);overflow-wrap:anywhere;cursor:pointer}.chat-study-dialog fieldset input{width:20px;height:20px;flex-shrink:0;padding:0;accent-color:var(--gold)}.chat-study-dialog legend{font-weight:600;overflow-wrap:anywhere}.chat-study-dialog details{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.chat-study-dialog summary{cursor:pointer;min-height:44px;align-content:center;font-weight:600}.chat-study-dialog .chat-map details details{margin-left:12px;border-left:3px solid var(--sage)}.chat-study-dialog a{display:inline-flex;min-height:44px;align-items:center;color:var(--gold)}.chat-study-dialog button{min-height:44px}.chat-study-dialog p{line-height:1.6}</style></head>
-<body class="chat-polish">
+<body class="chat-polish study-desk">
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
     <div class="brand-row"><a class="brand" href="/dashboard"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg><span>saathi</span></a></div>
     <nav class="chat-workspace-nav" aria-label="Workspace"><a href="/dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg><span data-ui-text>Today</span></a><a href="/dashboard#tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18"/></svg><span data-ui-text>Planner</span></a></nav>
-    <div class="sidebar-tools"><button class="icon-btn" id="searchConversations" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="closeSidebar" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="new-chat" id="newChat" disabled type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg></button></div>
+    <div class="sidebar-tools"><button class="icon-btn" id="searchConversations" type="button" aria-label="Search conversations" title="Search conversations"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button><button class="icon-btn" id="closeSidebar" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><button class="new-chat" id="newChat" disabled type="button" aria-label="New chat" title="New chat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 5H5v14h14v-8M15 3l6 6M11 13l2-6 4-4 4 4-4 4-6 2Z"/></svg><span data-ui-text>New chat</span></button></div>
     <label class="search" id="searchWrap" aria-label="Search conversations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
       <input id="searchInput" type="search" placeholder="Search conversations" maxlength="100" autocomplete="off">
@@ -486,7 +487,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 
 
 <dialog id="editMessageDialog" class="hub-dialog" aria-labelledby="editMessageTitle"><header><h2 id="editMessageTitle">Edit and resend</h2><button class="secondary" type="button" id="cancelMessageEdit">Cancel</button></header><p class="helper">Your revised question is sent as a new message. Earlier messages stay saved.</p><label for="editMessageText">Your question</label><textarea id="editMessageText" maxlength="5000" required></textarea><p class="helper" id="editMessageNotice"></p><button class="primary" type="button" id="sendMessageEdit">Send revised question</button></dialog>
-<script src="/i18n.js?v=20261020c"></script>
+<script src="/i18n.js?v=20261020e"></script>
 <script src="/workspace-hub.js?v=20261020c"></script>
 <script src="/recovery.js?v=20261019a"></script>
 <script src="/account-clock.js?v=20261014a"></script>
@@ -690,7 +691,7 @@ async function selectConversation(id){
 function emptyView(){
   const empty=document.createElement('div');empty.className='empty';
   const inner=document.createElement('div');inner.className='empty-inner';
-  inner.innerHTML='<div class="empty-signature" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></div><h2 data-ui-text>Make room for a little clarity.</h2><p data-ui-text>Bring a question, a page, or a thought. Start wherever you are.</p>';
+  inner.innerHTML='<div class="empty-signature" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></div><h2 data-ui-text>What would you like to understand?</h2><p data-ui-text>Bring a question, a page, or a thought. Start wherever you are.</p>';
   const prompts=document.createElement('div');prompts.className='prompts';
   const secondary=document.createElement('div');secondary.className='prompt-secondary';
   const entries=[

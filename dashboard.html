@@ -227,8 +227,9 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 <link rel="stylesheet" href="/workspace.css?v=20260916c">
 <link rel="stylesheet" href="/daily-workspace.css?v=20260927c">
 <link rel="stylesheet" href="/workspace-hub.css?v=20261020d">
+<link rel="stylesheet" href="/study-desk.css?v=20261020e">
 </head>
-<body class="workspace-polish">
+<body class="workspace-polish study-desk">
 <a class="skip-link" href="#overview" id="skipWorkspace">Skip to workspace</a>
 <div class="shell">
 <aside class="sidebar" id="sidebar" aria-label="Workspace navigation"><a class="brand" href="/dashboard"><svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg><span>saathi</span></a><nav class="nav" aria-label="Workspace">
@@ -248,15 +249,23 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
   <div><span class="eyebrow">Your day, at your pace</span><h1 id="greeting" aria-busy="true"><span class="greeting-skeleton" aria-hidden="true"></span></h1><p data-i18n="todayHint">One clear next step. The rest can wait.</p></div>
   <p class="workspace-date" id="todayDate" data-user-content></p>
 </header>
-<div class="today-layout hub-today">
-  <div class="today-main">
     <article class="focus-card" aria-labelledby="focusHeading">
+      <div class="focus-card-copy">
       <div class="focus-card-top"><span class="focus-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg></span><h2 id="focusHeading">Today’s focus</h2><span class="focus-duration">25 <span data-ui-text>minutes</span></span></div>
       <h3 id="todayFocusTitle" data-user-content><span class="today-skeleton" aria-hidden="true"><i></i><i></i></span></h3>
       <p class="helper" id="todayFocusDetail" data-ui-text>Choose one manageable task. Give it your full attention.</p>
+      </div>
       <div class="focus-card-footer"><span class="focus-caption" data-ui-text>One task. A little more clarity.</span><button class="primary" id="todayFocusStart" type="button" disabled>Start focus <span aria-hidden="true">→</span></button></div>
     </article>
+<div class="today-layout hub-today">
+  <div class="today-main">
+
     <article class="panel today-plan"><div class="panel-head"><div><span class="eyebrow">A manageable plan</span><h2>Your next three steps</h2></div><button class="quiet" type="button" data-open="tasks">View planner <span aria-hidden="true">↗</span></button></div><div id="todayTasks" aria-busy="true" aria-label="Loading your next steps"><span class="today-skeleton" aria-hidden="true"><i></i><i></i><i></i></span><span class="loading-caption" data-ui-text>Loading your next steps…</span></div></article>
+<nav class="workspace-shortcuts" aria-label="Your study tools">
+  <button type="button" data-quick-notes aria-haspopup="dialog"><span class="surface-symbol blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg></span><span><b data-ui-text>Notes</b><small data-ui-text>A place for what clicks.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
+  <button type="button" data-open="mindmaps"><span class="surface-symbol lavender" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="6" rx="1.5"/><path d="M12 9V5m0 10v4M9 12H5m10 0h4"/><circle cx="12" cy="3" r="2"/><circle cx="12" cy="21" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="21" cy="12" r="2"/></svg></span><span><b data-ui-text>Mindmaps</b><small data-ui-text>See how ideas connect.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
+  <button type="button" data-open="memory"><span class="surface-symbol mint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg></span><span><b data-ui-text>Memory</b><small data-ui-text>Useful context. Your control.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
+</nav>
   </div>
   <aside class="today-aside" aria-label="Your day at a glance">
     <article class="panel today-reminder"><div class="panel-head"><h2>Coming up</h2><button class="quiet" data-open="reminders">Manage <span aria-hidden="true">↗</span></button></div><div id="overviewReminder" aria-busy="true" aria-label="Loading your next reminder"><span class="today-skeleton" aria-hidden="true"><i></i><i></i></span><span class="loading-caption" data-ui-text>Loading…</span></div></article>
@@ -267,11 +276,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
     </div>
   </aside>
 </div>
-<nav class="workspace-shortcuts" aria-label="Your study tools">
-  <button type="button" data-quick-notes aria-haspopup="dialog"><span class="surface-symbol blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg></span><span><b data-ui-text>Notes</b><small data-ui-text>A place for what clicks.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
-  <button type="button" data-open="mindmaps"><span class="surface-symbol lavender" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="6" rx="1.5"/><path d="M12 9V5m0 10v4M9 12H5m10 0h4"/><circle cx="12" cy="3" r="2"/><circle cx="12" cy="21" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="21" cy="12" r="2"/></svg></span><span><b data-ui-text>Mindmaps</b><small data-ui-text>See how ideas connect.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
-  <button type="button" data-open="memory"><span class="surface-symbol mint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg></span><span><b data-ui-text>Memory</b><small data-ui-text>Useful context. Your control.</small></span><span class="shortcut-arrow" aria-hidden="true">↗</span></button>
-</nav>
+
 <details class="today-extras"><summary>More for today</summary><article class="care-panel" id="todayCare"><button class="quiet" type="button" onclick="document.getElementById('todayCare').hidden=true" aria-label="Dismiss care card">×</button><div><span class="eyebrow">A moment for you</span><h2>How are you doing today?</h2><p>Talk it through, find a small next step, or reflect privately. Share only what you choose.</p></div><div class="care-actions"><a class="primary" href="/chat?mode=care">Talk it through</a><button class="secondary" data-open="healer" type="button" style="background:var(--sage-soft);color:var(--sage);border-color:transparent;font-weight:700">Wellbeing</button></div></article><div class="recovery-actions"><button class="secondary" type="button" data-weekly-review>Review your week</button></div></details><details class="today-stats" id="todayStats" hidden><summary data-i18n="overviewStats">Workspace overview</summary><div class="metrics"><article class="metric"><span>Open tasks</span><strong id="metricTasks">—</strong><p>steps waiting for you</p><button data-open="tasks">Open planner →</button></article><article class="metric"><span>Active reminders</span><strong id="metricReminders">—</strong><p>user-created schedules</p><button data-open="reminders">Review reminders →</button></article><article class="metric"><span>Conversations</span><strong id="metricChats">—</strong><p>active saved chats</p><a href="/chat">Continue talking →</a></article><article class="metric"><span>Active memory</span><strong id="metricMemory">—</strong><p>details you control</p><button data-open="memory">Review memory →</button></article></div></details>
 
 
@@ -662,7 +667,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 </nav>
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/i18n.js?v=20261020c"></script>
+<script src="/i18n.js?v=20261020e"></script>
 <script src="/lazy-tools.js?v=20261020a"></script>
 <script src="/workspace-hub.js?v=20261020c"></script>
 <script src="/recovery.js?v=20261019a"></script>

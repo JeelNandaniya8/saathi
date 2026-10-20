@@ -10,10 +10,13 @@ def backend(monkeypatch):
     module.app.config.update(TESTING=True, SESSION_COOKIE_SECURE=False)
     return module
 
-def test_public_asset_compression_and_revalidation(backend):
+@pytest.mark.parametrize('asset', ['experience.css', 'study-desk.css'])
+def test_public_asset_compression_and_revalidation(backend, asset):
     client = backend.app.test_client()
-    plain = client.get('/experience.css?v=test', headers={'Accept-Encoding': 'gzip;q=0'})
-    packed = client.get('/experience.css?v=test', headers={'Accept-Encoding': 'gzip'})
+    plain = client.get(f'/{asset}?v=test', headers={'Accept-Encoding': 'gzip;q=0'})
+    packed = client.get(f'/{asset}?v=test', headers={'Accept-Encoding': 'gzip'})
+    assert plain.status_code == packed.status_code == 200
+    assert plain.mimetype == 'text/css'
     assert packed.headers['Content-Encoding'] == 'gzip'
     assert gzip.decompress(packed.data) == plain.data
     assert len(packed.data) < len(plain.data) / 2
@@ -21,7 +24,7 @@ def test_public_asset_compression_and_revalidation(backend):
     assert 'max-age=3600' in packed.headers['Cache-Control']
     assert 'app;dur=' in packed.headers['Server-Timing']
     assert 'Content-Encoding' not in plain.headers
-    cached = client.get('/experience.css?v=test', headers={'Accept-Encoding': 'gzip', 'If-None-Match': packed.headers['ETag']})
+    cached = client.get(f'/{asset}?v=test', headers={'Accept-Encoding': 'gzip', 'If-None-Match': packed.headers['ETag']})
     assert cached.status_code == 304
 
 def test_private_data_and_service_worker_are_not_compressed_or_cached(backend):

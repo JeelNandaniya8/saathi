@@ -847,6 +847,7 @@ window.SaathiI18n.register({
   "A little space to begin.": "શરૂઆત માટે થોડી જગ્યા.",
   "Add a small next step, or leave room for rest.": "એક નાનું પગલું ઉમેરો અથવા આરામ માટે સમય રાખો.",
   "Your notes": "તમારી નોંધો",
+  "What would you like to understand?": "આજે શું સમજવું છે?",
   "Make room for a little clarity.": "થોડી સ્પષ્ટતા માટે જગ્યા બનાવો.",
   "Bring a question, a page, or a thought. Start wherever you are.": "પ્રશ્ન, પાનું કે વિચાર લાવો. તમે જ્યાં છો ત્યાંથી શરૂ કરો.",
   "Break it into simple steps.": "સરળ પગલાંમાં સમજો.",
