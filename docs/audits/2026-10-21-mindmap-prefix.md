@@ -10,11 +10,13 @@ The pre-fix regression commit `8fee6140ce929d97cfef0347e229387eaa638308` failed 
 
 Only mindmap creation classification retries the existing classifier after removing negative clauses with the existing source-query parser. Preview, no-save, quoted/example and literal-field guards still run. Original persisted requests and source privacy policy are unchanged.
 
-Both chat transports reject a known exhausted map allowance before provider generation; the final save still rechecks the quota. There are no model, deployment configuration, schema or frontend changes.
+Both chat transports reject a known exhausted map allowance before provider generation; the final save still rechecks the quota. The existing direct quota reply carries an internal AI_QUOTA marker so both endpoints return the same error/allowance contract rather than persisting a normal assistant reply for an exhausted request. There are no model, deployment configuration, schema or frontend changes.
 
 ## Regression evidence
 
 The added tests cover the exact privacy-prefixed request; eight no-save/preview/quotation safety cases; streaming and ordinary JSON generation with and without file-only selection; real isolated-PostgreSQL receipts and integer map IDs; owned read-back, cold API reads, exact-request busy retry, idempotent replay and cross-account exclusion; and exhausted synthetic quotas with no provider access. All provider responses, failures, files and quota consumption in these tests are fixtures.
+
+The first repaired candidate CI run [39484372589](https://github.com/JeelNandaniya8/saathi/actions/runs/39484372589) passed 877 tests and failed the two exhausted-quota transport assertions, exposing the existing direct-reply short-circuit (HTTP 200 instead of the error contract). The follow-up carries that quota condition through to endpoint rejection and additionally requires zero persisted messages and unchanged allowance.
 
 Exact candidate CI and release/live results are recorded in [PR #73](https://github.com/JeelNandaniya8/saathi/pull/73). CI success is staging evidence, not a production success-rate estimate.
 

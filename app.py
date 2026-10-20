@@ -2938,7 +2938,7 @@ def conversation_messages(conversation_id):
     language = load_user_language(user_id, cur)
     direct = None if file_only else chat_actions.direct_reply(cur, user_id, recent + [{"role":"user","content":content,"attachments":attachments}], language)
     if direct:mode='normal'
-    if not direct and chat_intents.automatic(turn_context, 'mindmap'):
+    if (not direct or direct.get('code') == 'AI_QUOTA') and chat_intents.automatic(turn_context, 'mindmap'):
         map_allowance = study_tools.study_allowance(cur, user_id, 'map', pending=True)
         if not map_allowance['remaining']:
             cur.close()
@@ -3230,7 +3230,7 @@ def stream_conversation_message(conversation_id):
         language = load_user_language(user_id, cur)
         direct = None if file_only else chat_actions.direct_reply(cur, user_id, recent + [{"role":"user","content":content,"attachments":attachments}], language)
         if direct:mode='normal'
-        map_allowance=study_tools.study_allowance(cur,user_id,'map',pending=True) if not direct and chat_intents.automatic(turn_context,'mindmap') else None
+        map_allowance=study_tools.study_allowance(cur,user_id,'map',pending=True) if (not direct or direct.get('code') == 'AI_QUOTA') and chat_intents.automatic(turn_context,'mindmap') else None
         memory_context, memory_labels = ("", []) if file_only or direct or study_reference.short_study([dict(role='user',content=content,attachments=attachments)],mode) else load_active_memory_bundle(user_id, cur, mode, True, turn_context)
     finally:
         cur.close()

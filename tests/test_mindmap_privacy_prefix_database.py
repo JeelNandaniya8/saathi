@@ -85,4 +85,6 @@ def test_prefixed_map_cannot_bypass_an_exhausted_fixture_allowance(db_app, monke
     else:
         assert response.status_code == 429 and response.json['code'] == 'AI_QUOTA'
     assert one(connect, 'SELECT COUNT(*) AS n FROM mindmaps')['n'] == 2
+    assert one(connect, 'SELECT COUNT(*) AS n FROM messages')['n'] == 0
     assert one(connect, 'SELECT COUNT(*) AS n FROM chat_action_receipts')['n'] == 0
+    assert client.get('/api/study-allowance?kind=map').json['allowance']['remaining'] == 0

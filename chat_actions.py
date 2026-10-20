@@ -445,7 +445,7 @@ def direct_reply(cur,uid,messages,language='en'):
         return {'reply':'Saving…\n\n<SAATHI_ACTION>'+json.dumps(draft,ensure_ascii=False)+'</SAATHI_ACTION>'}
     if chat_intents.automatic(text,'mindmap') or chat_intents.automatic(chat_intents.continuation(messages[:-1],text),'mindmap'):
         try:study_tools.check_allowance(cur,uid,'map',pending=True)
-        except study_tools.QuotaError as error:return {'reply':error.localized(language)}
+        except study_tools.QuotaError as error:return {'reply':error.localized(language),'code':'AI_QUOTA'}
     classroom_query=chat_intents.classroom_read(text)
     if classroom_query:
         # Fetch after releasing the initial chat connection. Streaming can
