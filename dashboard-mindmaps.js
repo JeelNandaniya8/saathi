@@ -10,7 +10,7 @@ async function handleMindmapSubmit(event){
   btn.disabled=true;
   btn.textContent='Checking allowance…';
   try{
-    const res=await SaathiJobs.create('map',{topic,language:state.user?.language||'en'},api,()=>{btn.textContent='Generating mindmap…'});
+    const res=await SaathiJobs.create('map',{topic,language:state.user?.language||'en'},api,phase=>{const text=phase==='waiting'?'Waiting for result…':'Generating mindmap…';btn.textContent=window.SaathiI18n?.t(text)||text});
     if(!res.mindmap?.id||!res.mindmap?.data?.root)throw Error('Failed: no saved mindmap was returned. Retry.');
     state.activeMindmap=res.mindmap;
     if(!state.mindmaps)state.mindmaps=[];
