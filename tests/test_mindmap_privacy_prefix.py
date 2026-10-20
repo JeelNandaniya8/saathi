@@ -36,6 +36,10 @@ def test_refusing_sources_keeps_the_following_mindmap_permission_only():
     'Do not create a mindmap about coins.',
     'How do I save a mindmap about coins?',
     'Create a draft mindmap about coins.',
+    'Create a mindmap titled Coins. Do not save.',
+    'Create a mindmap titled Coins. Don’t save.',
+    'Create a mindmap titled Coins. Preview only.',
+    'Create a mindmap titled Coins. अभी सेव मत.',
 ])
 def test_source_refusal_does_not_remove_save_vetoes_or_quoted_examples(suffix):
     assert not intents.automatic(PREFIX + suffix, 'mindmap')
