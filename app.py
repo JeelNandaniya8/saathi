@@ -1089,6 +1089,7 @@ def public_styles():
 @app.get("/workspace-hub.js")
 @app.get("/lazy-tools.js")
 @app.get("/workspace-hub.css")
+@app.get("/study-desk.css")
 @app.get("/i18n.js")
 @app.get("/locale-hi.js")
 @app.get("/locale-gu.js")

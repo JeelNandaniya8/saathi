@@ -5,7 +5,7 @@ module.exports=async function reviewUI(page,width,base){
  const artifacts=process.env.SAATHI_UI_ARTIFACTS;
  if(artifacts)fs.mkdirSync(artifacts,{recursive:true});
  await page.emulateMedia({reducedMotion:'reduce'});
- async function capture(name){if(artifacts&&[1280,360].includes(width))await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:true,animations:'disabled'})}
+ async function capture(name){if(artifacts&&[1280,360].includes(width)){await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0)});await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:true,animations:'disabled'})}}
  async function fits(name){
   const size=await page.evaluate(()=>({viewport:innerWidth,scroll:document.documentElement.scrollWidth}));
   assert.ok(size.scroll<=size.viewport+1,`${name} fits ${width}px: ${JSON.stringify(size)}`);
@@ -24,6 +24,10 @@ module.exports=async function reviewUI(page,width,base){
  await page.goto(base+'/dashboard');
  await page.locator('#todayTasks .hub-task-title').waitFor();
  assert.equal(await page.locator('#todayFocusTitle').textContent(),'Search','Focus uses the actual returned task');
+ if(width>780){
+  const focus=await page.locator('.focus-card').boundingBox(),plan=await page.locator('.today-layout').boundingBox();
+  assert.ok(Math.abs(focus.width-plan.width)<2&&focus.y+focus.height<=plan.y,'Dashboard focus spans the desk above the returned plan');
+ }
  await page.locator('#todayFocusStart').click();
  const focusDialog=page.locator('.hub-dialog[open]');
  await focusDialog.locator('select').first().waitFor();
@@ -121,6 +125,13 @@ module.exports=async function reviewUI(page,width,base){
    await fits(`${language}/empty-chat`);
    assert.equal(await page.locator('.prompts>.prompt').count(),3);
    assert.equal(await page.locator('.prompt-secondary>.prompt:visible').count(),2,'Secondary starting points remain reachable on mobile');
+   if(language!=='en')assert.equal(await page.locator('.empty h2').evaluate(heading=>getComputedStyle(heading).letterSpacing),'normal','Native headings retain script shaping rather than Latin tracking');
+   const welcome=await page.evaluate(()=>{
+    const composer=document.querySelector('#composer').getBoundingClientRect(),prompts=document.querySelector('.prompts').getBoundingClientRect(),last=document.querySelector('.prompt-secondary').getBoundingClientRect();
+    return {forms:document.querySelectorAll('#composer').length,composerBottom:composer.bottom,promptsTop:prompts.top,lastBottom:last.bottom,height:innerHeight};
+   });
+   assert.equal(welcome.forms,1,'Empty chat retains one actual composer');
+   assert.ok(welcome.composerBottom<=welcome.promptsTop&&welcome.lastBottom<=welcome.height,`Composer precedes reachable starting points: ${JSON.stringify(welcome)}`);
    await capture(`${language}-${theme}-empty-chat`);
    await page.locator('.prompts>.prompt').first().click();
    const starter=await page.locator('#chatInput').inputValue();

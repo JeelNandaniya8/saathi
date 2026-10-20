@@ -16,6 +16,8 @@ Dashboard focus uses a restrained tinted surface, an explicit footer and consist
 
 ## Verification
 
+The study-desk composition lives in `study-desk.css`, loaded after the shared controller styles. Dashboard focus spans the page above the plan; Notes, Mindmaps and Memory share one compact tool surface. Chat uses a framed reading canvas, a visibly named New chat action and an empty-state grid that places the existing composer before starting points. The form is never cloned or moved. A short viewport returns to the scrolling conversation layout, while the taller empty layout permits scrolling if attachments or large text need more room. EN/GU/HI headings, dark mode and reduced motion remain supported. The only server change exposes the new stylesheet through the existing explicit public-asset handler; its real HTTP response, compression and revalidation are covered by the asset test.
+
 ```sh
 bash scripts/check_javascript.sh
 NODE_PATH=/tmp/saathi-browser-tests/node_modules node tests/workspace_browser.cjs
