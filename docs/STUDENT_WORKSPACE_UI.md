@@ -1,22 +1,16 @@
 # Student workspace frontend
 
-The post-login Dashboard, Chat, Notes and Planner use the existing Flask pages and vanilla JavaScript controllers. No packages, build process, API endpoints, schema changes or provider calls are added.
+Dashboard, Chat, Notes and Planner retain the existing Flask pages and vanilla JavaScript controllers. The supplied conversation screenshot guides the visual system: a quiet sidebar, open reading area, right-aligned user bubbles and a compact rounded composer. Saathi keeps its own name, icons, providers and existing features.
 
-- `workspace-hub.css` contains shared semantic colours, typography, controls and responsive compositions. Dark mode, reduced motion, native scripts and large-text preferences remain supported.
-- `dashboard.html` composes the returned Today tasks, reminder and recent conversation. The focus action uses the first returned task; an empty response opens Planner instead. No completion percentage or saved object is invented.
-- `chat.html` retains the streaming, cancellation, attachments, file-only selection, quota and retry controllers.
-- `workspace.js` retains the account-owned Notes editor, version checks and draft recovery. Opening Notes focuses its heading; choosing New note explicitly focuses its title.
-- Planner retains its existing forms and handlers. Its list precedes the creation form on phones; Add task focuses that form. Mobile navigation tracks the current workspace view.
+`study-desk.css` owns the reference-based composition and semantic light/dark colours. `workspace-hub.css` retains the shared tool controls. The signed-in pages load a versioned stylesheet URL. Theme selection continues through the existing appearance preference.
 
-Modified CSS, JavaScript and language catalogs have versioned asset URLs for existing service-worker caches.
+Dashboard uses a full-width focus section above the returned plan, a reminder/conversation rail and compact tool shortcuts. Task completion retains a separate 44px control and the existing pending/error states. Focus is derived from returned account data; no progress or saved object is invented.
 
-The Dashboard groups revision and timer actions into one support surface. Task completion has an individually named 44px control; its pending state ends when the request settles. Chat presents three study starting points and two secondary actions on both desktop and mobile. A starting point prepares a draft, preserves existing writing and only selects modes actually returned for the account. The loading skeleton includes visible translated status text. Shared warm surface and accent tokens also cover dark mode.
+Chat uses an open assistant reading area and right-aligned user bubbles. Author labels remain available to assistive technology. Empty and active conversations share one actual composer; it is never cloned or moved. Drafts, files, file-only selection, modes, quotas, streaming, Stop and retries stay connected to their existing controllers. Starting points prepare and persist a draft without sending a request. Short viewports retain the scrolling conversation arrangement.
 
-Dashboard focus uses a restrained tinted surface, an explicit footer and consistent inline SVG tool icons. Unfinished tasks keep an empty completion ring, including on hover; a pending write uses the existing busy state. Dashboard skeletons include visible translated labels. Chat uses the Saathi symbol for assistant avatars, a consistent reading rhythm, touch-sized source disclosures and distinct, quiet starting-point icons. Starting points immediately use the existing draft recovery store, including the selected mode, and clear any obsolete request ID. No request is sent by choosing a starting point.
+Notes and Planner use the same neutral surfaces, typography and controls. Notes retains version checks, read-back and draft recovery. Planner retains its forms, handlers and mobile list-before-form order. Native scripts, larger-text preferences and reduced motion remain supported.
 
 ## Verification
-
-The study-desk composition lives in `study-desk.css`, loaded after the shared controller styles. Dashboard focus spans the page above the plan; Notes, Mindmaps and Memory share one compact tool surface. Chat uses a framed reading canvas, a visibly named New chat action and an empty-state grid that places the existing composer before starting points. The form is never cloned or moved. A short viewport returns to the scrolling conversation layout, while the taller empty layout permits scrolling if attachments or large text need more room. EN/GU/HI headings, dark mode and reduced motion remain supported. The only server change exposes the new stylesheet through the existing explicit public-asset handler; its real HTTP response, compression and revalidation are covered by the asset test.
 
 ```sh
 bash scripts/check_javascript.sh
@@ -25,6 +19,6 @@ SAATHI_UI_REVIEW=1 SAATHI_UI_ARTIFACTS=artifacts/ui \
   NODE_PATH=/tmp/saathi-browser-tests/node_modules node tests/workspace_browser.cjs
 ```
 
-The browser suites cover 1280, 768, 390, 360 and 320px. UI checks include light/dark contrast, all 13 retained workspace views, real note-controller save and reopen through isolated versioned API fixtures, focus-task selection, mobile navigation, EN/GU/HI labels and a 520px-high chat viewport. Additional cases exercise pending/failed task completion, visible native loading states, every empty-chat starting point, protected drafts and unavailable modes in both themes. Existing controller regressions cover exact retries, Stop, receipt destinations and note/task save races.
+Chromium fixtures cover 1280, 768, 390, 360 and 320px; all 13 workspace views; light/dark contrast; EN/GU/HI labels; native heading typography; a 520px-high chat viewport; sidebar reopening; and the relative position of the one composer and its starting points. Existing controller suites cover task/note save races, exact retries, cancellation, allowance states and verified receipt destinations.
 
-Fixtures are synthetic and external browser requests are blocked. These checks do not establish physical-device keyboard behaviour, live AI recovery, Classroom availability, reminder delivery, production success rate or first-word latency. This frontend change makes no new claim about those acceptance gates.
+Fixtures use synthetic responses and block external browser requests. These checks do not establish physical-device keyboard/upload behaviour, live AI recovery, Classroom availability, reminder delivery, production success rate or first-word latency. This UI change makes no new claim about those acceptance gates.

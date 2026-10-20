@@ -106,6 +106,7 @@ module.exports=async function reviewUI(page,width,base){
   for(const theme of ['light','dark']){
    await page.evaluate(theme=>SaathiTheme.apply(theme),theme);
    await fits(`${language}/${theme}/chat`);
+   assert.ok(await contrast('.message.assistant .message-content')>=4.5,`${language}/${theme} assistant text remains readable on the open conversation surface`);
    const controls=await page.evaluate(()=>{
     const selector=document.querySelector('#chatMode'),context=document.querySelector('.composer-toolbar>.message-tool');
     const style=getComputedStyle(selector),r=selector.getBoundingClientRect(),c=context.getBoundingClientRect();
