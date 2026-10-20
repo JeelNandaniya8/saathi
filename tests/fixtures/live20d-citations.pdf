@@ -1,0 +1,44 @@
+%PDF-1.4
+%Saathi synthetic test fixture
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 209 >>
+stream
+BT /F1 22 Tf 50 740 Td (SAATHI LIVE PDF 20D) Tj /F1 16 Tf 0 -60 Td (Page 1: Revision checklist) Tj 0 -45 Td (Marker: AMBER-2081) Tj 0 -35 Td (Study duration: 17 minutes) Tj 0 -45 Td (Topic: Probability) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 209 >>
+stream
+BT /F1 22 Tf 50 740 Td (SAATHI LIVE PDF 20D) Tj /F1 16 Tf 0 -60 Td (Page 2: Practice session) Tj 0 -45 Td (Marker: COBALT-9042) Tj 0 -35 Td (Practice duration: 23 minutes) Tj 0 -45 Td (Topic: Fractions) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000040 00000 n 
+0000000089 00000 n 
+0000000152 00000 n 
+0000000278 00000 n 
+0000000537 00000 n 
+0000000663 00000 n 
+0000000922 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+992
+%%EOF
