@@ -23,6 +23,7 @@ module.exports=async function reviewUI(page,width,base){
  }
  await page.goto(base+'/dashboard');
  await page.locator('#todayTasks .hub-task-title').waitFor();
+ assert.equal(await page.locator('#sidebar .brand img').getAttribute('src'),'/saathi-icon.svg','Dashboard retains the existing Saathi logo');
  assert.equal(await page.locator('#todayFocusTitle').textContent(),'Search','Focus uses the actual returned task');
  if(width>780){
   const focus=await page.locator('.focus-card').boundingBox(),plan=await page.locator('.today-layout').boundingBox();

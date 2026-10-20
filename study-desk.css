@@ -104,10 +104,10 @@ body.study-desk {
 .workspace-polish.study-desk .today-extras { margin-top: 32px; }
 
 /* The conversation is an open reading area, with right-aligned user bubbles. */
-.chat-polish.study-desk .app { grid-template-columns: 260px minmax(0,1fr); padding: 0; gap: 0; }
+.chat-polish.study-desk .app { grid-template-columns: minmax(0,1fr) 260px; grid-template-areas: "main sidebar"; padding: 0; gap: 0; }
 .chat-polish.study-desk .app.sidebar-collapsed { grid-template-columns: minmax(0,1fr); grid-template-areas: "main"; padding: 0; }
 .chat-polish.study-desk .main { height: 100dvh; min-height: 0; overflow: hidden; }
-.chat-polish.study-desk .sidebar { padding: 22px 16px 16px; }
+.chat-polish.study-desk .sidebar { padding: 22px 16px 16px; border-left: 1px solid var(--line); border-right: 0; }
 .chat-polish.study-desk .brand-row { padding-inline: 8px; margin-bottom: 16px; }
 .chat-polish.study-desk .chat-workspace-nav { gap: 4px; padding-bottom: 16px; }
 .chat-polish.study-desk .chat-workspace-nav a { min-height: 44px; padding: 10px; border: 0; border-radius: 9px; }
@@ -124,6 +124,7 @@ body.study-desk {
 .chat-polish.study-desk .conversation.active,.chat-polish.study-desk .conversation-main:hover { background: var(--composer-surface); box-shadow: none; }
 .chat-polish.study-desk .conversation.active .conversation-main { background: transparent; }
 .chat-polish.study-desk .topbar { min-height: 64px; padding-inline: 24px; }
+.chat-polish.study-desk #openSidebar { order: 3; }
 .chat-polish.study-desk .message-list { width: min(760px,calc(100% - 64px)); padding-block: 36px 24px; }
 .chat-polish.study-desk .message { margin-bottom: 32px; }
 .chat-polish.study-desk .message.assistant .message-content { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 16px; line-height: 1.85; }
