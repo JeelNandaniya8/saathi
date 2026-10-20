@@ -108,6 +108,10 @@ def automatic(text, kind, operation='create'):
         return False
     if re.search(r'\bpreview\b|\bdraft\b|review before|do not save|don.t save|without saving|પૂર્વાવલોકન|अभी सेव मत',text,re.I):
         return False
+    if kind == 'mindmap' and operation == 'create':
+        positive = source_query(text).strip()
+        if positive != text:
+            return automatic(positive, kind, operation)
     mutations={'pause':r'\bpause\b|રોક|रोक', 'resume':r'\bresume\b|ફરી ચાલુ|फिर चालू',
                'snooze':r'\bsnooze\b|મોકૂફ|સ્નૂઝ|स्नूज़',
                'complete':r'\b(?:done|complete|completed|finished)\b|પૂર્ણ|પૂરું|पूरा',

@@ -46,13 +46,13 @@ def test_source_refusal_does_not_remove_save_vetoes_or_quoted_examples(suffix):
 def test_prefixed_map_keeps_the_working_json_study_provider_contract(monkeypatch, stream, file_only):
     import app
     monkeypatch.setattr(app, 'GEMINI_API_KEY', 'fixture-key')
-    monkeypatch.setenv('GEMINI_FAST_MODEL', 'fixture-busy-fast')
-    monkeypatch.setenv('GEMINI_MODEL', 'fixture-working-study')
+    monkeypatch.setenv('GEMINI_FAST_MODEL', 'gemini-fixture-busy')
+    monkeypatch.setenv('GEMINI_MODEL', 'gemini-fixture-study')
     calls = []
 
     def provider(*args, **kwargs):
         calls.append((args[2], args[3], kwargs))
-        if args[2] == 'fixture-busy-fast':
+        if args[2] == 'gemini-fixture-busy':
             raise app.ProviderError('AI_BUSY', 'Fixture fast model unavailable', 503)
         return Response(coin_map())
 
@@ -71,5 +71,5 @@ def test_prefixed_map_keeps_the_working_json_study_provider_contract(monkeypatch
     assert draft['map']['root']['children'][0]['desc'] == '{HH, HT, TH, TT}'
     assert len(calls) == 1
     model, payload, options = calls[0]
-    assert model == 'fixture-working-study' and not options.get('fast')
+    assert model == 'gemini-fixture-study' and not options.get('fast')
     assert payload['generationConfig']['responseMimeType'] == 'application/json'

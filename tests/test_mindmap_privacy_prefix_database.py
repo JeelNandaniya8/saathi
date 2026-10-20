@@ -16,14 +16,14 @@ pytestmark = pytest.mark.skipif(
 def test_prefixed_normal_map_saves_once_after_exact_retry(db_app, monkeypatch, stream, busy_first):
     backend, client, connect = db_app
     monkeypatch.setattr(backend, 'GEMINI_API_KEY', 'fixture-key')
-    monkeypatch.setenv('GEMINI_FAST_MODEL', 'fixture-busy-fast')
-    monkeypatch.setenv('GEMINI_MODEL', 'fixture-working-study')
+    monkeypatch.setenv('GEMINI_FAST_MODEL', 'gemini-fixture-busy')
+    monkeypatch.setenv('GEMINI_MODEL', 'gemini-fixture-study')
     busy = [busy_first]
     calls = []
 
     def provider(*args, **kwargs):
         calls.append((args[2], kwargs.get('fast')))
-        assert args[2] == 'fixture-working-study' and not kwargs.get('fast')
+        assert args[2] == 'gemini-fixture-study' and not kwargs.get('fast')
         if busy[0]:
             raise backend.ProviderError('AI_BUSY', 'Fixture study provider busy', 503)
         return Response(coin_map())
