@@ -36,8 +36,10 @@ def note(text):
         return None
     value = named[1].strip()
     quoted = re.match(r'["“]([^"”]+)["”]\s*(?:[:—\-.,]|with (?:the )?(?:content|text)|containing)*\s*(.+)', value, re.I | re.S)
-    split = re.match(r'(.+?)\s*(?:[.;]?\s+(?:with |and )?(?:the )?(?:content|text)\s*[:=]?\s+|[:\n]|\s+containing\s+)\s*(.+)', value, re.I | re.S)
-    match = quoted or split
+    # An explicit content label outranks punctuation inside the supplied title.
+    labeled = re.match(r'(.+?)\s*(?:[.;]\s*|\n\s*)(?:content|text)\s*[:=]\s*(.+)', value, re.I | re.S)
+    split = re.match(r'(.+?)\s*(?:[.;]?\s+(?:with |and )?(?:the )?(?:content|text)\s*[:=]?\s+|(?<!\d):|:(?!\d)|\n|\s+containing\s+)\s*(.+)', value, re.I | re.S)
+    match = quoted or labeled or split
     if match:
         return {'kind': 'note', 'title': match[1].strip(' .'), 'text': match[2].strip()}
     return {'question': 'What text should I save in the note? Include the title and content.'}
