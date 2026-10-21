@@ -328,3 +328,7 @@ Chat messages can be edited and resent as a new follow-up while preserving earli
 The referral panel is in Account. Today has one dismissible Care card, and the repeated chat Care banner is removed. Reminder scheduling and browser notifications remain available. Mock tests, mindmaps and the wellbeing scripts load only when opened, with retry after a failed load. Gujarati interface copy loads only when Gujarati is selected; saved user writing and AI output are not translated by the interface observer.
 
 CI runs PostgreSQL ownership/concurrency checks, the existing Node behavior checks, and real Chromium desktop/mobile flows with local fixture responses. The browser checks require Playwright 1.62.1 (`NODE_PATH=/tmp/saathi-browser-tests/node_modules node tests/workspace_browser.cjs` after the install steps in `.github/workflows/ci.yml`). They do not send prompts to an AI provider. Provider latency and hosting wake-up time still depend on the live services.
+
+### Classroom file selection
+
+Selected-course sync retains Drive file references without downloading contents. See [the attachment recovery evidence and Google Picker setup](docs/audits/2026-10-21-classroom-attachments.md). The separate per-file flow is disabled until `CLASSROOM_FILE_PICKER_ENABLED=true`; it prepares a reviewable Chat attachment and never sends to AI automatically. The existing upload allowance applies on Send.

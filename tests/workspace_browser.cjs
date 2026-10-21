@@ -22,6 +22,9 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     const url=new URL(route.request().url());if(url.origin!==base)return route.abort();
     const pathname=url.pathname;requests.push(pathname);
     if(pathname==='/dashboard-mindmaps.js'&&failMindmaps){failMindmaps=false;return route.abort()}
+    if(/^\/api\/classroom\/files\/[a-f0-9-]+\/download$/.test(pathname))return route.fulfill({
+     status:200,contentType:'application/pdf',headers:{'X-Saathi-File-Name':'Synthetic.pdf','X-Saathi-File-Modified':'1000','Cache-Control':'private, no-store'},body:'%PDF-1.4\nSynthetic'
+    });
     if(pathname.startsWith('/api/')){
      let data={},status=200;const method=route.request().method(),body=()=>route.request().postDataJSON();if(pathname==='/api/conversations'&&method==='POST')assert.ok(route.request().headers()['x-csrf-token'],'New chat waits for session readiness');
      if(pathname==='/api/me'&&new URL(page.url()).pathname==='/chat'){chatProfilePending=true;await new Promise(resolve=>setTimeout(resolve,350));chatProfilePending=false}
@@ -671,6 +674,20 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
    assert.ok((await page.locator('#mmNodes').textContent()).includes('Exact linked root'));
    assert.equal(requests.filter(url=>url==='/api/mindmaps/62').length,1,'A cold receipt link loads the exact record once');
    assert.equal(requests.filter(url=>url==='/api/mindmaps/generate').length,mapGenerations,'Reopening never regenerates or charges quota');
+   await page.goto(base+'/chat?classroom_file=11111111-1111-4111-8111-111111111111');
+   await page.waitForFunction(()=>state.ready&&!state.loadingConversation);
+   await page.locator('.classroom-file-review').waitFor();
+   await page.evaluate(()=>{clearSelectedFiles();el.input.value='Keep this exact message';updateComposer()});
+   const sendsBeforeClassroom=requests.filter(url=>/\/api\/conversations\/\d+\/messages$/.test(url)).length;
+   await page.locator('.classroom-file-review button').first().click();
+   await page.waitForFunction(()=>state.selectedFiles.length===1);
+   assert.equal(await page.locator('#chatInput').inputValue(),'Keep this exact message');
+   assert.equal(await page.locator('#fileOnly').isChecked(),true);
+   assert.equal(await page.locator('.selected-copy').textContent(),'Synthetic.pdf18 B');
+   assert.equal(await page.locator('.classroom-file-review').count(),0);
+   assert.equal(requests.filter(url=>/\/api\/conversations\/\d+\/messages$/.test(url)).length,sendsBeforeClassroom,'File preparation never sends to AI');
+   const classroomFit=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
+   assert(classroomFit.scroll<=classroomFit.width+1,'Classroom attachment must fit '+width+'px');
    await page.goto(base+'/');
    await page.locator('#heroCta').waitFor();
    for(const screen of [320,360,390,768,1280]){

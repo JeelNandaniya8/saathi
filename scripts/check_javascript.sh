@@ -55,3 +55,6 @@ node tests/quota_recovery_oct17.cjs
 node tests/study_job_races.cjs
 node tests/study_status.cjs
 node tests/exact_links_oct17.cjs
+
+node --check classroom-file-draft.js
+node tests/classroom_file_draft.cjs
