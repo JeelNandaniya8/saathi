@@ -28,7 +28,7 @@ def source_query(text):
     return re.sub(r"\b(?:exclude|excluding|except|do not|don't|without|avoid|no)\b[^.;\n]*(?:[.;\n]|$)", '', command(text), flags=re.I)
 
 
-SCHOOL_WORK = r'\b(?:assignments?|assigments?|homework|coursework)\b|હોમવર્ક|ગૃહકાર્ય|અસાઇનમેન્ટ|અસાઇન્મેન્ટ|અસાઈન્મેન્ટ|હોમવક|असाइनमेंट|असाइन्मेंट|होमवर्क|गृहकार्य'
+SCHOOL_WORK = r'\b(?:assignments?|assigments?|homework|coursework)\b|હોમવર્ક|ગૃહકાર્ય|(?:અ|એ)સ(?:ાઇ|ાઈ)ન્?મેન્ટ|હોમવક|असा[इई]न्?मेंट|होमवर्क|गृहकार्य'
 CLASSROOM_SOURCE = r'classroom|ક્લાસરૂમ|क्लासरूम|' + SCHOOL_WORK
 
 
@@ -73,7 +73,9 @@ def classroom_read(text):
     read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any|su|shu|kaya|kayu|ketla|ketli|ketlu|kya|kitna|kitne|batao|btao)\b|શું|કય|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बता|बाकी|लंबित',text,re.I)
     # A short owned noun phrase ("my classroom assignments") asks for a list;
     # ownership inside an essay/help request does not grant source access.
-    owned = re.fullmatch(r'\s*(?:my|mara|maru|mari|mare|mera|mere|meri)\s+(?:(?:google\s+)?(?:classroom|school|college)\s+(?:(?:na|ni|nu|ke|ki|ka)\s+)?)?(?:'+SCHOOL_WORK+r')[?.!\s]*',text,re.I)
+    owner = r'(?:my|mara|maru|mari|mare|mera|mere|meri|મારાં|મારું|મારા|મારી|મારે|मेरा|मेरे|मेरी)'
+    school_name = r'(?:(?:google|ગૂગલ|गूगल)\s+)?(?:classroom|school|college|ક્લાસરૂમ|શાળા|કોલેજ|क्लासरूम|स्कूल|कॉलेज)(?:નાં|ના|ની|નું)?'
+    owned = re.fullmatch(r'\s*'+owner+r'\s+(?:'+school_name+r'\s+(?:(?:na|ni|nu|ke|ki|ka|નાં|ના|ની|નું|का|के|की)\s+)?)?(?:'+SCHOOL_WORK+r')[?.!\s]*',text,re.I)
     return text.strip() if bare or owned or (read and (school or classroom)) else ''
 
 

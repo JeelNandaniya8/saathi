@@ -12,8 +12,8 @@ from test_classroom_chat_database import school_fixture
 pytestmark = pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'), reason='Requires isolated PostgreSQL')
 CASES = [
     ('en', 'mare ketli assigment baki che?', '1 pending assignments'),
-    ('gu', 'મારા ક્લાસરૂમમાં કયાં અસાઇન્મેન્ટ છે?', '1 બાકી અસાઇનમેન્ટ'),
-    ('hi', 'मेरे कॉलेज के असाइनमेंट बताओ', '1 बाकी असाइनमेंट'),
+    ('gu', 'મારા ક્લાસરૂમનાં અસાઈનમેન્ટ', '1 બાકી અસાઇનમેન્ટ'),
+    ('hi', 'मेरे कॉलेज के असाइनमेंट', '1 बाकी असाइनमेंट'),
 ]
 
 
