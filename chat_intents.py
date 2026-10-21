@@ -74,7 +74,9 @@ def classroom_detail(text, contextual=False):
     if not scope or re.match(r'^(?:example\b|for example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)',scope,re.I):return ''
     if re.search(r'\b(?:sentence|phrase|meaning|translate|command)\b|વાક્ય|અર્થ|वाक्य|मतलब|अर्थ',scope,re.I):return ''
     if re.fullmatch(r'\s*(?:what (?:is|are) (?:an? |the )?(?:assignments?|homework)|(?:'+SCHOOL_WORK+r')\s+(?:su|shu|શું|kya|क्या)\s+(?:che|chhe|hoy|છે|hai|hota hai|है|होता है))[?.!\s]*',scope,re.I):return ''
-    detail=re.search(r'\b(?:instructions?|description|requirements?|details?|content|explain)\b|\bwhat\b.+?\b(?:do|about|inside|in|contain\w*)\b|\b(?:su|shu|kya)\s+(?:che|chhe|kar\w*)\b|સૂચના|વિગત|વર્ણન|શું.*(?:છે|કર)|સમજાવ|निर्देश|विवरण|क्या.*(?:है|कर)|समझा',scope,re.I)
+    detail=re.search(r"\b(?:instructions?|description|requirements?|details?|content|explain)\b|\bwhat(?: exactly)?(?:['’]s| is)\s+(?:in|inside)\b|\bwhat\s+(?:do|should|must)\s+i\b.*\bdo\b|\bwhat\b.+?\b(?:about|contain\w*)\b|\b(?:su|shu|kya)\s+kar\w*\b|સૂચના|વિગત|વર્ણન|શું.*કર|સમજાવ|निर्देश|विवरण|क्या.*कर|समझा",scope,re.I)
+    status=re.search(r'\b(?:pending|overdue|due|left|remaining|baki|ketla|ketli|kitne|kitna)\b|બાકી|કેટલ|बाकी|लंबित|कितन',scope,re.I)
+    if not status and re.search(r'\b(?:su|shu|kya)\s+(?:che|chhe|hai)\b|શું.*છે|क्या.*है',scope,re.I):detail=True
     if not detail:return ''
     school=bool(re.search(SCHOOL_WORK,scope,re.I))
     # A literal quoted title may select an assignment. A quoted *request*

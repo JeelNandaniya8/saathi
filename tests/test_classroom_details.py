@@ -28,6 +28,22 @@ def test_content_queries_use_a_detail_read_even_with_a_quoted_title(query):
 
 
 @pytest.mark.parametrize('query', [
+    'What assignments are pending in Google Classroom?',
+    'What assignments do I have?', 'What homework is pending?',
+    'What assignments are due in my Classroom?',
+    'What is pending in Google Classroom?',
+    'મારું હોમવર્ક શું બાકી છે?', 'મારા અસાઇનમેન્ટ શું બાકી છે?',
+    'મારા કેટલાં અસાઇનમેન્ટ છે?', 'maru homework shu baki che?',
+    'मेरा होमवर्क क्या बाकी है?', 'मेरे कितने असाइनमेंट हैं?',
+    'Google Classroom में कौन से असाइनमेंट बाकी हैं?',
+])
+def test_status_questions_keep_the_pending_list_reader(query):
+    result = chat_actions.direct_reply(None, 1, [dict(role='user', content=query)])
+    assert result and result.get('classroom_query')
+    assert not result.get('classroom_detail')
+
+
+@pytest.mark.parametrize('query', [
     'What is an assignment?', 'assignment su che?',
     'Explain "What assignments are pending?"',
     'Explain the sentence "Show my classroom assignments".',

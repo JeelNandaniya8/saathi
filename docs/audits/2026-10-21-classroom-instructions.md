@@ -21,10 +21,10 @@ No teacher instructions are sent to an AI provider by this path. It is a determi
 
 ## Validation before publication
 
-- Focused routing/source/detail suite: **141 passed**.
-- Full local Python suite: **685 passed / 293 skipped**, 11.80 seconds. The skipped cases require isolated PostgreSQL; they are not counted as passes.
+- Focused routing/source/detail suite: **153 passed**.
+- Full local Python suite: **697 passed / 293 skipped**, 10.23 seconds. The skipped cases require isolated PostgreSQL; they are not counted as passes.
 - Browser JavaScript/race/cancellation/receipt/quota suites passed; patch whitespace passed.
-- Added 33 unit cases and 10 PostgreSQL integration cases. The integration cases cover both transports and EN/GU/HI, stale denial history, sharing disabled, owner/course isolation, exact request/replay, persisted read-back, contextual follow-up, ambiguity and real refresh failure. CI must execute them before merge.
+- Added 45 unit cases and 10 PostgreSQL integration cases. The integration cases cover both transports and EN/GU/HI, stale denial history, sharing disabled, owner/course isolation, exact request/replay, persisted read-back, contextual follow-up, ambiguity and real refresh failure. The first CI run executed all database tests: 976 passed and two pre-existing English Classroom parity cases failed because a broad “what … in” detail pattern intercepted a pending-list query. The parser was narrowed, with 12 explicit EN/GU/HI status-reader regression cases added. A complete fresh CI run is required before merge.
 
 ## Limits
 
