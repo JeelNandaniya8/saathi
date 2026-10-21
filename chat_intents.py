@@ -28,8 +28,9 @@ def source_query(text):
     return re.sub(r"\b(?:exclude|excluding|except|do not|don't|without|avoid|no)\b[^.;\n]*(?:[.;\n]|$)", '', command(text), flags=re.I)
 
 
-SCHOOL_WORK = r'\b(?:assignments?|assigments?|homework|coursework)\b|હોમવર્ક|ગૃહકાર્ય|(?:અ|એ)સ(?:ાઇ|ાઈ)ન્?મેન્ટ|હોમવક|असा[इई]न्?मेंट|होमवर्क|गृहकार्य'
+SCHOOL_WORK = r'\b(?:assignments?|assigments?|aaisgments?|homework|coursework)\b|હોમવર્ક|ગૃહકાર્ય|(?:અ|એ)સ(?:ાઇ|ાઈ)ન્?મેન્ટ|હોમવક|असा[इई]न्?मेंट|होमवर्क|गृहकार्य'
 CLASSROOM_SOURCE = r'classroom|ક્લાસરૂમ|क्लासरूम|' + SCHOOL_WORK
+CLASSROOM_REFERENCE = r'\b(?:this|that|it|aa|e|ye)\b|આ(?:માં|નું|ની|ના|ને|\s)|તે(?:માં|નું|ની|ના|ને|\s)|इस|उस|यह|ये'
 
 
 def classroom_text(text):
@@ -57,9 +58,37 @@ def classroom_scope(text):
     return text
 
 
+def classroom_referential(text):
+    """Only a generic reference may inherit a previous title, never a new topic."""
+    scope=classroom_scope(text)
+    if not re.search(CLASSROOM_REFERENCE,scope,re.I) or re.search(r'["“”‘’`\d]',scope):return False
+    scope=re.sub(SCHOOL_WORK,' ',scope,flags=re.I)
+    scope=re.sub(r'\b(?:what|do|i|have|need|to|should|in|on|for|this|that|it|the|my|is|are|about|inside|read|show|me|explain|tell|please|can|you|instructions?|description|requirements?|details?|content|mari|mara|maru|mare|aa|e|ma|shu|su|che|chhe|seni|karvanu|karvu|enu|ni|na|nu|kya|karna|hai|ye|isme)\b|આમાં|તેમાં|આ|તે|માં|ની|નું|ના|મારા|મારી|શું|છે|કરવાનું|કરવું|વિગતો|સૂચનાઓ|સમજાવો|इसमें|उसमें|इस|उस|यह|ये|के|की|का|में|क्या|करना|है|निर्देश|विवरण|दिखाओ|समझाओ',' ',scope,flags=re.I)
+    return not re.search(r'\w',scope)
+
+
+def classroom_detail(text, contextual=False):
+    """A request to read requirements, not to generate a completed submission."""
+    if explicit(text) or study_output(text):return ''
+    scope=classroom_scope(text)
+    if not scope or re.match(r'^(?:example\b|for example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)',scope,re.I):return ''
+    if re.search(r'\b(?:sentence|phrase|meaning|translate|command)\b|વાક્ય|અર્થ|वाक्य|मतलब|अर्थ',scope,re.I):return ''
+    if re.fullmatch(r'\s*(?:what (?:is|are) (?:an? |the )?(?:assignments?|homework)|(?:'+SCHOOL_WORK+r')\s+(?:su|shu|શું|kya|क्या)\s+(?:che|chhe|hoy|છે|hai|hota hai|है|होता है))[?.!\s]*',scope,re.I):return ''
+    detail=re.search(r'\b(?:instructions?|description|requirements?|details?|content|explain)\b|\bwhat\b.+?\b(?:do|about|inside|in|contain\w*)\b|\b(?:su|shu|kya)\s+(?:che|chhe|kar\w*)\b|સૂચના|વિગત|વર્ણન|શું.*(?:છે|કર)|સમજાવ|निर्देश|विवरण|क्या.*(?:है|कर)|समझा',scope,re.I)
+    if not detail:return ''
+    school=bool(re.search(SCHOOL_WORK,scope,re.I))
+    # A literal quoted title may select an assignment. A quoted *request*
+    # (Explain "What assignments are pending?") never grants source access.
+    for match in re.finditer(r'"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’|(?<!\w)\x27([^\x27\n]+)\x27(?!\w)|`([^`]+)`',command(text)):
+        title=next(group for group in match.groups() if group is not None)
+        if re.search(SCHOOL_WORK,title,re.I) and not re.search(r'\b(?:what|which|show|list|read|check|pending|explain|shu|su|kya|baki)\b|શું|બતાવ|વાંચ|બાકી|क्या|दिखा|पढ़|बाकी',title,re.I):school=True
+    return command(text) if school or contextual and classroom_referential(text) else ''
+
+
 def classroom_read(text):
     """Only the current student's school-work question grants this read."""
     if explicit(text) or study_output(text):return ''
+    if classroom_detail(text):return command(text)
     text = classroom_scope(text)
     if not text:return ''
     if re.match(r'^(?:example\b|for example\b|hypothetical\b|pretend\b|quoted\b|ઉદાહરણ|उदाहरण)',text,re.I):return ''
@@ -77,6 +106,19 @@ def classroom_read(text):
     school_name = r'(?:(?:google|ગૂગલ|गूगल)\s+)?(?:classroom|school|college|ક્લાસરૂમ|શાળા|કોલેજ|क्लासरूम|स्कूल|कॉलेज)(?:નાં|ના|ની|નું)?'
     owned = re.fullmatch(r'\s*'+owner+r'\s+(?:'+school_name+r'\s+(?:(?:na|ni|nu|ke|ki|ka|નાં|ના|ની|નું|का|के|की)\s+)?)?(?:'+SCHOOL_WORK+r')[?.!\s]*',text,re.I)
     return text.strip() if bare or owned or (read and (school or classroom)) else ''
+
+
+def classroom_request(messages):
+    """Resolve a short follow-up from user turns, never from assistant prose."""
+    if not messages or messages[-1].get('attachments'):return {}
+    text=command(messages[-1].get('content'))
+    query=classroom_read(text);detail=bool(classroom_detail(text));reference=''
+    if len(messages)>=3 and messages[-2].get('role')=='assistant' and messages[-3].get('role')=='user' and not messages[-3].get('attachments'):
+        previous=messages[-3].get('content','')
+        if classroom_read(previous):reference=previous
+    if not query and reference and classroom_detail(text,contextual=True):query=text;detail=True
+    if not query:return {}
+    return dict(classroom_query=query,classroom_detail=detail,classroom_reference=reference if detail else '')
 
 
 def classroom_definition(text):
