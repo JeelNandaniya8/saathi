@@ -2959,7 +2959,7 @@ def conversation_messages(conversation_id):
     try:
         if direct:
             if direct.get('classroom_query'):
-                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language))
+                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language,detail=direct.get('classroom_detail',False),reference=direct.get('classroom_reference','')))
                 memory_labels=direct.get('source_labels',[])
             reply, ai_usage = direct['reply'], {"prompt_tokens":0,"output_tokens":0,"total_tokens":0,"local_action":True}
         else:
@@ -3253,7 +3253,7 @@ def stream_conversation_message(conversation_id):
             if map_allowance is not None and not map_allowance['remaining']:
                 raise ProviderError('AI_QUOTA', study_tools.QuotaError(map_allowance).localized(language), 429)
             if direct and direct.get('classroom_query'):
-                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language))
+                direct.update(classroom_integration.chat_reply(get_db,user_id,direct['classroom_query'],language,detail=direct.get('classroom_detail',False),reference=direct.get('classroom_reference','')))
                 reply_labels=direct.get('source_labels',[])
             if direct or local_reference:
                 def direct_stream():
@@ -3360,7 +3360,7 @@ def regenerate_conversation_reply(conversation_id):
     if last_user_index is None:
         return jsonify({"error": "Send a message before asking for another reply."}), 400
 
-    if chat_intents.explicit(rows[last_user_index]['content']) or chat_intents.sources(rows[last_user_index]['content']):
+    if chat_intents.explicit(rows[last_user_index]['content']) or chat_intents.sources(rows[last_user_index]['content']) or chat_intents.classroom_request(rows[:last_user_index+1]):
         return jsonify(error="For saved work, send the command or question again to read the latest state. Use Retry for a failed save."), 409
 
     last_user_id = rows[last_user_index]["id"]

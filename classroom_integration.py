@@ -7,6 +7,7 @@ from contextvars import ContextVar
 import os
 import re
 import secrets
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -219,8 +220,61 @@ def chat_failure(reason,language='en'):
     return 'Google Classroom data could not be fetched right now. '+suffix
 
 
-def chat_reply(get_db,uid,query,language='en'):
+def chat_assignment_candidates(rows,connection,query,reference=''):
+    """Match complete titles and course names, preserving Indic vowel marks."""
+    import chat_intents
+    def norm(value):
+        text=unicodedata.normalize('NFKC',str(value)).casefold()
+        return ' '.join(''.join(c if unicodedata.category(c)[0] in 'LMN' else ' ' for c in text).split())
+    catalog={c['id']:c.get('name') for c in connection['course_catalog'] if isinstance(c,dict) and isinstance(c.get('id'),str)}
+    def select(text):
+        text=' '+norm(text)+' '
+        found=[r for r in rows if norm(r['title']) and re.search(re.escape(' '+norm(r['title']))+r'(?= |માં |ની |નું |ના |ને )',text)]
+        if len(found)>1:
+            subjects=[r for r in found if catalog.get(r['course_id']) and ' '+norm(catalog[r['course_id']])+' ' in text]
+            if subjects:found=subjects
+        return found
+    found=select(query)
+    # Only an explicit "this/that" can inherit the immediately preceding
+    # user-selected title. A new, unknown title must not fall back to old work.
+    referential=chat_intents.classroom_referential(query)
+    if not found and referential:
+        if reference:found=select(reference)
+        if not found and len(rows)==1:found=rows
+    return found
+
+
+def format_chat_assignment_details(rows,connection,query,zone,language='en',reference=''):
+    """Read one exact owned assignment; never invent or execute teacher text."""
+    words={
+        'en':dict(choose='Which assignment do you mean? Ask for its instructions using the exact title and subject below.',instructions='Original instructions',missing='No description was supplied in the Classroom data for this assignment.',files='Attached-file contents have not been read. Requirements may also be in those files.',original='Open original assignment',due='Due',none='No due date',uncertain='Deadline unconfirmed',checked='Last checked',subject='Subject unavailable'),
+        'gu':dict(choose='કયા અસાઇનમેન્ટની વાત છે? નીચેનું ચોક્કસ નામ અને વિષય લખીને તેની સૂચનાઓ પૂછો.',instructions='મૂળ સૂચનાઓ',missing='આ અસાઇનમેન્ટ માટે Classroomની માહિતીમાં વર્ણન આપેલું નથી.',files='જોડેલી ફાઇલની અંદરની માહિતી વાંચી નથી. જરૂરી સૂચનાઓ તેમાં પણ હોઈ શકે છે.',original='મૂળ અસાઇનમેન્ટ જુઓ',due='છેલ્લી તારીખ',none='છેલ્લી તારીખ નથી',uncertain='સમયમર્યાદા અચોક્કસ',checked='છેલ્લે તપાસ્યું',subject='વિષય ઉપલબ્ધ નથી'),
+        'hi':dict(choose='किस असाइनमेंट की बात है? नीचे का सही नाम और विषय लिखकर उसके निर्देश पूछें।',instructions='मूल निर्देश',missing='इस असाइनमेंट के Classroom डेटा में विवरण नहीं दिया गया है।',files='संलग्न फ़ाइलों की सामग्री नहीं पढ़ी गई है। ज़रूरी निर्देश उनमें भी हो सकते हैं।',original='मूल असाइनमेंट देखें',due='अंतिम समय',none='समयसीमा नहीं',uncertain='समयसीमा अनिश्चित',checked='अंतिम जाँच',subject='विषय उपलब्ध नहीं'),
+    }.get(language)
+    if words is None:return format_chat_assignment_details(rows,connection,query,zone,'en',reference)
+    def escape(value):return re.sub(r'([\\`*_{}\[\]()<>#|$])',r'\\\1',str(value))
+    def label(value):return escape(value).replace('\r',' ').replace('\n',' ')
+    def stamp(value):return value.astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d, %I:%M %p')+' · '+zone
+    catalog={c['id']:c.get('name') for c in connection['course_catalog'] if isinstance(c,dict) and isinstance(c.get('id'),str)}
+    found=chat_assignment_candidates(rows,connection,query,reference)
+    if len(found)!=1:
+        choices=[label(catalog.get(r['course_id']) or words['subject'])+' · '+label(r['title']) for r in rows[:8]]
+        return 'Google Classroom\n'+words['choose']+('\n\n'+'\n'.join('- '+value for value in choices) if choices else '')
+    row=found[0];due=row['due_at']
+    deadline=words['uncertain'] if row['deadline_uncertain'] else words['none'] if not due else words['due']+': '+stamp(due)
+    lines=['Google Classroom · '+label(catalog.get(row['course_id']) or words['subject'])+' · '+label(row['title']),
+           deadline,words['checked']+': '+stamp(connection['submission_sync_at'])]
+    instructions=str(row.get('instructions') or '').replace('\r\n','\n').replace('\r','\n')
+    lines+=['',words['instructions']+':', '\n'.join('> '+escape(line) for line in instructions.split('\n')) if instructions.strip() else words['missing'], '',words['files']]
+    url=safe_link(row.get('original_url',''))
+    if url:lines+=['','['+words['original']+']('+quote(url,safe=':/?=&%#@+;,-._~')+')']
+    return '\n'.join(lines)
+
+
+def chat_reply(get_db,uid,query,language='en',detail=False,reference=''):
     """Read this authenticated user's connection; no LLM or other user's data."""
+    import chat_intents
+    detail=detail or bool(chat_intents.classroom_detail(query))
     conn=get_db();cur=conn.cursor()
     try:
         # Concurrent disconnect/course changes finish before a later read, and
@@ -240,13 +294,22 @@ def chat_reply(get_db,uid,query,language='en'):
             cur.execute('SELECT * FROM classroom_connections WHERE user_id=%s',(uid,));row=cur.fetchone()
         # Connection-row lock keeps selection/disconnect atomic through this
         # snapshot; messages still use the existing cancellation/replay guard.
-        cur.execute('''SELECT a.course_id,a.title,a.due_at,a.deadline_uncertain,a.submission_state
+        cur.execute('''SELECT a.id,a.course_id,a.title,a.due_at,a.deadline_uncertain,a.submission_state
             FROM classroom_assignments a WHERE a.user_id=%s AND a.available=TRUE
             AND a.course_id=ANY(%s) ORDER BY a.due_at NULLS LAST,a.course_id,a.external_id''',(uid,row['selected_courses']))
         rows=cur.fetchall()
+        if detail:
+            candidates=chat_assignment_candidates(rows,row,query,reference)
+            if len(candidates)==1:
+                target=candidates[0]
+                cur.execute('''SELECT instructions,original_url FROM classroom_assignments WHERE id=%s
+                    AND user_id=%s AND available=TRUE AND course_id=ANY(%s)''',(target['id'],uid,row['selected_courses']))
+                selected=cur.fetchone()
+                if selected is None:return dict(reply=chat_failure('other',language))
+                target.update(selected)
         cur.execute('SELECT timezone FROM workspace_preferences WHERE user_id=%s',(uid,));preference=cur.fetchone()
         zone=preference['timezone'] if preference else 'Asia/Kolkata'
-        try:reply=format_chat_assignments(rows,row,query,zone,language)
+        try:reply=format_chat_assignment_details(rows,row,query,zone,language,reference) if detail else format_chat_assignments(rows,row,query,zone,language)
         except ValueError as error:reply=str(error).replace('task date','assignment date')
         conn.commit()
         return dict(reply=reply,source_labels=['Requested classroom for this reply'])

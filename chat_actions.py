@@ -446,11 +446,11 @@ def direct_reply(cur,uid,messages,language='en'):
     if chat_intents.automatic(text,'mindmap') or chat_intents.automatic(chat_intents.continuation(messages[:-1],text),'mindmap'):
         try:study_tools.check_allowance(cur,uid,'map',pending=True)
         except study_tools.QuotaError as error:return {'reply':error.localized(language),'code':'AI_QUOTA'}
-    classroom_query=chat_intents.classroom_read(text)
-    if classroom_query:
+    classroom_request=chat_intents.classroom_request(messages)
+    if classroom_request:
         # Fetch after releasing the initial chat connection. Streaming can
         # announce the real operation and enable Stop before Google responds.
-        return {'reply':'','classroom_query':classroom_query}
+        return dict(reply='',**classroom_request)
     if chat_intents.classroom_definition(text):
         copy={
             'en':'That sentence asks Saathi to list Google Classroom assignments for the signed-in student. Explaining it does not check your connection or fetch school data.',
