@@ -83,7 +83,7 @@ def register(app, b):
                 percentile_cont(0.95) WITHIN GROUP(ORDER BY first_text_ms) FILTER(WHERE outcome='complete') AS p95_first_text_ms
                 FROM response_timings WHERE user_id=%s AND created_at>=NOW()-INTERVAL '30 days' ''', (uid,))
             summary = dict(cur.fetchone())
-            cur.execute('''SELECT first_text_ms,total_ms,outcome,error_code,created_at FROM response_timings
+            cur.execute('''SELECT request_id::text,conversation_id,first_text_ms,total_ms,outcome,error_code,created_at FROM response_timings
                 WHERE user_id=%s AND created_at>=NOW()-INTERVAL '30 days' ORDER BY id DESC LIMIT 8''', (uid,))
             recent = [{**dict(row), 'created_at': row['created_at'].isoformat()} for row in cur.fetchall()]
         return jsonify(summary=summary, recent=recent, source='browser', window_days=30)

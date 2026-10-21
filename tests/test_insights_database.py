@@ -58,6 +58,29 @@ def test_first_word_percentile_discloses_its_actual_denominator(db_app):
     assert empty['first_text_samples']==0 and empty['p95_first_text_ms'] is None
 
 
+def test_recent_timings_identify_owned_attempts_without_conversation_text(db_app):
+    _, client, _db = db_app
+    conversations = [client.post('/api/conversations', json={}).json['conversation']['id'] for _ in range(2)]
+    attempts = []
+    for index in range(10):
+        payload = dict(request_id=str(uuid.uuid4()), conversation_id=conversations[index % 2],
+                       first_text_ms=100 if index % 2 else None, total_ms=200,
+                       outcome='complete' if index % 2 else 'error',
+                       error_code='' if index % 2 else 'AI_BUSY')
+        assert client.post('/api/response-timings', json=payload).status_code == 200
+        attempts.append(payload)
+    result = client.get('/api/response-timings').json
+    assert result['summary']['attempts'] == 10
+    assert len(result['recent']) == 8
+    for actual, expected in zip(result['recent'], reversed(attempts[-8:])):
+        assert set(actual) == {'request_id', 'conversation_id', 'first_text_ms', 'total_ms', 'outcome', 'error_code', 'created_at'}
+        for field, value in expected.items():
+            assert actual[field] == value
+    with client.session_transaction() as session:
+        session['user_id'] = 2
+    assert client.get('/api/response-timings').json['recent'] == []
+
+
 def test_weekly_completion_is_not_redated_by_edits_and_reopen_is_excluded(db_app, monkeypatch):
     backend, client, db = db_app
     monkeypatch.setattr(backend, 'generate_study_json', lambda *args: pytest.fail('Review must not call Gemini'))
