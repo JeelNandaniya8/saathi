@@ -105,3 +105,37 @@ def test_detail_refresh_failure_never_returns_retained_instructions_as_current(d
     assert 'synthetic passage' not in result['assistant_message']['content']
     assert result['assistant_message']['memory_labels'] == []
     assert one(connect, "SELECT instructions FROM classroom_assignments WHERE user_id=1 AND external_id='pending'")['instructions'] == BODY
+
+
+@pytest.mark.parametrize('stream', [False, True])
+@pytest.mark.parametrize('language,query,heading', [
+    ('en', 'What do I have to do in "BIO-Assignment 1"?', 'Original instructions'),
+    ('gu', 'BIO-Assignment 1માં શું કરવાનું છે?', 'મૂળ સૂચનાઓ'),
+    ('hi', 'BIO-Assignment 1 में क्या करना है?', 'मूल निर्देश'),
+])
+def test_long_named_assignment_is_not_ambiguous_with_another_suffix_title(db_app, configured, monkeypatch, stream, language, query, heading):
+    backend, client, connect = db_app
+    detail_fixture(client, monkeypatch)
+    original = cc.list_pages
+    names = dict(pending='BIO- Assignment 1', sent='Assignment-1', returned='BIO-Assignment 10', unknown='Assignment-2')
+    def pages(*args, **kwargs):
+        rows = original(*args, **kwargs)
+        if args[2] == 'courseWork':
+            for row in rows:row['title'] = names[row['id']]
+        return rows
+    monkeypatch.setattr(cc, 'list_pages', pages)
+    monkeypatch.setattr(backend, 'GEMINI_API_KEY', '')
+    monkeypatch.setattr(backend, 'provider_send', lambda *a, **k: pytest.fail('Named instructions must not fall back to AI'))
+    with connect() as conn:
+        with conn.cursor() as cur:cur.execute('UPDATE users SET language=%s WHERE id=1', (language,))
+    cid = client.post('/api/conversations', json={}).json['conversation']['id']
+    key = str(uuid4())
+    result = request(client, cid, query, stream, key)
+    reply = result['assistant_message']['content']
+    assert heading in reply and 'BIO- Assignment 1' in reply
+    assert 'synthetic passage' in reply and 'UNSELECTEDDESCRIPTION' not in reply
+    assert result['assistant_message']['memory_labels'] == ['Requested classroom for this reply']
+    assert request(client, cid, query, stream, key)['assistant_message']['id'] == result['assistant_message']['id']
+    saved = client.get(f'/api/conversations/{cid}/messages').json['messages']
+    assert len(saved) == 2 and saved[-1]['content'] == reply
+    assert one(connect, 'SELECT COUNT(*) n FROM ai_usage_events')['n'] == 0

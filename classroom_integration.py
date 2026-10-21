@@ -229,7 +229,19 @@ def chat_assignment_candidates(rows,connection,query,reference=''):
     catalog={c['id']:c.get('name') for c in connection['course_catalog'] if isinstance(c,dict) and isinstance(c.get('id'),str)}
     def select(text):
         text=' '+norm(text)+' '
-        found=[r for r in rows if norm(r['title']) and re.search(re.escape(' '+norm(r['title']))+r'(?= |માં |ની |નું |ના |ને )',text)]
+        matches=[]
+        for index,row in enumerate(rows):
+            title=norm(row['title'])
+            if title:
+                matches.extend((index,match.span()) for match in re.finditer(re.escape(' '+title)+r'(?= |માં |ની |નું |ના |ને )',text))
+        # "BIO-Assignment 1" also contains "Assignment-1". An occurrence
+        # wholly inside a longer title is not a second named assignment.
+        # Keep separately mentioned short titles and genuine duplicate rows.
+        outer=set();end=-1
+        for span in sorted({span for _,span in matches},key=lambda s:(s[0],-s[1])):
+            if span[1]>end:outer.add(span);end=span[1]
+        selected={index for index,span in matches if span in outer}
+        found=[row for index,row in enumerate(rows) if index in selected]
         if len(found)>1:
             subjects=[r for r in found if catalog.get(r['course_id']) and ' '+norm(catalog[r['course_id']])+' ' in text]
             if subjects:found=subjects
