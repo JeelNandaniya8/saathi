@@ -36,7 +36,7 @@ def bounded_download(token,file_id,mime):
     """Read only a selected fixed-host resource, without bearer redirects."""
     if not isinstance(file_id,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',file_id):
         raise ValueError('file_unavailable')
-    if mime not in ALLOWED and mime not in NATIVE:raise ValueError('file_type')
+    if not isinstance(mime,str) or (mime not in ALLOWED and mime not in NATIVE):raise ValueError('file_type')
     url=DRIVE+file_id
     params={'alt':'media'}
     if mime in NATIVE:url+='/export';params={'mimeType':'application/pdf'}
@@ -166,7 +166,9 @@ def register(app,b,cc,db,private,confirmed):
             with cc.provider_budget(12):
                 meta=cc.provider_json('GET',DRIVE+grant['drive_id'],headers={'Authorization':'Bearer '+token},
                     params={'fields':'id,mimeType,size,capabilities(canDownload)'})
-            if meta.get('id')!=grant['drive_id'] or meta.get('capabilities',{}).get('canDownload') is False:
+            capabilities=meta.get('capabilities',{})
+            if not isinstance(capabilities,dict):raise ValueError('file_provider')
+            if meta.get('id')!=grant['drive_id'] or capabilities.get('canDownload') is False:
                 raise ValueError('file_permission')
             size=meta.get('size')
             if size is not None and (not str(size).isdigit() or int(size)>MAX_BYTES):raise ValueError('file_size')
@@ -179,7 +181,7 @@ def register(app,b,cc,db,private,confirmed):
                 cur.execute('UPDATE classroom_file_grants SET download_hash=%s WHERE id=%s',(digest,str(gid)));conn.commit()
             title=re.sub(r'[\x00-\x1f\x7f/\\]','_',file['title']).strip()[:180] or 'Classroom file'
             suffix=ALLOWED[mime]
-            if not title.lower().endswith(suffix):title+=suffix
+            if not title.lower().endswith(('.jpg','.jpeg') if mime=='image/jpeg' else (suffix,)):title+=suffix
             response=send_file(io.BytesIO(content),mimetype=mime,as_attachment=True,download_name=title,max_age=0)
             response.headers['Cache-Control']='private, no-store'
             response.headers['X-Content-Type-Options']='nosniff'

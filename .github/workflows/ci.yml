@@ -49,11 +49,11 @@ jobs:
       - name: Compile backend and smoke checker
         run: python -m py_compile server_runtime.py app.py auth_google.py billing.py care.py study_tools.py ai_transport.py workspace_extras.py push_notifications.py daily_workspace.py db_pool.py response_insights.py workspace_hub.py classroom_integration.py classroom_files.py scripts/smoke_test.py scripts/generate_push_keys.py
 
-      - name: Run backend and security tests
-        run: pytest -q
-
       - name: Check browser JavaScript
         run: bash scripts/check_javascript.sh
+
+      - name: Run backend and security tests
+        run: pytest -q
 
       - name: Install isolated browser test tools
         run: |

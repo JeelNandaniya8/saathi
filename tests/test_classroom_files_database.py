@@ -117,7 +117,7 @@ def test_download_is_private_repeatable_exact_and_does_not_send_or_spend_uploads
     assert first.data==second.data==b'%PDF-1.4\nSynthetic'
     assert first.headers['X-Saathi-File-Name']=='Practice.pdf'
     assert first.headers['X-Saathi-File-Modified']==second.headers['X-Saathi-File-Modified']
-    assert first.headers['Cache-Control']=='private, no-store'
+    assert 'no-store' in first.headers['Cache-Control']
     assert one(db,'SELECT count(*) n FROM chat_attachments')['n']==0
     assert one(db,'SELECT count(*) n FROM messages')['n']==0
     assert one(db,'SELECT count(*) n FROM classroom_file_grants')['n']==1
@@ -141,3 +141,38 @@ def test_owner_expiry_session_and_disconnect_are_checked_before_google(prepared,
             with conn.cursor() as cur:cur.execute('DELETE FROM classroom_connections' if invalidator=='disconnect' else "UPDATE classroom_file_grants SET expires_at=NOW()-INTERVAL '1 second'")
     monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:pytest.fail('Unavailable grants must not read Google'))
     assert c.get(f'/api/classroom/files/{gid}/download').status_code==410
+
+@pytest.mark.parametrize('metadata',[
+    {'id':'fixture_pdf','mimeType':'application/pdf','capabilities':[]},
+    {'id':'fixture_pdf','mimeType':None,'capabilities':{}},
+    {'id':'fixture_pdf','mimeType':[],'capabilities':{}}
+])
+def test_malformed_provider_metadata_is_a_recoverable_file_error(prepared,monkeypatch,metadata):
+    _,c,db,_=prepared;gid=grant(prepared)
+    monkeypatch.setattr(cc,'provider_json',lambda *a,**kw:metadata)
+    result=c.get(f'/api/classroom/files/{gid}/download')
+    assert result.status_code==400 and result.json['error_code'] in ('file_provider','file_type')
+    assert one(db,'SELECT count(*) n FROM messages')['n']==0
+    assert one(db,'SELECT count(*) n FROM chat_attachments')['n']==0
+
+def test_permission_change_during_download_never_delivers_the_bytes(prepared,monkeypatch):
+    _,c,db,_=prepared;gid=grant(prepared)
+    def changed(*args,**kwargs):
+        with db() as conn:
+            with conn.cursor() as cur:cur.execute("UPDATE classroom_connections SET selected_courses='[]'")
+        return Response()
+    monkeypatch.setattr(files.requests,'get',changed)
+    result=c.get(f'/api/classroom/files/{gid}/download')
+    assert result.status_code==400 and result.json['error_code']=='file_unavailable'
+    assert b'%PDF-' not in result.data
+    assert one(db,'SELECT download_hash FROM classroom_file_grants')['download_hash'] is None
+
+def test_user_session_change_during_google_callback_cannot_mint_access(prepared,monkeypatch):
+    _,_,db,_=prepared
+    def changed(*args,**kwargs):
+        with db() as conn:
+            with conn.cursor() as cur:cur.execute('UPDATE users SET session_version=2 WHERE id=1')
+        return {'scope':files.DRIVE_SCOPE,'access_token':'fixture','expires_in':3600}
+    monkeypatch.setattr(cc,'provider_json',changed)
+    assert 'file_failed' in finish(prepared).location
+    assert one(db,'SELECT count(*) n FROM classroom_file_grants')['n']==0

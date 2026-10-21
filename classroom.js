@@ -58,7 +58,7 @@ const validationCopy={
 'Assignment not found.':['અસાઇનમેન્ટ મળી નથી.','असाइनमेंट नहीं मिला।'],
 'Classroom could not complete this action. Your imported work is retained.':['Classroom આ કાર્યવાહી પૂરી કરી શક્યું નથી. આયાત કરેલું કામ રાખ્યું છે.','Classroom यह कार्रवाई पूरी नहीं कर सका। आयात किया काम रखा गया है।']
 };
-function failure(e){const key=e.code==='missing_classroom_permissions'?'callbackPermissions':e.code;return words[key]?t(key)+' '+t('retained'):(validationCopy[e.message]?.[({gu:0,hi:1})[document.documentElement.lang]]||window.SaathiI18n?.t(e.message)||e.message)}
+function failure(e){if(e.code?.startsWith('file_'))return t(e.code==='file_consent'?'fileConsent':e.code==='file_not_configured'?'fileManual':'fileFailed');const key=e.code==='missing_classroom_permissions'?'callbackPermissions':e.code;return words[key]?t(key)+' '+t('retained'):(validationCopy[e.message]?.[({gu:0,hi:1})[document.documentElement.lang]]||window.SaathiI18n?.t(e.message)||e.message)}
 const needsReconnect=code=>['reconnect_required','missing_classroom_permissions','permission_or_admin_block'].includes(code);
 function node(tag,value,cls){const n=document.createElement(tag);if(value)n.textContent=value;if(cls)n.className=cls;return n}
 function button(label,fn){const b=node('button',label,'dw-button');b.type='button';b.onclick=fn;return b}

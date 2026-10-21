@@ -38,7 +38,7 @@ def test_failure_never_returns_partial_or_mislabeled_content(monkeypatch,respons
     with pytest.raises(ValueError,match=error):files.bounded_download('fixture','fixture_pdf','application/pdf')
     assert response.closed
 
-@pytest.mark.parametrize('fid,mime',[('../x','application/pdf'),('https://evil.example','application/pdf'),('x','text/html'),('x','application/zip')])
+@pytest.mark.parametrize('fid,mime',[('../x','application/pdf'),('https://evil.example','application/pdf'),('x','text/html'),('x','application/zip'),('x',[]),('x',None)])
 def test_invalid_ids_and_unsupported_types_never_make_a_network_request(monkeypatch,fid,mime):
     monkeypatch.setattr(files.requests,'get',lambda *a,**kw:pytest.fail('No provider call allowed'))
     with pytest.raises(ValueError):files.bounded_download('fixture',fid,mime)

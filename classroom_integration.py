@@ -390,6 +390,8 @@ def register(app,b):
                 return jsonify(error_code=e.code,error='Classroom could not complete this action. Your imported work is retained.'),503
             except ValueError as e:
                 if fn.__name__ == 'callback':return redirect('/dashboard?classroom_result=expired#study')
+                if str(e) in {'file_consent','file_not_configured','file_unavailable','file_changed','file_expired'}:
+                    return jsonify(error_code=str(e)),400
                 return jsonify(error=str(e)),400
         return wrapped
 
