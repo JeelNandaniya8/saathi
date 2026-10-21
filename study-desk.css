@@ -1,97 +1,97 @@
-/* Post-login workspace, guided by the supplied conversation UI reference. */
+/* Shared post-login surfaces; authentication and public pages do not load this file. */
 body.study-desk {
-  --canvas: #ffffff;
+  --canvas: #f7f6f3;
   --paper: #ffffff;
-  --side: #f7f7f7;
+  --side: #f1f0eb;
   --sidebar: var(--side);
-  --ink: #202020;
-  --muted: #626262;
-  --soft: #737373;
-  --line: rgba(0,0,0,.085);
-  --line-strong: rgba(0,0,0,.19);
+  --ink: #262923;
+  --muted: #64675f;
+  --soft: #70736a;
+  --line: rgba(48,53,43,.10);
+  --line-strong: rgba(48,53,43,.24);
   --strong: var(--line-strong);
-  --accent: #6488b4;
-  --accent-deep: #242424;
-  --accent-soft: #edf3fa;
-  --gold: #666666;
-  --gold-soft: #f1f1f1;
+  --accent: #416b9b;
+  --accent-deep: #315b89;
+  --accent-soft: #edf2f8;
+  --gold: #6a5d85;
+  --gold-soft: #f1edf7;
   --sage: #38644b;
   --sage-soft: #edf3ee;
-  --lavender: #f0f0f0;
+  --lavender: #f0edf7;
   --surface-glass: var(--paper);
-  --composer-surface: #f3f3f3;
-  --user-surface: #edf2f9;
-  --user-ink: #202020;
+  --composer-surface: #eeede8;
+  --user-surface: #e9eef5;
+  --user-ink: #26394e;
   --action-ink: #ffffff;
-  --shadow: none;
-  --shadow-lift: none;
+  --shadow: 0 1px 2px rgba(34,39,29,.025), 0 6px 20px rgba(34,39,29,.035);
+  --shadow-lift: 0 2px 4px rgba(34,39,29,.035), 0 10px 28px rgba(34,39,29,.06);
   background: var(--canvas);
 }
 [data-theme="dark"] body.study-desk {
-  --canvas: #171717;
-  --paper: #202020;
-  --side: #101010;
-  --ink: #ececec;
-  --muted: #b4b4b4;
+  --canvas: #20221f;
+  --paper: #292c27;
+  --side: #1b1e1a;
+  --ink: #edece6;
+  --muted: #b9bcb2;
   --soft: #a5a5a5;
   --line: rgba(255,255,255,.10);
   --line-strong: rgba(255,255,255,.24);
   --accent: #90add4;
-  --accent-deep: #eeeeee;
+  --accent-deep: #cfdef1;
   --accent-soft: #26364b;
   --gold: #b4b4b4;
   --gold-soft: #2b2b2b;
   --sage: #a7c7ad;
   --sage-soft: #28382b;
   --lavender: #2b2b2b;
-  --composer-surface: #2b2b2b;
-  --user-surface: #193b66;
+  --composer-surface: #32362f;
+  --user-surface: #2d4157;
   --user-ink: #f4f6fa;
-  --action-ink: #171717;
+  --action-ink: #202a35;
 }
 .study-desk .main { background: var(--canvas); border: 0; border-radius: 0; }
 .study-desk .topbar { background: var(--canvas); border: 0; border-radius: 0; }
-.study-desk .sidebar { background: var(--side); border: 0; }
+.study-desk .sidebar { background: var(--side); border: 0; border-right: 1px solid var(--line); }
 .study-desk .brand { font-size: 23px; font-weight: 600; letter-spacing: -.6px; }
 .study-desk .brand-mark { width: 25px; height: 25px; color: var(--ink); }
 .study-desk :is(.primary,.send) { background: var(--accent-deep); border-color: transparent; color: var(--action-ink); box-shadow: none; }
 .study-desk .surface-symbol { background: var(--composer-surface); color: var(--muted); }
 .study-desk :is(.primary,.secondary,.quiet,.top-button,.icon-button,.filter) { box-shadow: none; }
-.study-desk :is(.panel,.dw-panel,.care-panel,.metric,.item,.stat-card) { box-shadow: none; border-radius: 12px; }
+.study-desk :is(.panel,.dw-panel,.care-panel,.metric,.item,.stat-card) { box-shadow: var(--shadow); border-radius: 16px; }
 
 /* A common, quiet navigation system for the signed-in tools. */
 .workspace-polish.study-desk .shell { grid-template-columns: 232px minmax(0,1fr); padding: 0; }
 .workspace-polish.study-desk .sidebar { width: 232px; padding: 24px 14px 16px; }
-.workspace-polish.study-desk .nav :is(button,a) { min-height: 44px; border-radius: 9px; font-size: 13px; font-weight: 500; }
-.workspace-polish.study-desk .nav :is(button,a).active { background: var(--composer-surface); color: var(--ink); box-shadow: none; }
+.workspace-polish.study-desk .nav :is(button,a) { min-height: 44px; border-radius: 10px; font-size: 14px; font-weight: 500; }
+.workspace-polish.study-desk .nav :is(button,a).active { background: var(--paper); color: var(--accent-deep); box-shadow: var(--shadow); }
 .workspace-polish.study-desk .nav :is(button,a):hover { background: var(--composer-surface); }
 .workspace-polish.study-desk .topbar { top: 0; height: 64px; padding-inline: 28px; }
 .workspace-polish.study-desk .content { width: min(1024px,calc(100% - 72px)); padding: 32px 0 72px; }
 .workspace-polish.study-desk .workspace-hero { align-items: center; margin-bottom: 24px; padding: 0; gap: 24px; }
 .workspace-polish.study-desk .workspace-hero h1 { margin: 10px 0; font-size: clamp(28px,3vw,36px); font-weight: 500; line-height: 1.2; letter-spacing: -.9px; }
 .workspace-polish.study-desk .workspace-hero .workspace-date { padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 12px; }
-.study-desk .focus-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 28px; margin: 0 0 24px; padding: 24px 0 28px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.study-desk .focus-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 28px; margin: 0 0 24px; padding: 28px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
 .study-desk .focus-card-copy { min-width: 0; }
 .study-desk .focus-card-top { gap: 8px; color: var(--muted); }
-.study-desk .focus-card-top h2 { margin: 0; font-size: 12px; font-weight: 500; }
+.study-desk .focus-card-top h2 { margin: 0; font-size: 13px; font-weight: 600; }
 .study-desk .focus-symbol { width: 20px; height: 20px; }
 .study-desk .focus-symbol svg { width: 18px; height: 18px; }
-.study-desk .focus-duration { margin-left: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 20px; background: transparent; font-size: 11px; }
+.study-desk .focus-duration { margin-left: 8px; padding: 4px 9px; border: 0; border-radius: 6px; background: var(--accent-soft); color: var(--accent-deep); font-size: 12px; }
 .study-desk .focus-card h3 { max-width: 32ch; margin: 16px 0 8px; font-size: clamp(23px,2.5vw,29px); font-weight: 500; line-height: 1.35; letter-spacing: -.4px; }
 .study-desk .focus-card .helper { max-width: 56ch; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
-.study-desk .focus-card-footer { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: 0; }
-.study-desk .focus-card-footer .primary { min-width: 132px; min-height: 44px; padding-inline: 20px; border-radius: 24px; }
+.study-desk .focus-card-footer { display: flex; align-items: flex-end; justify-content: center; margin: 0; padding: 0 0 4px; border: 0; }
+.study-desk .focus-card-footer .primary { min-width: 132px; min-height: 46px; padding-inline: 20px; border-radius: 10px; }
 .study-desk .focus-caption { display: none; }
-.workspace-polish.study-desk .today-layout { grid-template-columns: minmax(0,1.5fr) minmax(240px,1fr); gap: 40px; margin: 0; }
+.workspace-polish.study-desk .today-layout { grid-template-columns: minmax(0,1.6fr) minmax(240px,1fr); gap: 24px; margin: 0; }
 .study-desk :is(.today-main,.today-aside) { gap: 24px; }
-.workspace-polish.study-desk .today-layout .panel { padding: 12px 0 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.workspace-polish.study-desk .today-layout .panel { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: var(--shadow); }
 .workspace-polish.study-desk .today-plan .panel-head { margin-bottom: 16px; }
 .workspace-polish.study-desk .today-plan .panel-head h2 { font-size: 20px; font-weight: 500; letter-spacing: -.4px; }
 .workspace-polish.study-desk .today-plan .hub-task { gap: 10px; padding-block: 14px; }
 .workspace-polish.study-desk .today-plan .hub-task-title { font-size: 15px; }
 .workspace-polish.study-desk .today-plan .hub-task .secondary { border-radius: 20px; }
 .study-desk .workspace-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 0; padding: 0; border: 0; background: transparent; }
-.study-desk .workspace-shortcuts>button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px; border: 1px solid var(--line); border-radius: 24px; background: transparent; box-shadow: none; }
+.study-desk .workspace-shortcuts>button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 54px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: none; }
 .study-desk .workspace-shortcuts>button:hover { transform: none; background: var(--composer-surface); box-shadow: none; }
 .study-desk .workspace-shortcuts .surface-symbol { width: 20px; height: 20px; border-radius: 0; background: transparent; color: var(--muted); }
 .study-desk .workspace-shortcuts .surface-symbol svg { width: 18px; height: 18px; }
@@ -140,8 +140,8 @@ body.study-desk {
 .chat-polish.study-desk .message-tool:hover { color: var(--ink); background: var(--composer-surface); }
 .chat-polish.study-desk .quick-actions { margin-top: 10px; }
 .chat-polish.study-desk .composer-zone { padding: 12px 24px max(16px,env(safe-area-inset-bottom)); background: var(--canvas); }
-.chat-polish.study-desk .composer { width: min(760px,100%); padding: 12px; border: 1px solid var(--line); border-radius: 26px; background: var(--composer-surface); backdrop-filter: none; box-shadow: none; }
-.chat-polish.study-desk .composer:focus-within { border-color: var(--line-strong); box-shadow: none; }
+.chat-polish.study-desk .composer { width: min(760px,100%); padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); backdrop-filter: none; box-shadow: var(--shadow); }
+.chat-polish.study-desk .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent),var(--shadow); }
 .chat-polish.study-desk .composer textarea { min-height: 50px; padding: 8px; background: transparent; font-size: 16px; line-height: 1.6; }
 .chat-polish.study-desk .composer-actions { padding-top: 4px; border: 0; }
 .chat-polish.study-desk :is(.attach,.voice-open-btn,.mode-select,.composer-toolbar>.message-tool) { background: transparent; border-color: transparent; }
@@ -150,7 +150,7 @@ body.study-desk {
 .chat-polish.study-desk .send { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-deep); color: var(--action-ink); }
 .chat-polish.study-desk .send:disabled { background: var(--line); color: var(--muted); }
 .chat-polish.study-desk .send.stopping { background: var(--accent-deep); color: var(--action-ink); }
-.chat-polish.study-desk .composer-meta { width: min(760px,100%); color: var(--muted); font-size: 11px; }
+.chat-polish.study-desk .composer-meta { width: min(760px,100%); color: var(--muted); font-size: 12px; }
 
 /* One live composer is shared by the empty and active conversation layouts. */
 .chat-polish.study-desk .empty-signature { display: none; }
@@ -196,14 +196,14 @@ html:is([lang="gu"],[lang="hi"]) .study-desk :is(.workspace-hero h1,.focus-card 
   .workspace-polish.study-desk .workspace-hero h1 { margin: 8px 0; font-size: 28px; line-height: 1.25; }
   .workspace-polish.study-desk .workspace-hero .workspace-date { padding: 0; font-size: 11px; }
   .workspace-polish.study-desk .today-layout { grid-template-columns: 1fr; gap: 24px; }
-  .study-desk .focus-card { grid-template-columns: 1fr; gap: 20px; padding: 16px 0 24px; }
+  .study-desk .focus-card { grid-template-columns: 1fr; gap: 20px; padding: 22px; }
   .study-desk .focus-card h3 { font-size: 25px; }
   .study-desk .focus-card-footer { justify-content: flex-start; }
   .study-desk .focus-card-footer .primary { min-width: 132px; }
 }
 @media(max-width:540px) {
   .chat-polish.study-desk .composer-zone { padding: 8px 12px max(12px,env(safe-area-inset-bottom)); }
-  .chat-polish.study-desk .composer { padding: 8px; border-radius: 22px; }
+  .chat-polish.study-desk .composer { padding: 8px; border-radius: 16px; }
   .chat-polish.study-desk .composer textarea { min-height: 44px; padding: 6px 8px; }
   .chat-polish.study-desk .message.assistant .message-content { font-size: 15px; padding: 0; }
   .chat-polish.study-desk .message.user .message-body { max-width: 90%; }
@@ -220,3 +220,149 @@ html:is([lang="gu"],[lang="hi"]) .study-desk :is(.workspace-hero h1,.focus-card 
   .chat-polish.study-desk .empty-inner>p { margin: 12px auto 20px; }
   .chat-polish.study-desk .prompts>.prompt { flex-basis: 180px; }
 }
+
+/* Quiet controls and dependable reading surfaces across every workspace view. */
+.study-desk :is(button,a,input,textarea,select,summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.study-desk :is(.primary,.secondary,.dw-button,.top-button) { transition: background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease; }
+.study-desk :is(.primary,.secondary,.dw-button):active:not(:disabled) { transform: translateY(1px); }
+.study-desk :is(.primary,.secondary,.dw-button,.top-button) { border-radius: 10px; }
+.study-desk .surface-symbol.blue { color: var(--accent-deep); background: var(--accent-soft); }
+.study-desk .surface-symbol.lavender { color: var(--gold); background: var(--lavender); }
+.study-desk .surface-symbol.mint { color: var(--sage); background: var(--sage-soft); }
+.workspace-polish.study-desk .section-head { margin-bottom: 24px; }
+.workspace-polish.study-desk .section-head h1 { font-size: clamp(26px,2.8vw,34px); line-height: 1.3; font-weight: 500; letter-spacing: -.7px; }
+.workspace-polish.study-desk .section-head p { max-width: 62ch; margin: 10px 0 0; font-size: 14px; line-height: 1.65; }
+.workspace-polish.study-desk .today-plan .panel-head h2 { font-size: 18px; font-weight: 500; letter-spacing: -.25px; }
+.study-desk .focus-card-top { color: var(--accent-deep); }
+.study-desk .focus-card h3 { font-weight: 500; }
+.study-desk .focus-card .helper { font-size: 14px; }
+.study-desk .focus-symbol { color: var(--accent); }
+.study-desk .today-support .focus-shortcut { border-top: 1px solid var(--line); padding-top: 16px; }
+.study-desk .workspace-shortcuts>button:hover { background: var(--paper); border-color: var(--line-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
+.study-desk .workspace-shortcuts .surface-symbol { border-radius: 6px; }
+.study-desk .workspace-shortcuts b { font-size: 13px; }
+.study-desk :is(.today-extras,.today-stats)>summary { min-height: 44px; align-content: center; font-size: 13px; }
+
+/* Saved work leads; editors expand on demand without changing their save paths. */
+.workspace-polish.study-desk .planning-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.workspace-polish.study-desk .planning-head>div { min-width: 0; }
+.workspace-polish.study-desk .planning-head>.primary { flex: none; display: inline-flex; align-items: center; gap: 8px; }
+.study-desk .planner-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(280px,340px); gap: 24px; align-items: start; }
+.study-desk .planner-list { min-width: 0; }
+.study-desk .planner-list>.filters { margin: 0 0 16px; }
+.study-desk .editor-disclosure { min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: var(--shadow); }
+.study-desk .editor-disclosure>summary { display: flex; align-items: center; justify-content: space-between; min-height: 56px; gap: 12px; padding: 16px 20px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; list-style: none; }
+.study-desk .editor-disclosure>summary::-webkit-details-marker { display: none; }
+.study-desk .editor-disclosure>summary::after { content: '+'; color: var(--muted); font-size: 18px; font-weight: 400; }
+.study-desk .editor-disclosure[open]>summary { border-bottom: 1px solid var(--line); }
+.study-desk .editor-disclosure[open]>summary::after { content: '−'; }
+.study-desk .editor-disclosure>.form-panel { padding: 20px; border: 0; box-shadow: none; background: transparent; }
+.study-desk .editor-disclosure .form-grid { grid-template-columns: 1fr; gap: 16px; }
+.study-desk .editor-disclosure .field.wide { grid-column: auto; }
+.study-desk .editor-disclosure :is(input,select,textarea) { min-width: 0; width: 100%; font-size: 16px; border-radius: 9px; background: var(--canvas); }
+.study-desk .editor-disclosure input[type=datetime-local] { max-width: 100%; padding-inline: 10px; }
+.study-desk .editor-disclosure .field small { font-size: 12px; line-height: 1.6; font-weight: 400; color: var(--muted); }
+.study-desk .editor-disclosure .form-actions { gap: 8px; flex-wrap: wrap; }
+.study-desk .editor-disclosure .form-actions .helper { flex-basis: 100%; }
+.study-desk .delivery-details { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.study-desk .delivery-details>summary { min-height: 44px; align-content: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+.study-desk :is(#tasks,#reminders) .item { display: grid; grid-template-columns: 44px minmax(0,1fr); align-items: start; gap: 14px; padding: 20px; background: var(--paper); }
+.study-desk :is(#tasks,#reminders) .item-check { width: 44px; height: 44px; border-radius: 10px; }
+.study-desk :is(#tasks,#reminders) .item-copy { min-width: 0; }
+.study-desk :is(#tasks,#reminders) .item-copy b { font-size: 15px; font-weight: 500; line-height: 1.6; }
+.study-desk :is(#tasks,#reminders) .item-copy :is(p,small) { white-space: normal; overflow-wrap: anywhere; }
+.study-desk :is(#tasks,#reminders) .item-actions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.study-desk :is(#tasks,#reminders) .item-actions button { min-height: 40px; }
+.study-desk .filters .filter { min-height: 44px; border-radius: 8px; }
+.study-desk .filters .filter.active { background: var(--paper); color: var(--accent-deep); border-color: var(--line-strong); box-shadow: 0 1px 3px rgba(30,36,25,.035); }
+.study-desk .planner-list .empty { background: var(--paper); padding: 28px 24px; border-radius: 16px; }
+
+/* Notes keeps capture/save primary and occasional tools in a named disclosure. */
+.study-desk .qn-toolbar { align-items: center; }
+.study-desk .qn-toolbar>[data-qn=new] { order: 1; }
+.study-desk .qn-toolbar>[data-qn=search] { order: 2; flex: 1; margin-inline-start: auto; }
+.study-desk .qn-more { position: relative; order: 3; }
+.study-desk .qn-more>summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 9px; font-size: 13px; color: var(--muted); cursor: pointer; list-style: none; }
+.study-desk .qn-more>summary::-webkit-details-marker { display: none; }
+.study-desk .qn-more>summary::after { content: '⌄'; }
+.study-desk .qn-more>div { position: absolute; z-index: 4; top: calc(100% + 6px); right: 0; display: grid; gap: 4px; min-width: 164px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: var(--shadow-lift); }
+.study-desk .qn-more button { min-height: 44px; text-align: left; border: 0; background: transparent; }
+.study-desk .qn-more button:hover { background: var(--composer-surface); }
+.study-desk .qn-editor textarea { line-height: 1.75; }
+.study-desk .qn-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
+.study-desk .qn-actions .qn-delete { margin-inline-start: auto; background: transparent; border-color: transparent; }
+.study-desk .qn-actions [hidden] { display: none!important; }
+
+/* Existing study tools grouped by the work the student came to do. */
+.study-desk .study-launchers { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 24px 0; }
+.study-desk .study-launcher { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: var(--shadow); }
+.study-desk .study-launcher h2 { margin: 16px 0 6px; font-size: 18px; font-weight: 500; }
+.study-desk .study-launcher .helper { margin: 0; font-size: 13px; line-height: 1.6; }
+.study-desk .study-launcher .dw-actions { align-items: stretch; margin-top: 18px; gap: 8px; }
+.study-desk .study-launcher .dw-button { min-height: 44px; font-size: 13px; border-radius: 9px; }
+
+/* Quota/reset details stay accessible without filling the reading surface. */
+.chat-polish.study-desk .composer-guidance { width: min(760px,100%); display: flex; justify-content: space-between; align-items: start; gap: 16px; margin: 8px auto 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.chat-polish.study-desk .composer-guidance>p { margin: 0; padding-block: 10px; }
+.chat-polish.study-desk .composer-guidance details { max-width: 55%; min-width: 0; }
+.chat-polish.study-desk .composer-guidance summary { min-height: 36px; align-content: center; cursor: pointer; text-align: right; }
+.chat-polish.study-desk .composer-guidance .composer-meta { width: auto; max-width: 36ch; padding: 12px 0; font-size: 12px; text-align: left; }
+.chat-polish.study-desk .composer-guidance:has(details[open]) { align-items: start; }
+.chat-polish.study-desk .composer-guidance summary:hover { color: var(--ink); }
+.chat-polish.study-desk .char-count { visibility: hidden; }
+.chat-polish.study-desk .composer:focus-within .char-count,.chat-polish.study-desk .composer.long .char-count { visibility: visible; }
+.chat-polish.study-desk .message.user .message-content { border-radius: 18px; }
+
+@media(max-width:1000px) {
+  .study-desk .planner-layout { grid-template-columns: minmax(0,1fr) minmax(260px,300px); gap: 18px; }
+}
+@media(max-width:780px) {
+  .workspace-polish.study-desk .planning-head { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .study-desk .planner-layout { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .study-desk .editor-disclosure { grid-row: 1; }
+  .study-desk :is(#tasks,#reminders) .item { padding: 16px; gap: 12px; }
+  .study-desk :is(#tasks,#reminders) .item-actions button { min-height: 44px; }
+  .study-desk .study-launchers { grid-template-columns: 1fr; gap: 12px; }
+  .study-desk .study-launcher { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 4px 12px; padding: 16px; }
+  .study-desk .study-launcher>.surface-symbol { grid-row: 1/3; width: 32px; height: 32px; }
+  .study-desk .study-launcher h2 { margin: 0; }
+  .study-desk .study-launcher>.helper { grid-column: 2; }
+  .study-desk .study-launcher>.dw-actions { grid-column: 1/-1; margin-top: 10px; }
+  .chat-polish.study-desk .composer-guidance { font-size: 11px; gap: 12px; }
+  .chat-polish.study-desk .composer-guidance summary { min-height: 44px; }
+}
+@media(max-width:540px) {
+  .study-desk .qn-toolbar { padding-inline: 16px; }
+  .study-desk .qn-toolbar>[data-qn=search] { max-width: none; flex-basis: 100%; order: 4; margin: 0; }
+  .study-desk .qn-more { margin-inline-start: auto; }
+  .study-desk .qn-actions .qn-delete { margin-inline-start: 0; flex-basis: 100%; text-align: left; }
+  .chat-polish.study-desk .composer-guidance:has(details[open]) { flex-direction: column; gap: 0; }
+  .chat-polish.study-desk .composer-guidance details { max-width: 100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .study-desk :is(.primary,.secondary,.dw-button,.top-button,.workspace-shortcuts>button) { transition: none; }
+  .study-desk :is(.primary,.secondary,.dw-button,.workspace-shortcuts>button):active:not(:disabled) { transform: none; }
+}
+
+.chat-polish.study-desk .sidebar>.new-chat { min-height:44px; padding:10px; border:0; background:transparent; color:var(--muted); font-size:13px; box-shadow:none; }
+.chat-polish.study-desk .sound-disclosure>summary { color:var(--muted); font-size:12px; }
+html:lang(gu) body.study-desk :is(h1,h2,h3),html:lang(hi) body.study-desk :is(h1,h2,h3) { letter-spacing:normal; }
+
+.chat-polish.study-desk #openSidebar { display:flex; align-items:center; gap:8px; width:auto; min-width:44px; padding-inline:10px; color:var(--muted); font-size:13px; }
+@media(max-width:540px) { .chat-polish.study-desk #openSidebar>span { display:none; } }
+
+.study-desk :is(.primary,.secondary,.dw-button,.top-button,.mini-button) { font-weight:500; }
+.study-desk .focus-card h3 { overflow-wrap:anywhere; }
+.workspace-polish.study-desk .editor-disclosure .field { font-weight:500; font-size:13px; }
+.workspace-polish.study-desk .chat-cta { display:inline-flex; align-items:center; gap:6px; }
+.workspace-polish.study-desk .chat-cta .chat-cta-short { display:none; }
+.workspace-polish.study-desk .chat-cta i { font-style:normal; }
+@media(max-width:780px) {
+ .workspace-polish.study-desk .chat-cta .chat-cta-label { display:none; }
+ .workspace-polish.study-desk .chat-cta .chat-cta-short { display:inline; }
+}
+
+/* The composer supplies its own focus ring; noninteractive route headings do not. */
+.chat-polish.study-desk .composer textarea:focus-visible { outline:none; }
+body.study-desk :is(h1,h2)[tabindex="-1"]:focus { outline:none; }
+body.study-desk .quick-notes-dialog .qn-editor input { font-size:clamp(19px,2vw,23px); font-weight:500; }

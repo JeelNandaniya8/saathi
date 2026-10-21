@@ -5,7 +5,7 @@ module.exports=async function reviewUI(page,width,base){
  const artifacts=process.env.SAATHI_UI_ARTIFACTS;
  if(artifacts)fs.mkdirSync(artifacts,{recursive:true});
  await page.emulateMedia({reducedMotion:'reduce'});
- async function capture(name){if(artifacts&&[1280,360].includes(width)){await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0)});await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:true,animations:'disabled'})}}
+ async function capture(name){if(artifacts&&[1280,360].includes(width)){await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0)});await page.screenshot({path:path.join(artifacts,`${width}-${name}.png`),fullPage:!name.includes('notes'),animations:'disabled'})}}
  async function fits(name){
   const size=await page.evaluate(()=>({viewport:innerWidth,scroll:document.documentElement.scrollWidth}));
   assert.ok(size.scroll<=size.viewport+1,`${name} fits ${width}px: ${JSON.stringify(size)}`);
@@ -48,6 +48,16 @@ module.exports=async function reviewUI(page,width,base){
  await page.waitForFunction(()=>{const button=document.querySelector('.hub-task-complete');return button&&!button.disabled&&!button.hasAttribute('aria-busy')});
  assert.equal(await page.locator('#todayFocusTitle').textContent(),'Search','A failed completion keeps the real task visible');
  await page.unroute('**/api/tasks/1');
+ await page.waitForFunction(()=>!document.getElementById('toast')?.classList.contains('show'));
+ await page.evaluate(()=>openView('tasks'));
+ assert.equal(await page.locator('#taskEditor').getAttribute('open'),null,'Saved tasks lead before the editor is requested');
+ await page.locator('#tasks .planning-head button').click();
+ assert.ok(await page.locator('#taskEditor').evaluate(editor=>editor.open),'Add task expands the actual editor');
+ await page.locator('#taskTitle').fill('Unsaved study step');
+ await page.locator('#taskEditor>summary').click();
+ await page.locator('#tasks .planning-head button').click();
+ assert.equal(await page.locator('#taskTitle').inputValue(),'Unsaved study step','Collapsing an editor preserves its exact unsaved draft');
+ await page.locator('#taskTitle').fill('');
  for(const theme of ['light','dark']){
   await page.evaluate(theme=>SaathiTheme.apply(theme),theme);
   for(const view of views){
@@ -60,7 +70,7 @@ module.exports=async function reviewUI(page,width,base){
     assert.ok(complete.width>=44&&complete.height>=44,'Completing a task has a distinct full-size touch target');
    }
    if(view==='tasks'){
-    await page.locator('.planning-head button').click();
+    await page.locator('#tasks .planning-head button').click();
     assert.equal(await page.evaluate(()=>document.activeElement.id),'taskTitle','Add task focuses the actual planner form');
     if(width<=780)assert.equal(await page.locator('.workspace-bottom-nav [data-open="tasks"]').getAttribute('aria-current'),'page','Mobile navigation follows the active planner');
    }
@@ -70,6 +80,9 @@ module.exports=async function reviewUI(page,width,base){
   await page.evaluate(()=>SaathiWorkspace.openNote(3));
   const notes=page.locator('.quick-notes-dialog[open]');
   await page.waitForFunction(()=>!document.querySelector('[data-qn="title"]').disabled);
+  await notes.locator('.qn-more>summary').click();
+  assert.ok(await notes.locator('[data-qn="exportpdf"]').isVisible(),'Occasional note actions remain reachable in their named menu');
+  await notes.locator('.qn-more>summary').click();
   await notes.locator('[data-qn="content"]').fill('Electric potential is energy per unit charge. V = U / q.');
   await notes.locator('[data-qn="save"]').click();
   await page.waitForFunction(()=>document.querySelector('[data-qn="status"]').textContent==='Saved to your account.');
@@ -117,6 +130,13 @@ module.exports=async function reviewUI(page,width,base){
    assert.ok(controls.modeHeight>=44&&controls.contextHeight>=44&&controls.contextVisible&&!controls.overlap,'Mode and context are named, separate touch targets');
    await capture(`${language}-${theme}-chat`);
   }
+  await page.evaluate(()=>{state.attachmentLimits.remaining_today=0;attachmentMeta()});
+  assert.ok(await page.locator('#uploadLimitsDetails').evaluate(details=>details.open),'Exhausted upload quota reveals its limits instead of hiding the explanation');
+  assert.ok(await page.locator('#attachButton').isDisabled(),'Exhausted uploads remain disabled');
+  await page.locator('#chatInput').fill('A text-only question');
+  assert.ok(await page.locator('#sendButton').isEnabled(),'Upload exhaustion still permits an ordinary text draft');
+  await page.locator('#chatInput').fill('');
+  await page.evaluate(()=>{state.attachmentLimits.remaining_today=5;attachmentMeta();document.getElementById('uploadLimitsDetails').open=false});
   for(const theme of ['light','dark']){
    await page.evaluate(theme=>SaathiTheme.apply(theme),theme);
    const savedMessages=await page.evaluate(()=>state.messages);

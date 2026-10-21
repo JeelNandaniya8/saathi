@@ -366,24 +366,7 @@ body:is(.workspace-polish,.chat-polish) .brand { gap: 10px; font-weight: 650; le
 .shortcut-arrow { color: var(--muted); align-self: flex-start; }
 .workspace-polish .today-extras { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 8px; }
 
-/* Planner: open work first, creation beside it; all existing forms stay connected. */
-.workspace-polish #tasks.active { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(280px,1fr); column-gap: 24px; align-items: start; }
-.workspace-polish #tasks>.section-head { grid-column: 1/-1; }
-.workspace-polish .planning-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.workspace-polish .planning-head h1 { font-size: clamp(26px,3vw,36px); max-width: 24ch; }
-.workspace-polish .planning-head>.primary { flex: none; }
-.workspace-polish .planning-head .primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.workspace-polish .section-head h1[tabindex="-1"]:focus { outline: none; }
-.workspace-polish #tasks>.form-panel { grid-column: 2; grid-row: 2/5; position: sticky; top: 88px; padding: 24px; }
-.workspace-polish #tasks>.filters { grid-column: 1; grid-row: 2; margin-top: 0; }
-.workspace-polish #tasks>.item-list { grid-column: 1; grid-row: 3; }
-.workspace-polish #tasks .form-grid { grid-template-columns: 1fr; gap: 16px; }
-.workspace-polish #tasks .field.wide { grid-column: auto; }
-.workspace-polish #tasks .item { grid-template-columns: 28px minmax(0,1fr); align-items: start; padding: 20px; }
-.workspace-polish #tasks .item-actions { grid-column: 2; justify-content: flex-start; margin-top: 10px; flex-wrap: wrap; }
-.workspace-polish #tasks .item-copy b { font-size: 15px; font-weight: 550; line-height: 1.6; }
-.workspace-polish #tasks .item-copy p { line-height: 1.7; }
-.workspace-polish #tasks .form-actions .helper { flex-basis: 100%; }
+/* Planner presentation is defined with the shared study-desk surfaces. */
 
 /* Notes: a full reading and writing workspace, reusing verified note persistence. */
 .workspace-polish .quick-notes-dialog { inset: 24px; width: min(1120px,calc(100% - 48px)); height: calc(100dvh - 48px); margin: auto; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 24px 90px rgba(25,33,50,.16); }
