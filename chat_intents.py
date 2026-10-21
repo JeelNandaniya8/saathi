@@ -65,9 +65,12 @@ def excluded_sources(text):
     }
     denied = set()
     for clause in re.split(r'[.;\n।]', text):
-        negative = re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b(.*)", clause, re.I)
+        negative = re.search(r"\b(do not|don't|without|avoid|exclude|excluding)\b(.*)", clause, re.I)
         if negative:
-            scope = re.split(r'\b(?:but|instead|then)\b', negative[1], maxsplit=1, flags=re.I)[0]
+            scope = re.split(r'\b(?:but|instead|then)\b', negative[2], maxsplit=1, flags=re.I)[0]
+            # A task-date selector is a filter, not refusal of the Planner.
+            if negative[1].lower() in {'exclude', 'excluding'} and re.match(r'\s*(?:tasks?|work)\s+from\s+(?:\d{4}-\d{2}-\d{2}\b|yesterday\b|today\b|tomorrow\b)', scope, re.I):
+                continue
         elif re.search(r'(?:વાપર\S*|વાંચ\S*|તપાસ\S*|ઉપયોગ)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ|ન)\s*(?:વાપર|વાંચ|તપાસ)|(?:मत|नहीं)\s+(?:पढ़|देख|भेज|दिखा|इस्तेमाल|उपयोग)|(?:इस्तेमाल|उपयोग|पढ़\S*|देख\S*)\s+(?:मत|नहीं)', clause, re.I):
             scope = clause
         else:

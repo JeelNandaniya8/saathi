@@ -72,9 +72,10 @@ def test_turn_exclusion_precedes_provider_and_does_not_change_saved_policy(
     assert one(connect, 'SELECT COUNT(*) AS n FROM tasks')['n'] == 1
     captured.clear()
     allowed = client.post(f'/api/conversations/{cid}/messages', json=dict(
-        content='Use my tasks and memories to explain another proof about nested quantifiers.',
+        content='Explain another proof about nested quantifiers.',
         mode='deep_study', request_id=str(uuid4())))
     assert allowed.status_code == 200 and len(captured) == 1
+    assert allowed.json['assistant_message']['ai_mode'] == 'deep_study'
     for marker in ['PRIVATE_TASK_MARKER', 'PRIVATE_MEMORY_MARKER', 'PRIVATE_PROFILE_MARKER']:
         assert marker in captured[0]
     assert 'PAUSED_MEMORY_MARKER' not in captured[0]

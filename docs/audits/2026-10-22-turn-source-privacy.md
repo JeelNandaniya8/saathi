@@ -59,4 +59,13 @@ failure recovery remain unverified. Physical-phone uploads, keyboard and
 background alerts, independent eight-check certification, production success
 rate and first-word latency also remain open.
 
+First candidate CI run `39674327346` reported 12 failed and 1072 passed in
+270.80 seconds. Two existing date-filter checks caught an overly broad source
+refusal classification; the date-selector exception now preserves those reads.
+Ten new positive-control assertions assumed the selected Deep study mode would
+survive an explicit workspace read, which intentionally switches to Normal.
+The control now uses an ordinary Deep study query with saved auto-sharing and
+asserts the actual mode as well as the allowed profile/memory/task markers.
+No failing assertion or existing test was removed.
+
 Final CI, deployment and post-deployment observations are recorded in the PR.

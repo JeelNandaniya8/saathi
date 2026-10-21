@@ -95,6 +95,8 @@ def test_task_refusal_cannot_enter_the_deterministic_planner_reader():
     'કયાં tasks હજી પૂરાં નથી?',
     'कौन से tasks पूरे नहीं हुए?',
     'Explain a vector without dividing by zero.',
+    'What unfinished tasks remain on 2026-10-15? Exclude tasks from 2026-10-14.',
+    "Show today's tasks, excluding tasks from yesterday.",
 ])
 def test_status_and_math_negations_do_not_refuse_private_sources(query):
     import chat_intents
