@@ -128,6 +128,32 @@ def test_indic_vowel_marks_are_not_discarded_during_title_matching():
     assert 'RIGHTBODY' in result and 'WRONGBODY' not in result
 
 
+@pytest.mark.parametrize('query', [
+    'What do I have to do in "BIO-Assignment 1"?',
+    'Explain BIO - Assignment 1',
+    'BIO-Assignment 1માં શું કરવાનું છે?',
+    'BIO-Assignment 1 में क्या करना है?',
+])
+def test_complete_named_title_wins_over_a_different_assignment_with_its_suffix(query):
+    rows = [item('BIO- Assignment 1', 'RIGHTBODY'), item('Assignment-1', 'WRONGBODY'), item('BIO-Assignment 10', 'TENBODY')]
+    result = details(rows, query)
+    assert 'RIGHTBODY' in result and 'WRONGBODY' not in result and 'TENBODY' not in result
+
+
+def test_nested_title_disambiguation_preserves_two_independently_named_assignments():
+    rows = [item('BIO- Assignment 1', 'RIGHTBODY'), item('Assignment-1', 'OTHERBODY')]
+    assert 'Which assignment' in details(rows, 'Explain BIO-Assignment 1 and Assignment-1')
+    assert 'OTHERBODY' in details(rows, 'Explain Assignment-1')
+    assert 'RIGHTBODY' in details(rows, 'What is this assignment about?', reference='Explain BIO-Assignment 1')
+
+
+def test_more_specific_titles_do_not_hide_duplicate_titles_in_different_courses():
+    rows = [item('BIO- Assignment 1', 'RIGHTBODY'), item('BIO- Assignment 1', 'OTHERBODY', 'other'), item('Assignment-1', 'SUFFIXBODY')]
+    assert 'Which assignment' in details(rows, 'Explain BIO-Assignment 1')
+    result = details(rows, 'Show English BIO-Assignment 1 instructions')
+    assert 'RIGHTBODY' in result and 'OTHERBODY' not in result and 'SUFFIXBODY' not in result
+
+
 @pytest.mark.parametrize('language,missing,files', [
     ('en', 'No description was supplied', 'Attached-file contents have not been read'),
     ('gu', 'વર્ણન આપેલું નથી', 'જોડેલી ફાઇલની અંદરની માહિતી વાંચી નથી'),
