@@ -124,6 +124,24 @@ def assignment(row):
     return external,title[:3000],description[:30000],safe_link(row.get('alternateLink','')),due,uncertain
 
 
+def file_materials(row):
+    """Keep bounded Drive references only; never fetch file contents on sync."""
+    materials=row.get('materials',[])
+    if not isinstance(materials,list) or len(materials)>20:raise ProviderError('provider_unavailable')
+    files={}
+    for material in materials:
+        if not isinstance(material,dict):raise ProviderError('provider_unavailable')
+        if 'driveFile' not in material:continue
+        wrapper=material['driveFile']
+        file=wrapper.get('driveFile') if isinstance(wrapper,dict) else None
+        if not isinstance(file,dict) or not isinstance(file.get('id'),str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',file['id']):
+            raise ProviderError('provider_unavailable')
+        fid=file['id'];title=file.get('title') or 'Classroom file'
+        if not isinstance(title,str):raise ProviderError('provider_unavailable')
+        files[fid]={'id':fid,'title':title[:500],'url':'https://drive.google.com/open?id='+fid}
+    return list(files.values())
+
+
 def sync_connection(cur,row,seconds=40):
     uid=row['user_id']
     with provider_budget(seconds):
@@ -131,9 +149,9 @@ def sync_connection(cur,row,seconds=40):
         for cid in row['selected_courses']:
             if not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',cid):raise ProviderError('provider_unavailable')
             work=list_pages(token,'courses/'+quote(cid,safe='')+'/courseWork','courseWork',
-                {'courseWorkStates':'PUBLISHED','fields':'courseWork(id,title,description,alternateLink,dueDate,dueTime),nextPageToken'})
+                {'courseWorkStates':'PUBLISHED','fields':'courseWork(id,title,description,alternateLink,dueDate,dueTime,materials(driveFile(driveFile(id,title)))),nextPageToken'})
             # The existing own-student read scope covers this endpoint. Never
-            # request classmates, grades, attachments, or a broader OAuth scope.
+            # request classmates, grades, file contents, or a broader OAuth scope.
             submissions=list_pages(token,'courses/'+quote(cid,safe='')+'/courseWork/-/studentSubmissions','studentSubmissions',
                 {'userId':'me','fields':'studentSubmissions(courseWorkId,state),nextPageToken'})
             states={}
@@ -142,17 +160,17 @@ def sync_connection(cur,row,seconds=40):
                 if not isinstance(external,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,200}',external) or external in states:
                     raise ProviderError('provider_unavailable')
                 states[external]=state if isinstance(state,str) and state in SUBMISSION_STATES else 'UNKNOWN'
-            snapshots[cid]=[(assignment(r),states.get(r.get('id'),'UNKNOWN')) for r in work]
+            snapshots[cid]=[(assignment(r),file_materials(r),states.get(r.get('id'),'UNKNOWN')) for r in work]
     count=0
     for cid,items in snapshots.items():
         cur.execute('UPDATE classroom_assignments SET available=FALSE WHERE user_id=%s AND course_id=%s',(uid,cid))
-        for (external,title,note,url,due,uncertain),state in items:
-            cur.execute('''INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions,original_url,due_at,deadline_uncertain,submission_state)
-                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(user_id,course_id,external_id) DO UPDATE SET
+        for (external,title,note,url,due,uncertain),files,state in items:
+            cur.execute('''INSERT INTO classroom_assignments(user_id,course_id,external_id,title,instructions,original_url,due_at,deadline_uncertain,file_materials,submission_state)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(user_id,course_id,external_id) DO UPDATE SET
                 title=EXCLUDED.title,instructions=EXCLUDED.instructions,original_url=EXCLUDED.original_url,
                 due_at=EXCLUDED.due_at,deadline_uncertain=EXCLUDED.deadline_uncertain,
-                submission_state=EXCLUDED.submission_state,available=TRUE,synced_at=NOW()''',
-                (uid,cid,external,title,note,url,due,uncertain,state));count+=1
+                file_materials=EXCLUDED.file_materials,submission_state=EXCLUDED.submission_state,available=TRUE,synced_at=NOW()''',
+                (uid,cid,external,title,note,url,due,uncertain,Json(files),state));count+=1
     cur.execute("UPDATE classroom_connections SET last_sync=NOW(),submission_sync_at=NOW(),last_attempt=NOW(),last_error=NULL,sync_failures=0,next_sync_at=CASE WHEN auto_sync_enabled THEN NOW()+INTERVAL '6 hours' ELSE NULL END WHERE user_id=%s",(uid,))
     return count
 
@@ -278,6 +296,17 @@ def format_chat_assignment_details(rows,connection,query,zone,language='en',refe
            deadline,words['checked']+': '+stamp(connection['submission_sync_at'])]
     instructions=str(row.get('instructions') or '').replace('\r\n','\n').replace('\r','\n')
     lines+=['',words['instructions']+':', '\n'.join('> '+escape(line) for line in instructions.split('\n')) if instructions.strip() else words['missing'], '',words['files']]
+    files=row.get('file_materials')
+    if isinstance(files,list) and files:
+        heading={'en':'Attached files (not read)','gu':'જોડેલી ફાઇલો (વાંચી નથી)','hi':'संलग्न फ़ाइलें (पढ़ी नहीं गईं)'}[language]
+        guidance={'en':'Open Study → Google Classroom to choose a file for Chat, or download it and attach it yourself. Review it, then press Send.',
+            'gu':'Chat માટે ફાઇલ પસંદ કરવા Study → Google Classroom ખોલો અથવા ડાઉનલોડ કરીને જાતે જોડો. તપાસીને Send દબાવો.',
+            'hi':'Chat के लिए फ़ाइल चुनने हेतु Study → Google Classroom खोलें या डाउनलोड करके खुद जोड़ें। जाँचकर Send दबाएँ।'}[language]
+        lines+=['',heading+':']
+        for file in files:
+            if isinstance(file,dict) and isinstance(file.get('id'),str) and re.fullmatch(r'[A-Za-z0-9_-]{1,200}',file['id']):
+                lines+=['- ['+label(file.get('title') or 'Classroom file')+'](https://drive.google.com/open?id='+file['id']+')']
+        lines+=['',guidance]
     url=safe_link(row.get('original_url',''))
     if url:lines+=['','['+words['original']+']('+quote(url,safe=':/?=&%#@+;,-._~')+')']
     return '\n'.join(lines)
@@ -314,7 +343,7 @@ def chat_reply(get_db,uid,query,language='en',detail=False,reference=''):
             candidates=chat_assignment_candidates(rows,row,query,reference)
             if len(candidates)==1:
                 target=candidates[0]
-                cur.execute('''SELECT instructions,original_url FROM classroom_assignments WHERE id=%s
+                cur.execute('''SELECT instructions,original_url,file_materials FROM classroom_assignments WHERE id=%s
                     AND user_id=%s AND available=TRUE AND course_id=ANY(%s)''',(target['id'],uid,row['selected_courses']))
                 selected=cur.fetchone()
                 if selected is None:return dict(reply=chat_failure('other',language))
@@ -369,12 +398,15 @@ def register(app,b):
         if not isinstance(data,dict) or data.get('confirmed') is not True:raise ValueError('Confirm this Classroom action first.')
         return data
 
+    import classroom_files
+    finish_file=classroom_files.register(app,b,__import__(__name__),db,private,confirmed)
+
     @app.get('/api/classroom/status')
     @private
     def status(uid):
         with db() as (_,cur):
             cur.execute('SELECT selected_courses,last_sync,last_error,version,auto_sync_enabled,next_sync_at,last_attempt,sync_failures FROM classroom_connections WHERE user_id=%s',(uid,));row=cur.fetchone()
-        return jsonify(configured=bool(configuration()),connected=bool(row),connection=row,scheduler_ready=scheduler_ready())
+        return jsonify(configured=bool(configuration()),connected=bool(row),connection=row,scheduler_ready=scheduler_ready(),file_picker_ready=classroom_files.enabled())
 
     @app.post('/api/classroom/connect')
     @private
@@ -413,11 +445,16 @@ def register(app,b):
             pending=cur.fetchone();conn.commit()
         if not pending or pending['expires_at']<datetime.now(timezone.utc) or pending['session_version']!=session.get('session_version'):
             raise ValueError('This connection request expired. Start again.')
+        try:verifier=cipher().decrypt(pending['verifier_cipher'].encode()).decode()
+        except InvalidToken:raise ProviderError('reconnect_required') from None
+        if verifier.startswith('{'):
+            try:payload=json.loads(verifier)
+            except ValueError:raise ProviderError('reconnect_required') from None
+            if isinstance(payload,dict) and payload.get('purpose')=='assignment_file':
+                return finish_file(uid,pending,payload)
         if request.args.get('error'):return redirect('/dashboard?classroom_result=cancelled#study')
         code=request.args.get('code','')
         if not code or len(code)>4096:raise ValueError('Restart Classroom connection.')
-        try:verifier=cipher().decrypt(pending['verifier_cipher'].encode()).decode()
-        except InvalidToken:raise ProviderError('reconnect_required') from None
         renew_version=None
         if verifier.startswith('{'):
             try:

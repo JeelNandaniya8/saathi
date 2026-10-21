@@ -1085,6 +1085,7 @@ def public_styles():
 @app.get("/care-support.js")
 @app.get("/care-routines.js")
 @app.get("/classroom.js")
+@app.get("/classroom-file-draft.js")
 @app.get("/recovery.js")
 @app.get("/workspace-hub.js")
 @app.get("/lazy-tools.js")
