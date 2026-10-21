@@ -28,7 +28,8 @@ def source_query(text):
     return re.sub(r"\b(?:exclude|excluding|except|do not|don't|without|avoid|no)\b[^.;\n]*(?:[.;\n]|$)", '', command(text), flags=re.I)
 
 
-CLASSROOM_SOURCE = r'classroom|ક્લાસરૂમ|क्लासरूम|assignments?|homework|coursework|હોમવર્ક|ગૃહકાર્ય|असाइनमेंट|होमवर्क|गृहकार्य'
+SCHOOL_WORK = r'\b(?:assignments?|assigments?|homework|coursework)\b|હોમવર્ક|ગૃહકાર્ય|અસાઇનમેન્ટ|અસાઇન્મેન્ટ|અસાઈન્મેન્ટ|હોમવક|असाइनमेंट|असाइन्मेंट|होमवर्क|गृहकार्य'
+CLASSROOM_SOURCE = r'classroom|ક્લાસરૂમ|क्लासरूम|' + SCHOOL_WORK
 
 
 def classroom_text(text):
@@ -43,7 +44,7 @@ def classroom_denied(text):
     text=command(text).replace('’', "'")
     if not re.search(CLASSROOM_SOURCE,text,re.I):return False
     # Negating a read is different from asking about work not submitted yet.
-    if re.search(r'(?:બતાવ\S*|વાંચ\S*|તપાસ\S*|વાપર\S*)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ|ન)\s*(?:બતાવ|વાંચ|તપાસ|વાપર)|(?:मत|नहीं|न)\s+(?:दिखा|पढ़|जाँच|देख|भेज)|(?:दिखा\S*|पढ़\S*|जाँच\S*|देख\S*|भेज\S*)\s*नहीं|\b(?:batav\S*|vanch\S*|use|read|show)\s+(?:nahi|mat)\b|\b(?:nahi|mat)\s+(?:batav|vanch|use|read|show)',text,re.I):return True
+    if re.search(r'(?:બતાવ\S*|વાંચ\S*|તપાસ\S*|વાપર\S*)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ|ન)\s*(?:બતાવ|વાંચ|તપાસ|વાપર)|(?:मत|नहीं|न)\s+(?:दिखा|बता|पढ़|जाँच|देख|भेज)|(?:दिखा\S*|बता\S*|पढ़\S*|जाँच\S*|देख\S*|भेज\S*)\s*(?:नहीं|मत)|\b(?:batav\w*|bata\w*|btao|vanch\w*|use|read|show)\s+(?:nahi|mat)\b|\b(?:nahi|mat)\s+(?:batav|bata|btao|vanch|use|read|show)',text,re.I):return True
     return bool(re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b[^.;\n]*(?:"+CLASSROOM_SOURCE+r')',text,re.I))
 
 
@@ -65,11 +66,15 @@ def classroom_read(text):
     # Quoted commands, literal titles and instructional questions are not reads.
     if re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे',text,re.I):return ''
     if re.fullmatch(r'\s*what (?:is|are) (?:an? |the )?(?:assignments?|homework|classroom)[?.!\s]*',text,re.I):return ''
+    if re.fullmatch(r'\s*(?:'+SCHOOL_WORK+r')\s+(?:su|shu|શું|kya|क्या)\s+(?:che|chhe|hoy|છે|hai|hota hai|है|होता है)[?.!\s]*',text,re.I):return ''
     bare = re.fullmatch(r"\s*(?:what(?: is|'s|’s) pending|show (?:my )?pending work)[?.!\s]*",text,re.I)
-    school = re.search(r'\b(?:assignments?|homework|coursework|school (?:(?:ni|ki|ka|ke) )?(?:tasks?|work|to[ -]?do list)|to[ -]?do list (?:from |for )?(?:my )?school)\b|હોમવર્ક|ગૃહકાર્ય|અસાઇનમેન્ટ|હોમવક|होमवर्क|गृहकार्य|असाइनमेंट|असाइन्मेंट',text,re.I)
+    school = re.search(SCHOOL_WORK+r'|\b(?:school (?:(?:ni|ki|ka|ke) )?(?:tasks?|work|to[ -]?do list)|to[ -]?do list (?:from |for )?(?:my )?school)\b',text,re.I)
     classroom = re.search(r'classroom|ક્લાસરૂમ|क्लासरूम',text,re.I) and re.search(r'work|tasks?|assign|pending|due|left|remaining|કામ|બાકી|काम|बाकी',text,re.I)
-    read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any)\b|શું|કય|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बाकी|लंबित',text,re.I)
-    return text.strip() if bare or (read and (school or classroom)) else ''
+    read = re.search(r'\b(?:what|which|show|list|read|check|pending|overdue|due|left|remaining|do i have|any|su|shu|kaya|kayu|ketla|ketli|ketlu|kya|kitna|kitne|batao|btao)\b|શું|કય|કેટલ|બતાવ|બાકી|shu|baki|batav|क्या|कौन|कितन|दिखा|बता|बाकी|लंबित',text,re.I)
+    # A short owned noun phrase ("my classroom assignments") asks for a list;
+    # ownership inside an essay/help request does not grant source access.
+    owned = re.fullmatch(r'\s*(?:my|mara|maru|mari|mare|mera|mere|meri)\s+(?:(?:google\s+)?(?:classroom|school|college)\s+(?:(?:na|ni|nu|ke|ki|ka)\s+)?)?(?:'+SCHOOL_WORK+r')[?.!\s]*',text,re.I)
+    return text.strip() if bare or owned or (read and (school or classroom)) else ''
 
 
 def classroom_definition(text):
