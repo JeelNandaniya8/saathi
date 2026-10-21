@@ -11,6 +11,8 @@ REFUSALS = [
     'Do not use my memories or workspace sources. Explain a proof about nested quantifiers.',
     'મારી memories અને workspace data વાપરશો નહીં. એક પુરાવો સમજાવો.',
     'मेरी memories और workspace data मत पढ़ो। एक प्रमाण समझाओ।',
+    'મારી યાદો અને કાર્યક્ષેત્રનો ડેટા વાપરશો નહીં. એક પુરાવો સમજાવો.',
+    'मेरी यादें और कार्यक्षेत्र का डेटा मत पढ़ो। एक प्रमाण समझाओ।',
 ]
 
 
@@ -76,3 +78,24 @@ def test_a_specific_source_refusal_keeps_other_consented_sources(query):
     assert 'PRIVATE_SOURCE_tasks' not in text
     assert 'PRIVATE_SOURCE_reminders' in text
     assert 'Shared tasks' not in labels
+
+
+def test_task_refusal_cannot_enter_the_deterministic_planner_reader():
+    class Cursor:
+        def execute(self, *args):
+            pytest.fail('A refused Planner source must not be queried')
+
+    result = chat_actions.direct_reply(Cursor(), 1, [dict(role='user',
+        content='Do not use my tasks. What remains today?')])
+    assert result is None
+
+
+@pytest.mark.parametrize('query', [
+    'Which tasks have I not completed?',
+    'કયાં tasks હજી પૂરાં નથી?',
+    'कौन से tasks पूरे नहीं हुए?',
+    'Explain a vector without dividing by zero.',
+])
+def test_status_and_math_negations_do_not_refuse_private_sources(query):
+    import chat_intents
+    assert not chat_intents.excluded_sources(query)

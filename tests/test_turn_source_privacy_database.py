@@ -32,6 +32,8 @@ def test_turn_exclusion_precedes_provider_and_does_not_change_saved_policy(
     monkeypatch.setattr(backend, 'GEMINI_API_KEY', 'fixture-key')
     policy = dict.fromkeys(chat_actions.SOURCES, True)
     assert client.patch('/api/chat-context', json=policy).status_code == 200
+    assert client.put('/api/personal-context/study/goal', json=dict(
+        value='PRIVATE_PROFILE_MARKER', version=0, confirmed=True, use_in_ai=True)).status_code == 200
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute("INSERT INTO tasks(user_id,title,details,priority,created_at,updated_at) VALUES(1,'PRIVATE_TASK_MARKER','','medium',NOW(),NOW())")
@@ -60,7 +62,7 @@ def test_turn_exclusion_precedes_provider_and_does_not_change_saved_policy(
         assert any(event.get('type') == 'complete' for event in events), events
     assert len(captured) == 1
     for marker in ['PRIVATE_TASK_MARKER', 'PRIVATE_MEMORY_MARKER', 'PAUSED_MEMORY_MARKER',
-                   'OTHER_ACCOUNT_MARKER', 'PRIVATE_HISTORY_MARKER']:
+                   'OTHER_ACCOUNT_MARKER', 'PRIVATE_HISTORY_MARKER', 'PRIVATE_PROFILE_MARKER']:
         assert marker not in captured[0]
     assert query in captured[0]
     assert client.get('/api/chat-context').json['permissions'] == policy
@@ -68,3 +70,12 @@ def test_turn_exclusion_precedes_provider_and_does_not_change_saved_policy(
     assert stored[-2]['content'] == query and stored[-1]['role'] == 'assistant'
     assert one(connect, 'SELECT COUNT(*) AS n FROM memories')['n'] == 3
     assert one(connect, 'SELECT COUNT(*) AS n FROM tasks')['n'] == 1
+    captured.clear()
+    allowed = client.post(f'/api/conversations/{cid}/messages', json=dict(
+        content='Use my tasks and memories to explain another proof about nested quantifiers.',
+        mode='deep_study', request_id=str(uuid4())))
+    assert allowed.status_code == 200 and len(captured) == 1
+    for marker in ['PRIVATE_TASK_MARKER', 'PRIVATE_MEMORY_MARKER', 'PRIVATE_PROFILE_MARKER']:
+        assert marker in captured[0]
+    assert 'PAUSED_MEMORY_MARKER' not in captured[0]
+    assert 'OTHER_ACCOUNT_MARKER' not in captured[0]

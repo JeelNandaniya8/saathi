@@ -49,9 +49,41 @@ def classroom_denied(text):
     return bool(re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b[^.;\n]*(?:"+CLASSROOM_SOURCE+r')',text,re.I))
 
 
+def excluded_sources(text):
+    """Current-turn refusals override sharing; they never change saved policy."""
+    text = command(text).replace('’', "'")
+    patterns = {
+        'tasks': r'\b(?:tasks?|planner|work)\b|કામ|कार्यसूची|काम',
+        'reminders': r'\breminders?\b|રિમાઇન્ડર|रिमाइंडर',
+        'classroom': CLASSROOM_SOURCE,
+        'notes': r'\bnotes?\b|નોંધ|નોટ|नोट|टिप्पणी',
+        'habits': r'\bhabits?\b|આદત|आदत',
+        'study': r'\brevision\b|\bstudy\s+(?:sources?|data|materials?)\b|અભ્યાસ\s*સામગ્રી|अध्ययन\s*सामग्री',
+        'exams': r'\bexams?\b|પરીક્ષા|परीक्षा',
+        'memories': r'\bmemor(?:y|ies)\b|મેમરી|યાદો|स्मृत|यादें',
+        'profile': r'\bprofile\b|પ્રોફાઇલ|प्रोफ़ाइल|प्रोफाइल',
+    }
+    denied = set()
+    for clause in re.split(r'[.;\n।]', text):
+        negative = re.search(r"\b(?:do not|don't|without|avoid|exclude|excluding)\b(.*)", clause, re.I)
+        if negative:
+            scope = re.split(r'\b(?:but|instead|then)\b', negative[1], maxsplit=1, flags=re.I)[0]
+        elif re.search(r'(?:વાપર\S*|વાંચ\S*|તપાસ\S*|ઉપયોગ)\s*(?:નહીં|નહિ|નથી)|(?:નહીં|નહિ|ન)\s*(?:વાપર|વાંચ|તપાસ)|(?:मत|नहीं)\s+(?:पढ़|देख|भेज|दिखा|इस्तेमाल|उपयोग)|(?:इस्तेमाल|उपयोग|पढ़\S*|देख\S*)\s+(?:मत|नहीं)', clause, re.I):
+            scope = clause
+        else:
+            continue
+        if re.search(r'\bworkspace\b|\b(?:all|any)\s+(?:my\s+)?(?:saved\s+|personal\s+)?(?:sources|context|data)\b|\bpersonal context\b|કાર્યક્ષેત્ર|कार्य(?:क्षेत्र|स्थल)', scope, re.I):
+            denied.update(patterns)
+        else:
+            denied.update(key for key, pattern in patterns.items() if re.search(pattern, scope, re.I))
+    if classroom_denied(text):
+        denied.add('classroom')
+    return denied
+
+
 def classroom_scope(text):
     """Quotes and a refusal to use school data cannot grant source access."""
-    if classroom_denied(text):return ''
+    if 'classroom' in excluded_sources(text):return ''
     text=classroom_text(text)
     text=source_query(text)
     text=re.split(r'\b(?:title|content|details)\s*:',text,maxsplit=1,flags=re.I)[0]
@@ -191,12 +223,13 @@ def automatic(text, kind, operation='create'):
 
 
 def sources(text):
+    denied = excluded_sources(text)
     classroom = classroom_read(text)
     classroom_text = classroom_scope(text)
     text = source_query(text)
     if not classroom and re.search(r'\bhow (?:do|can|to)|explain how|કેવી રીતે|कैसे|what (?:is|are) (?:a |the )?(?:note|task|reminder|classroom)\b',text,re.I):return set()
     if not re.search(r'\b(what|how much|show|list|read|use|summari[sz]e|make|turn|generate|left|remaining|mark|snooze|pause|resume|edit|update|replace|reschedule|delete|confirm)\b|કેટલ|બાકી|બતાવ|વાંચ|સારાંશ|બનાવ|રોક|પૂર્ણ|ફેરફાર|કાઢ|क्या|कितना|बाकी|दिखा|पढ़|सारांश|बनाओ|रोक|पूरा|बदल|हटा', text, re.I):
-        return {'classroom'} if classroom else set()
+        return {'classroom'} - denied if classroom else set()
     patterns = {'tasks':r'\b(?:work|tasks?|planner|my plan)\b|કામ|મારી.*યોજના|काम|मेरी.*योजना',
                 'reminders':r'\bremind(?:er)?s?\b|રિમાઇન્ડર|યાદ કરાવ|रिमाइंडर',
                 'classroom':r'classroom|ક્લાસરૂમ|क्लासरूम',
@@ -209,7 +242,7 @@ def sources(text):
     if re.search(r'\b(?:what|how much|show|list).*(?:remain|left|due|pending).*\btoday\b|(?:આજ|आज).*(?:બાકી|बाकी)',text,re.I):result.add('tasks')
     if re.search(r'activity today|આજ.*પ્રવૃત્તિ|आज.*गतिविधि', text, re.I):
         result.update(('tasks', 'reminders', 'habits'))
-    return result
+    return result - denied
 
 
 def continuation(recent, answer):
