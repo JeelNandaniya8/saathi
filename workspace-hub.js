@@ -56,10 +56,10 @@
     const start=document.getElementById('todayFocusStart');
     if(!title||!start)return;
     const task=data.tasks.find(item=>!item.completed);
-    title.textContent=task?task.title:t('A little space to begin.');
-    document.getElementById('todayFocusDetail').textContent=t(task?'Choose one manageable task. Give it your full attention.':'Add a small next step, or leave room for rest.');
-    start.textContent=t(task?'Start focus':'Open planner');
-    start.onclick=()=>task?focus(task.id):state.openView('tasks');
+    title.textContent=task?task.title:t('Choose your next task.');
+    document.getElementById('todayFocusDetail').textContent=task?.due_at?t(Date.parse(task.due_at)<Date.now()?'Overdue':'Due')+' · '+(window.SaathiClock?.format(task.due_at)||new Date(task.due_at).toLocaleString()):t(task?'One task, with room to think.':'Add one task to your plan. You can keep it small.');
+    start.textContent=t(task?'Start focus':'Add task');
+    start.onclick=()=>{if(task)return focus(task.id);state.openView('tasks');window.openWorkspaceEditor?.('taskEditor','taskTitle')};
     start.disabled=false;
   }
   function todayTask(task){
@@ -93,7 +93,7 @@
   function renderToday(data){
     renderFocus(data);
     const box=document.getElementById('todayTasks');if(!box)return;box.removeAttribute('aria-label');box.setAttribute('aria-busy','false');box.replaceChildren();if(data.next_exam){const c=({gu:['નજીકની પરીક્ષા','દિવસ બાકી'],hi:['आने वाली परीक्षा','दिन बाकी']}[document.documentElement.lang]||['Upcoming exam','days left']);const exam=node('p',undefined,'helper'),link=node('a',data.next_exam.title+' · '+data.next_exam.days_left+' '+c[1]);link.setAttribute('data-user-content','');link.href='/dashboard#study';exam.append(node('span',c[0]+': '),link);box.append(exam)}
-    if(!data.tasks.length){box.append(node('p',t('No tasks due. Add a small next step or leave room for rest.'),'helper'));box.append(button('Open planner',()=>state.openView('tasks')));}
+    if(!data.tasks.length){box.append(node('p',t('Your next tasks will appear here.'),'helper'));}
     for(const task of data.tasks)box.append(todayTask(task));
     const revisionCard=document.getElementById('todayRevisionCard');if(revisionCard)revisionCard.hidden=!(data.revision_due>0);const revisionLabel=node('span','Revision ready');revisionLabel.setAttribute('data-ui-text','');document.getElementById('todayRevision').replaceChildren(revisionLabel,node('span',': '+data.revision_due));
     const recent=document.getElementById('todayResume');recent.removeAttribute('aria-label');recent.setAttribute('aria-busy','false');recent.replaceChildren();if(data.recent_chat){const link=node('a',data.recent_chat.title,'secondary');link.href='/chat?conversation='+data.recent_chat.id;recent.append(link)}else{const link=node('a',t('Open conversation'),'secondary');link.href='/chat';recent.append(node('p',t('Your latest conversation will appear here.'),'helper'),link);}
