@@ -3823,11 +3823,18 @@ def reminders():
         VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, %s)
         ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL
         DO UPDATE SET client_id=EXCLUDED.client_id
+        WHERE reminders.title=EXCLUDED.title AND reminders.note=EXCLUDED.note
+          AND reminders.next_run_at=EXCLUDED.next_run_at
+          AND reminders.recurrence=EXCLUDED.recurrence
+          AND reminders.email_enabled=EXCLUDED.email_enabled AND reminders.kind='general'
         RETURNING *
         """,
         (user_id, title, note, next_run_at, recurrence, email_enabled, datetime.now(timezone.utc), client_id),
     )
     row = cur.fetchone()
+    if not row:
+        conn.rollback();cur.close();conn.close()
+        return jsonify(error='That reminder request was already used for different details.'), 409
     conn.commit()
     cur.close()
     conn.close()
@@ -4094,6 +4101,14 @@ def tasks():
         return jsonify({"tasks": [task_to_dict(row) for row in rows]})
 
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify(error='Use a task object.'), 400
+    client_id = None
+    if 'client_id' in data:
+        try:
+            client_id = str(UUID(str(data['client_id'])))
+        except (ValueError, TypeError, AttributeError):
+            return jsonify(error='Use a valid task request ID.'), 400
     title = " ".join(str(data.get("title") or "").split())
     details = str(data.get("details") or "").strip()
     priority = data.get("priority") or "medium"
@@ -4114,20 +4129,27 @@ def tasks():
     cur.execute(
         """
         INSERT INTO tasks
-            (user_id, title, details, due_at, priority, completed, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s)
+            (user_id, title, details, due_at, priority, completed, created_at, updated_at, client_id)
+        VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s)
+        ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL
+        DO UPDATE SET client_id=EXCLUDED.client_id
+        WHERE tasks.title=EXCLUDED.title AND tasks.details=EXCLUDED.details
+          AND tasks.due_at IS NOT DISTINCT FROM EXCLUDED.due_at AND tasks.priority=EXCLUDED.priority
         RETURNING *
         """,
-        (user_id, title, details, due_at, priority, now, now),
+        (user_id, title, details, due_at, priority, now, now, client_id),
     )
     row = cur.fetchone()
+    if not row:
+        conn.rollback();cur.close();conn.close()
+        return jsonify(error='That task request was already used for different details.'), 409
     conn.commit()
     cur.close()
     conn.close()
     return jsonify({"task": task_to_dict(row)}), 201
 
 
-@app.route("/api/tasks/<int:task_id>", methods=["PATCH", "DELETE"])
+@app.route("/api/tasks/<int:task_id>", methods=["GET", "PATCH", "DELETE"])
 def task_detail(task_id):
     user_id = require_user_id()
     if not user_id:
@@ -4141,6 +4163,9 @@ def task_detail(task_id):
         cur.close()
         conn.close()
         return jsonify({"error": "Task not found."}), 404
+    if request.method == "GET":
+        cur.close();conn.close()
+        return jsonify(task=task_to_dict(task))
     if request.method == "DELETE":
         cur.execute("DELETE FROM tasks WHERE id = %s AND user_id = %s", (task_id, user_id))
         conn.commit()

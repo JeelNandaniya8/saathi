@@ -24,6 +24,7 @@ node tests/recovery.cjs
 node tests/chat_recovery.cjs
 node tests/chat_loading.cjs
 node tests/chat_editing.cjs
+node tests/chat_record_saves.cjs
 
 node --check personal-context.js
 for test in tests/chat_history_races.cjs tests/dashboard_save_races.cjs tests/notes_loading_races.cjs tests/stream_painter.cjs tests/dashboard_startup.cjs tests/today_overview.cjs tests/calm_foundation.cjs tests/mindmap_layout.cjs; do node "$test"; done
