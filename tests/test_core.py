@@ -307,7 +307,7 @@ def test_gemini_context_limits_and_language(backend, monkeypatch):
     assert "Gujarati" in system
     assert "ACTIVE RESPONSE MODE" in system
     assert "Deep study" in system
-    assert captured["payload"]["generationConfig"]["temperature"] == 0.45
+    assert "temperature" not in captured["payload"]["generationConfig"], "The default 3.5 Lite API deprecated sampling controls"
     assert captured["payload"]["generationConfig"]["maxOutputTokens"] == 1500
     assert "generativelanguage.googleapis.com" in captured["url"]
 

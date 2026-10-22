@@ -58,7 +58,7 @@ Keep `SAATHI_BILLING_MODE=disabled` until checkout setup has been reviewed. Test
 
 The current products are fixed passes: ₹199 for 30 days or ₹1,499 for 365 days, without automatic renewal. Free accounts receive 1 mock test and 2 mindmaps daily; paid accounts receive 20 of each. Existing attachment size and daily limits still apply. Publish the merchant’s refund, tax and support terms before enabling live checkout.
 
-`GEMINI_FAST_MODEL` defaults to `gemini-2.5-flash-lite` for everyday chat; `GEMINI_MODEL` defaults to `gemini-2.5-flash` for deeper study. Both can be set to a Gemini model available to your project. Connections are reused within each worker thread, and streamed UTF-8 text is decoded incrementally. Cold starts, database location, provider availability and free-tier quotas still affect response time.
+`GEMINI_FAST_MODEL` and `GEMINI_MODEL` both default to `gemini-3.5-flash-lite`; existing deployment overrides take precedence. Normal uploads and mindmaps use the study setting. A supported Flash-Lite startup timeout or short transient rejection can try one available alternate before any provider response, within the existing attempt budget. Study recovery preserves the complete uploaded material and reasoning configuration. Connections are reused within each worker thread, and streamed UTF-8 text is decoded incrementally. Cold starts, database location, provider availability and free-tier quotas still affect response time.
 
 Streaming forwards even small provider events without Requests' default 512-byte buffer. Ordinary chat disables optional thinking on compatible Gemini 2.5 Flash models; study modes retain reasoning. Chat context reuses its existing database connection, which is released before generation. Dashboard sections load when opened and share in-flight requests instead of fetching every tool at startup. Browser voice uses the same saved streaming chat and browser speech services; voice availability and language quality depend on the device.
 
@@ -307,7 +307,7 @@ The skippable first-run form saves language and primary goal. Useful, Wrong and 
 
 ### Reply recovery update (16 September 2026)
 
-Chat distinguishes AI access, quota, model, timeout and connection failures. A rejected model or unsupported thinking setting gets at most one compatibility retry before any output, with a successful workaround reused for ten minutes. Quota and credential errors are not automatically retried. The existing Gemini defaults remain configurable through `GEMINI_FAST_MODEL` and `GEMINI_MODEL`; see [Google’s model lifecycle](https://ai.google.dev/gemini-api/docs/deprecations).
+Chat distinguishes AI access, quota, model, timeout and connection failures. A rejected model or unsupported thinking setting gets at most one compatibility retry before any output, with a successful workaround reused for three minutes. Quota and credential errors are not automatically retried, and response-stream failures are never replayed automatically. The existing Gemini defaults remain configurable through `GEMINI_FAST_MODEL` and `GEMINI_MODEL`; see [Google’s model lifecycle](https://ai.google.dev/gemini-api/docs/deprecations).
 
 PostgreSQL connections are reused in a bounded pool per server process, with rollback before reuse and stale-connection replacement before application SQL. No failed write is replayed. The configured four-thread Render process uses at most eight pooled connections.
 

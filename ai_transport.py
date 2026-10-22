@@ -104,6 +104,17 @@ def discover_model(key, fast=True, exclude=None):
     return None
 
 
+def model_payload(model, payload):
+    """Omit sampling fields deprecated by the newer GenerateContent models."""
+    body = copy.deepcopy(payload)
+    if model in ('gemini-3.5-flash-lite', 'gemini-3.6-flash',
+                 'gemini-3.7-flash', 'gemini-3.8-flash'):
+        config = body.get('generationConfig', {})
+        for field in ('temperature', 'topP', 'topK'):
+            config.pop(field, None)
+    return body
+
+
 def send(post_request, key, model, payload, *, fast=False, stream=False, fallback_payload=None):
     """Recover one invalid model/configuration before output; never retry quota/access failures."""
     key = (key or '').strip("\"' \t\r\n")
@@ -121,7 +132,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
     current = cached[0] if cached else model
     omit_thinking = cached[1] if cached else False
     body = copy.deepcopy(payload)
-    if current != model or omit_thinking:
+    if omit_thinking:
         body.get('generationConfig', {}).pop('thinkingConfig', None)
     deadline = time.monotonic() + (40 if fast else 65)
     def remaining_time():
@@ -130,16 +141,17 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
             raise ProviderError('AI_TIMEOUT', 'The AI service took too long to start. Please retry; your message is kept here.')
         return remaining
 
-    def switch_fast_model():
+    def switch_available_model():
         nonlocal current, omit_thinking, body
         remaining_time()
         candidate = discover_model(key, fast=True, exclude=current) or fallback
         if not candidate or candidate == current or 'flash' not in candidate:
             return False
-        current, omit_thinking = candidate, True
-        if fallback_payload is not None:
+        current, omit_thinking = candidate, fast
+        if fast and fallback_payload is not None:
             body = copy.deepcopy(fallback_payload)
-        body.get('generationConfig', {}).pop('thinkingConfig', None)
+        if omit_thinking:
+            body.get('generationConfig', {}).pop('thinkingConfig', None)
         return True
 
     for attempt in range(2):
@@ -149,9 +161,10 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
         response = None
         try:
             remaining = remaining_time()
-            read_limit = 15 if fast and attempt == 0 else 30 if fast else 45
+            recoverable_lite = current in fast_fallbacks
+            read_limit = 15 if (fast or recoverable_lite) and attempt == 0 else 30 if fast else 45
             connect_limit = min(5, remaining / 2)
-            options = dict(headers={'x-goog-api-key': key}, json=body, timeout=(connect_limit, min(read_limit, remaining - connect_limit)))
+            options = dict(headers={'x-goog-api-key': key}, json=model_payload(current, body), timeout=(connect_limit, min(read_limit, remaining - connect_limit)))
             if stream:
                 options['stream'] = True
             response = post_request(url, **options)
@@ -170,13 +183,13 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
             except (ValueError, AttributeError, TypeError):
                 detail = ''
             # A received 5xx rejection has no response output to replay. Recover once
-            # within the same time budget; never replay ambiguous timeouts or quota.
+                # within the same time budget; never replay output or quota failures.
             retry_value = getattr(rejected, 'headers', {}).get('Retry-After', '')
             retry_delay = retry_after_seconds(rejected) if retry_value else 1
             if attempt == 0 and rejected.status_code in (500, 502, 503, 504) and retry_delay is not None and retry_delay <= 2 and deadline - time.monotonic() > retry_delay + 6:
                 rejected.close()
-                if fast:
-                    switch_fast_model()
+                if fast or recoverable_lite:
+                    switch_available_model()
                 logging.getLogger(__name__).warning('Gemini transient rejection status=%s model=%s fallback=%s fast=%s stream=%s; one bounded retry', rejected.status_code,attempted_model,current,fast,stream)
                 time.sleep(retry_delay)
                 continue
@@ -199,7 +212,7 @@ def send(post_request, key, model, payload, *, fast=False, stream=False, fallbac
                 response.close()
             # Only generation requests that have returned no response may recover.
             # Stream consumption happens outside send(); partial output is never replayed.
-            if fast and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_fast_model():
+            if (fast or recoverable_lite) and attempt == 0 and response is None and deadline - time.monotonic() > 10 and switch_available_model():
                 logging.getLogger(__name__).warning('Gemini startup timeout model=%s fallback=%s fast=%s stream=%s; one bounded alternate-model attempt',attempted_model,current,fast,stream)
                 continue
             logging.getLogger(__name__).warning('Gemini startup timeout model=%s fast=%s stream=%s; recovery exhausted',current,fast,stream)

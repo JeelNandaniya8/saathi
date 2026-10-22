@@ -886,7 +886,8 @@ function scrollToLatest(smooth=true){el.messages.scrollTo({top:el.messages.scrol
 
 function releaseLocalPreviews(message,retained=[]){(message?.attachments||[]).forEach(item=>{if(item.local&&item.url&&!retained.includes(item.url))URL.revokeObjectURL(item.url)})}
 async function sendContent(content,retryFiles=null,retryRequestId=null,modeOverride=null,fileOnlyOverride=null,preserveDraft=false){
-  const entries=retryFiles?retryFiles.map(file=>({file,previewUrl:null})):state.selectedFiles.slice(),files=entries.map(entry=>entry.file);if(state.sending||state.creatingConversation||state.loadingConversation||state.historyError||state.missingAttachmentDraft||state.cancelling||!state.activeId||(!content.trim()&&!files.length))return;
+  const files=retryFiles||state.selectedFiles.map(entry=>entry.file);if(state.sending||state.creatingConversation||state.loadingConversation||state.historyError||state.missingAttachmentDraft||state.cancelling||!state.activeId||(!content.trim()&&!files.length))return;
+  const entries=retryFiles?retryFiles.map(file=>({file,previewUrl:file.type.startsWith('image/')?URL.createObjectURL(file):null})):state.selectedFiles.slice();
   const draft=window.SaathiRecovery?.getDraft('chat',state.activeId);
   const wantedFileOnly=files.length?Boolean(fileOnlyOverride??el.fileOnly.checked):false;
   const reuseDraft=state.draftRequestId&&draft?.content?.trim()===content.trim()&&draft.mode===(modeOverride||el.mode.value||'normal')&&Boolean(draft.file_only)===wantedFileOnly;
