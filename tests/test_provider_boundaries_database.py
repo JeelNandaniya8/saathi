@@ -103,3 +103,61 @@ def test_dated_provider_failure_then_exact_retry_saves_once(db_app, monkeypatch,
     assert c.get('/api/me').json['chat_attachments']['remaining_today'] == (5 if kind == 'map' else 4)
     assert c.get('/api/study-allowance?kind=map').json['allowance']['remaining'] == (1 if kind == 'map' else 2)
     transport.time.sleep.assert_not_called()
+
+
+@pytest.mark.parametrize('stream', [False, True])
+@pytest.mark.parametrize('kind', ['png', 'pdf', 'map'])
+@pytest.mark.parametrize('failure', ['timeout', 'busy'])
+def test_study_lite_recovery_preserves_request_and_commits_once(db_app, monkeypatch, stream, kind, failure):
+    b, c, db = db_app
+    monkeypatch.setattr(transport, '_choices', {})
+    monkeypatch.setattr(transport, 'discover_model', Mock(return_value='gemini-3.1-flash-lite'))
+    monkeypatch.setattr(transport.time, 'sleep', Mock())
+    monkeypatch.setattr(b, 'GEMINI_API_KEY', 'fixture')
+    monkeypatch.setenv('GEMINI_MODEL', 'gemini-3.5-flash-lite')
+    monkeypatch.delenv('GEMINI_FALLBACK_MODEL', raising=False)
+    monkeypatch.setattr(b, 'provider_send', transport.send)
+    text = json.dumps(probability_map()) if kind == 'map' else 'Fixture code read.'
+    result = dict(candidates=[dict(content=dict(parts=[dict(text=text)]), finishReason='STOP')])
+    good = response(200); good.json.return_value = result
+    good.iter_lines.side_effect = lambda **kwargs: iter(['data: ' + json.dumps(result)])
+    first = transport.requests.ReadTimeout() if failure == 'timeout' else response(503)
+    post = Mock(side_effect=[first, good])
+    monkeypatch.setattr(b, 'provider_post', post)
+    cid = c.post('/api/conversations', json={}).json['conversation']['id']
+    key = str(uuid4())
+    path = f'/api/conversations/{cid}/messages' + ('/stream' if stream else '')
+    pdf = io.BytesIO(); writer = PdfWriter(); writer.add_blank_page(width=200, height=200); writer.write(pdf)
+    def request():
+        if kind == 'map':
+            return c.post(path, json=dict(content=REQUEST, mode='normal', request_id=key))
+        if kind == 'png':
+            return upload(c, path, key)
+        return c.post(path, data=dict(content='Read the fixture code.', mode='normal', request_id=key,
+                    file_only='true', attachments=(io.BytesIO(pdf.getvalue()), 'same.pdf')),
+                    content_type='multipart/form-data', buffered=True)
+    saved = request()
+    assert saved.status_code == 200, saved.data
+    body = json.loads(saved.data.splitlines()[-1])['data'] if stream else saved.json
+    assert body['assistant_message']['id']
+    assert post.call_count == 2
+    assert '/gemini-3.5-flash-lite:' in post.call_args_list[0].args[0]
+    assert '/gemini-3.1-flash-lite:' in post.call_args_list[1].args[0]
+    original, recovered = [call.kwargs['json'] for call in post.call_args_list]
+    for field in ('contents', 'systemInstruction'):
+        assert recovered[field] == original[field], 'Do not compact away the original upload or file-only context'
+    replay = request()
+    replayed = json.loads(replay.data.splitlines()[-1])['data'] if stream else replay.json
+    assert replayed['assistant_message']['id'] == body['assistant_message']['id']
+    assert post.call_count == 2, 'A completed replay cannot call either provider again'
+    assert one(db, 'SELECT COUNT(*) n FROM messages')['n'] == 2
+    assert one(db, "SELECT file_only FROM messages WHERE role='user'")['file_only'] is (kind != 'map')
+    assert one(db, 'SELECT COUNT(*) n FROM chat_attachments')['n'] == (0 if kind == 'map' else 1)
+    assert one(db, 'SELECT COUNT(*) n FROM mindmaps')['n'] == (1 if kind == 'map' else 0)
+    assert c.get('/api/me').json['chat_attachments']['remaining_today'] == (5 if kind == 'map' else 4)
+    assert c.get('/api/study-allowance?kind=map').json['allowance']['remaining'] == (1 if kind == 'map' else 2)
+    if kind == 'map':
+        mid = body['assistant_message']['action_receipt']['resource_id']
+        assert c.get('/api/mindmaps/' + str(mid)).json['mindmap']['topic'] == 'Audit18C Probability'
+    else:
+        assert one(db, 'SELECT original_name FROM chat_attachments')['original_name'] == 'same.' + kind

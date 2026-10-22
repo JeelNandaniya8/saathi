@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const source=fs.readFileSync('chat.html','utf8'),drafts=new Map();
 const recovery={getDraft:(_,id)=>drafts.get(id),saveDraft:(_,id,data)=>drafts.set(id,data),removeDraft:(_,id)=>drafts.delete(id)};
 let sent;
-const ctx={window:{SaathiRecovery:recovery},Date,FormData,requestId:()=> 'new-request',
+const ctx={window:{SaathiRecovery:recovery},Date,FormData,URL:{createObjectURL:()=> 'blob:recovered-image'},requestId:()=> 'new-request',
   state:{activeId:1,sending:false,messages:[],selectedFiles:[],chatModes:[{id:'normal'}],conversations:[{id:1,title:'Existing'}]},
   el:{input:{value:'',focus(){}},mode:{value:'normal'},fileOnly:{checked:false},chatTitle:{},uploadStatus:{}},
   createStreamPainter:()=>({update(){},cancel(){}}),
@@ -46,5 +46,12 @@ vm.runInContext(source.slice(source.indexOf('async function sendContent('),sourc
     for(const body of attempts){assert.equal(body.get('content'),text.trim());assert.equal(body.get('mode'),'normal');assert.equal(body.get('file_only'),'true');assert.equal(await body.get('attachments').text(),'INDIGO-471');assert.equal(body.get('attachments').name,file.name)}
     assert.equal(ctx.state.messages.length,2);assert.equal(drafts.has(1),false);
   }
+  const {File}=require('node:buffer'),png=new File(['INDIGO-471'],'same.png',{type:'image/png'});
+  ctx.el.input.value='';ctx.state.selectedFiles=[];ctx.state.messages=[];
+  ctx.streamChatRequest=async()=>{throw Object.assign(Error('Timeout'),{code:'AI_TIMEOUT'})};
+  await ctx.sendContent('Keep the image preview',[png],'original-request','normal',true);
+  assert.equal(ctx.state.selectedFiles[0].file,png);
+  assert.equal(ctx.state.selectedFiles[0].previewUrl,'blob:recovered-image','A recovered PNG must keep its image preview instead of a PDF badge');
+  assert.equal(ctx.el.fileOnly.checked,true);
   console.log('PASS: chat draft restore, unchanged retry IDs, edited request IDs, no duplicate saved exchange and failed-send recovery');
 })().catch(error=>{console.error(error);process.exitCode=1});
