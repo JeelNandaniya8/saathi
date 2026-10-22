@@ -37,6 +37,12 @@ for(const lang of ['en','gu','hi'])for(const [kind,view] of Object.entries({note
   await ctx.openLinkedRecord(kind,[{id:7,title:'Another record'}]);assert.deepEqual(opened,[42]);assert.ok(calls[0].endsWith('?id=42'),'A truncated or filtered list cannot redirect the link to another record');
  }
  console.log('PASS exact receipt destinations in EN/GU/HI and owned ID recovery beyond loaded lists');
+ for(const kind of ['task','reminder']){
+  const calls=[],opened=[],record={id:501,title:'Exact older saved record'},ctx={URLSearchParams,location:{search:'?'+kind+'=501'},state:{tasks:[]},api:async url=>{calls.push(url);return {[kind]:record}},toast:()=>assert.fail('Read the owned exact record'),editReminder:r=>opened.push(r.id),renderTasks:()=>opened.push(ctx.state.tasks[0].id),document:{querySelector:()=>null}};
+  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('async function openLinkedRecord('),source.indexOf('function openView(')),ctx);
+  await ctx.openLinkedRecord(kind,[{id:7,title:'Another record'}]);
+  assert.deepEqual(calls,['/api/'+(kind==='task'?'tasks':'reminders')+'/501']);assert.deepEqual(opened,[501]);
+ }
 })().catch(e=>{console.error(e);process.exitCode=1});
 
 // Error codes and persisted provider errors use native critical UI copy.

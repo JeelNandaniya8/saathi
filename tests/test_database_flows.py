@@ -215,7 +215,8 @@ def test_reminder_create_retry_does_not_duplicate_or_overwrite_and_is_owner_scop
     assert retry.json['reminder']['id'] == first.json['reminder']['id']
     assert one(db, 'SELECT COUNT(*) n FROM reminders')['n'] == 1
     changed = c.post('/api/reminders', json={**payload, 'title': 'Do not overwrite'})
-    assert changed.json['reminder']['title'] == 'Optional check-in'
+    assert changed.status_code == 409
+    assert c.get('/api/reminders/'+str(first.json['reminder']['id'])).json['reminder']['title'] == 'Optional check-in'
     with c.session_transaction() as session:
         session['user_id'] = 2
     other = c.post('/api/reminders', json=payload)

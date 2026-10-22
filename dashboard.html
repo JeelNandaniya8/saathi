@@ -670,7 +670,7 @@ html[data-text-size="large"] body :is(input,textarea,select){max-width:100%}
 </nav>
 <canvas id="confettiCanvas"></canvas>
 
-<script src="/i18n.js?v=20261021a"></script>
+<script src="/i18n.js?v=20261022save"></script>
 <script src="/lazy-tools.js?v=20261020b"></script>
 <script src="/workspace-hub.js?v=20261021a"></script>
 <script src="/recovery.js?v=20261019a"></script>
@@ -723,13 +723,13 @@ async function openLinkedRecord(kind,items=[]){
  state.linkedResourceHandled??=new Set();if(state.linkedResourceHandled.has(kind))return;
  state.linkedResourceHandled.add(kind);const id=Number(raw);
  if(kind==='mindmap')return loadSavedMindmap(id);
- let record=items.find(item=>item.id===id);if(!record&&['habit','journal','checkin'].includes(kind)){try{const config={habit:['/api/habits','habits'],journal:['/api/journal','entries'],checkin:['/api/check-ins','check_ins']}[kind],data=await api(config[0]+'?id='+id);record=data[config[1]]?.find(item=>item.id===id)}catch(error){state.linkedResourceHandled.delete(kind);toast(error.message,'error');return}}if(!record){toast('This saved item is no longer available.','error');return}
+ let record=items.find(item=>item.id===id);if(!record&&['task','reminder'].includes(kind)){try{const data=await api('/api/'+(kind==='task'?'tasks':'reminders')+'/'+id);if(data[kind]?.id===id)record=data[kind]}catch(error){state.linkedResourceHandled.delete(kind);toast(error.message,'error');return}}if(!record&&['habit','journal','checkin'].includes(kind)){try{const config={habit:['/api/habits','habits'],journal:['/api/journal','entries'],checkin:['/api/check-ins','check_ins']}[kind],data=await api(config[0]+'?id='+id);record=data[config[1]]?.find(item=>item.id===id)}catch(error){state.linkedResourceHandled.delete(kind);toast(error.message,'error');return}}if(!record){toast('This saved item is no longer available.','error');return}
  if(kind==='habit'){editHabit(record);return}
  if(kind==='journal'){editJournal(record);return}
  if(kind==='checkin'){let row=document.querySelector('[data-record-kind="checkin"][data-record-id="'+id+'"]');if(!row){row=checkinItem(record);$('checkinList').prepend(row)}row.tabIndex=-1;row.style.outline='2px solid var(--gold)';requestAnimationFrame(()=>{row.scrollIntoView({block:'center'});row.focus({preventScroll:true})});return}
  if(kind==='memory'){openMemory(record);return}
  if(kind==='reminder'){editReminder(record);return}
- state.taskFilter=record.completed?'done':'open';renderTasks();
+ state.tasks=[record,...(state.tasks||[]).filter(item=>item.id!==id)];state.taskFilter=record.completed?'done':'open';renderTasks();
  const row=document.querySelector('[data-record-kind="task"][data-record-id="'+id+'"]');
  if(row){row.tabIndex=-1;row.style.outline='2px solid var(--gold)';requestAnimationFrame(()=>{row.scrollIntoView({block:'center'});row.focus({preventScroll:true})})}
 }
@@ -847,7 +847,9 @@ $('taskForm').addEventListener('submit',async event=>{
   state.taskSaving=true;button.disabled=true;form.setAttribute('aria-busy','true');
   try{
     const payload={...draft,due_at:localInputToIso(draft.due_at)};
+    if(!id){const key=JSON.stringify(draft);if(state.taskCreateDraft!==key){state.taskCreateDraft=key;state.taskCreateId=crypto.randomUUID()}payload.client_id=state.taskCreateId}
     const data=await api('/api/tasks'+(id?'/'+id:''),{method:id?'PATCH':'POST',body:JSON.stringify(id?payload:payload)});
+    if(!id){state.taskCreateDraft=null;state.taskCreateId=null}
     state.tasks=[data.task,...state.tasks.filter(item=>item.id!==data.task.id)];
     state.overview.pending_tasks=state.tasks.filter(item=>!item.completed).length;
     if(state.taskEditingId===id){

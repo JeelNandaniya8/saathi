@@ -1,5 +1,16 @@
 /* Hindi interface copy. User writing and AI answers remain excluded. */
 window.SaathiI18n.register({
+  "This local time is ambiguous or unavailable. Choose another time.": "यह स्थानीय समय अस्पष्ट या उपलब्ध नहीं है। दूसरा समय चुनें।",
+  "Choose a valid date and time.": "मान्य तारीख और समय चुनें।",
+  "Saved item could not be verified. Your draft is kept. Retry to check the same request.": "सेव की गई चीज़ की पुष्टि नहीं हो सकी। आपका ड्राफ़्ट रखा है। उसी अनुरोध की जाँच के लिए फिर कोशिश करें।",
+  "Task added to your Planner.": "आपके प्लानर में काम जोड़ा गया।",
+  "Reminder created.": "रिमाइंडर बनाया गया।",
+  "View or edit": "देखें या बदलें",
+  "That task request was already used for different details.": "इस काम का अनुरोध पहले ही अलग विवरण के लिए इस्तेमाल हो चुका है।",
+  "That reminder request was already used for different details.": "इस रिमाइंडर का अनुरोध पहले ही अलग विवरण के लिए इस्तेमाल हो चुका है।",
+  "Use a task object.": "काम का मान्य विवरण दें।",
+  "Use a valid task request ID.": "काम के अनुरोध का मान्य ID दें।",
+  "Use a valid reminder request ID.": "रिमाइंडर के अनुरोध का मान्य ID दें।",
   "Explain simply": "आसान भाषा में समझाएँ",
   "Deep study": "गहराई से पढ़ाई",
   "Summarise": "सारांश दें",

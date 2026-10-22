@@ -18,10 +18,11 @@ function setup(kind){
   t.pending[0].resolve({[kind]:{id:1,title:'Saved',active:true}});await p;
   assert.equal(t.state[t.plural].find(x=>x.id===2).title,'Other');assert.equal(t.$(kind+'Title').value,'Editing other');
   assert.equal(t.$(kind+'Submit').disabled,false);
-  if(kind==='reminder'){
-   t=setup(kind);t.state.reminderEditingId=null;p=t.submit();const firstId=JSON.parse(t.pending[0].options.body).client_id;
+  {
+   t=setup(kind);t.state[kind+'EditingId']=null;p=t.submit();const firstId=JSON.parse(t.pending[0].options.body).client_id;
+   assert.match(firstId||'',/^[0-9a-f-]{36}$/,'New records need a stable retry identity');
    t.pending[0].reject(Error('Response lost'));await p;p=t.submit();assert.equal(JSON.parse(t.pending[1].options.body).client_id,firstId,'Unchanged retry reuses the request ID');
-   t.pending[1].reject(Error('Offline'));await p;t.$('reminderTitle').value='Changed request';p=t.submit();assert.notEqual(JSON.parse(t.pending[2].options.body).client_id,firstId);t.pending[2].resolve({reminder:{id:3,title:'Changed request'}});await p;
+   t.pending[1].reject(Error('Offline'));await p;t.$(kind+'Title').value='Changed request';p=t.submit();assert.notEqual(JSON.parse(t.pending[2].options.body).client_id,firstId);t.pending[2].resolve({[kind]:{id:3,title:'Changed request'}});await p;
   }
   // New text typed in the same entry survives an earlier save.
   t=setup(kind);p=t.submit();t.$(kind+'Title').value='New unsaved edit';t.pending[0].resolve({[kind]:{id:1,title:'Saved'}});await p;assert.equal(t.$(kind+'Title').value,'New unsaved edit');
