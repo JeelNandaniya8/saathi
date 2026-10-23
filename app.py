@@ -3134,9 +3134,11 @@ def ndjson_event(event_type, **payload):
 
 @app.route("/api/conversations/<int:conversation_id>/messages/stream", methods=["POST"])
 def stream_conversation_message(conversation_id):
+    startup_started = monotonic()
     user_id = require_user_id()
     if not user_id:
         return jsonify({"error": "Please log in first.", "login_required": True}), 401
+    authenticated_at = monotonic()
 
     if request.mimetype == "multipart/form-data":
         data = request.form
@@ -3144,10 +3146,12 @@ def stream_conversation_message(conversation_id):
     else:
         data = request.get_json(force=True, silent=True) or {}
         uploaded_files = []
+    input_ready_at = monotonic()
     snapshot_key=str(data.get('request_id') or '').strip() or None
     conn = get_db()
     cur = conn.cursor()
     conversation = chat_conversation_snapshot(cur, conversation_id, user_id, snapshot_key)
+    snapshot_ready_at = monotonic()
     if not conversation:
         cur.close()
         conn.close()
@@ -3167,6 +3171,7 @@ def stream_conversation_message(conversation_id):
         cur.close()
         conn.close()
         return jsonify({"error": str(error)}), 400
+    attachments_ready_at = monotonic()
     content = str(data.get("content") or "").strip()
     file_only_value = data.get("file_only", False)
     file_only = (
@@ -3226,6 +3231,7 @@ def stream_conversation_message(conversation_id):
     pending_scope = chat_intents.continuation(recent, content)
     if pending_scope:mode=chat_intents.mode(pending_scope,mode)
     turn_context = (pending_scope + "\n" + content) if pending_scope else content
+    checks_ready_at = monotonic()
     # Reuse this connection for context, then release it before streaming.
     try:
         language = load_user_language(user_id, cur)
@@ -3236,12 +3242,26 @@ def stream_conversation_message(conversation_id):
     finally:
         cur.close()
         conn.close()
+    context_ready_at = monotonic()
 
     is_first_user_message = not any(row["role"] == "user" for row in recent)
     context = [{"role": row["role"], "content": row["content"]} for row in recent]
     context.append({"role": "user", "content": content, "attachments": attachments})
 
     local_reference=None if direct or file_only else study_reference.answer(context,language,mode)
+    prepared_at = monotonic()
+    # Durations only: never log prompts, file names, account IDs or request IDs.
+    boundaries = (startup_started, authenticated_at, input_ready_at,
+                  snapshot_ready_at, attachments_ready_at, checks_ready_at,
+                  context_ready_at, prepared_at)
+    stages = ('auth', 'input', 'snapshot', 'attachments', 'checks', 'context', 'reference')
+    startup_metrics = {name: round((end - start) * 1000, 1)
+                       for name, start, end in zip(stages, boundaries, boundaries[1:])}
+    timing = app.logger.getChild('ai_timing')
+    timing.setLevel('INFO')
+    timing.info('chat_startup_timing %s ready_ms=%.1f attachments=%s file_only=%s',
+                ' '.join(f'{name}_ms={duration}' for name, duration in startup_metrics.items()),
+                (prepared_at - startup_started) * 1000, len(attachments), file_only)
 
     @stream_with_context
     def generate():
@@ -3307,6 +3327,8 @@ def stream_conversation_message(conversation_id):
             "Cache-Control": "no-store, no-transform",
             "X-Accel-Buffering": "no",
             "Content-Encoding": "identity",
+            "Server-Timing": ', '.join(f'chat_{name};dur={duration}'
+                                      for name, duration in startup_metrics.items()),
         },
     )
 
