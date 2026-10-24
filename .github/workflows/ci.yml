@@ -75,7 +75,7 @@ jobs:
 
       - name: Keep synthetic UI review images
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: workspace-ui-review
           path: artifacts/ui
