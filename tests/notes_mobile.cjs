@@ -32,7 +32,7 @@ module.exports=async(page,width,base,baseline=false)=>{
     await notes.locator('[data-qn="content"]').press('Tab');
     assert.equal(await page.evaluate(()=>document.activeElement.dataset.qn),'save','Keyboard can reach Save directly from the note');
     assert.equal(await notes.locator('[data-qn="content"]').inputValue(),draft,'Scrolling/focus retains exact draft');
-    const failSave=route=>route.request().method()==='PUT'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Fixture network failure'})}):route.fallback();
+    const failSave=route=>route.request().method()==='PATCH'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Fixture network failure'})}):route.fallback();
     await page.route('**/api/quick-notes/3',failSave);
     await notes.locator('[data-qn="save"]').click();
     await notes.locator('.qn-status.error').waitFor();
@@ -43,6 +43,7 @@ module.exports=async(page,width,base,baseline=false)=>{
     await page.waitForFunction(()=>document.querySelector('[data-qn="status"]').textContent===SaathiI18n.t('Saved to your account.'));
     assert.ok(await notes.locator('[data-qn="status"]').isVisible(),'Save feedback remains in view');
    }
+   if(baseline&&await notes.locator('[data-qn="discard"]').isVisible())await notes.locator('[data-qn="discard"]').click();
    await page.keyboard.press('Escape');
   }
  }
