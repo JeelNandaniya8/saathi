@@ -280,8 +280,8 @@ html:is([lang="gu"],[lang="hi"]) .study-desk :is(.workspace-hero h1,.focus-card 
 /* Notes keeps capture/save primary and occasional tools in a named disclosure. */
 .study-desk .qn-toolbar { align-items: center; }
 .study-desk .qn-toolbar>[data-qn=new] { order: 1; }
-.study-desk .qn-toolbar>[data-qn=search] { order: 2; flex: 1; margin-inline-start: auto; }
-.study-desk .qn-more { position: relative; order: 3; }
+.study-desk .qn-toolbar>[data-qn=search] { order: 3; flex: 1; margin-inline-start: auto; }
+.study-desk .qn-more { position: relative; order: 2; }
 .study-desk .qn-more>summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 9px; font-size: 13px; color: var(--muted); cursor: pointer; list-style: none; }
 .study-desk .qn-more>summary::-webkit-details-marker { display: none; }
 .study-desk .qn-more>summary::after { content: '⌄'; }
@@ -366,3 +366,5 @@ html:lang(gu) body.study-desk :is(h1,h2,h3),html:lang(hi) body.study-desk :is(h1
 .chat-polish.study-desk .composer textarea:focus-visible { outline:none; }
 body.study-desk :is(h1,h2)[tabindex="-1"]:focus { outline:none; }
 body.study-desk .quick-notes-dialog .qn-editor input { font-size:clamp(19px,2vw,23px); font-weight:500; }
+
+@media(max-width:540px) and (max-height:600px){.study-desk .qn-header p{display:none}.study-desk .qn-note :is(span,small){display:none}}

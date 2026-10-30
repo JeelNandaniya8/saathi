@@ -115,6 +115,7 @@ const task={id:1,title:'Search',details:'Saved user writing',priority:'high',com
     const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'};
     return route.fulfill({contentType:types[path.extname(local)]||'application/octet-stream',body:fs.readFileSync(local)});
    });
+   if(process.env.SAATHI_NOTES_REVIEW){await require('./notes_mobile.cjs')(page,width,base,true);await require('./notes_mobile.cjs')(page,width,base);await context.close();assert.deepEqual(errors,[]);continue}
    if(process.env.SAATHI_UI_REVIEW){await require('./workspace_ui.cjs')(page,width,base);await context.close();assert.deepEqual(errors,[],'No uncaught errors during UI review');continue}
    await page.goto(base+'/dashboard');
    await page.locator('#todayTasks .hub-task-title').waitFor();
