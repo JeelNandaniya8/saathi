@@ -14,6 +14,9 @@ source permissions, attachment/retry controllers and saved-object handlers stay.
 - The first Chromium run also caught shared workspace search competing for
   that shortcut. Chat now owns History search; Dashboard keeps workspace search,
   and Chat's explicit workspace search button stays available.
+- Screenshot review found the 520px-high drawer shrinking its saved list to
+  almost nothing. Retain a 128px list region and let the whole drawer scroll;
+  keep all controls and verify a saved conversation has a visible 44px target.
 - Repeated assignment-detail follow-ups lost the original user-selected title
   in English, Gujarati and Hindi (three failing tests). English became an
   ambiguous generic assignment reference; Gujarati/Hindi left the local reader.

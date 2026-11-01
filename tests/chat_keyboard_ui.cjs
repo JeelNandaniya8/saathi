@@ -25,6 +25,12 @@ module.exports=async(page,width,base)=>{
    assert.equal(await page.locator('#sidebar').getAttribute('role'),'dialog');
    assert.equal(await page.locator('#sidebar').getAttribute('aria-modal'),'true');
    assert.ok(await page.locator('.main').evaluate(node=>node.inert));
+   if(width<=390){
+    const list=await page.locator('#history').boundingBox();
+    const row=await page.locator('#history .conversation-main').first().boundingBox();
+    assert.ok(list.height>=96,'Short History retains a usable list area');
+    assert.ok(row&&Math.min(row.y+row.height,list.y+list.height,520)-Math.max(row.y,list.y,0)>=44,'A saved conversation has a visible full touch target');
+   }
    const ends=await page.locator('#sidebar').evaluate(side=>{
     const nodes=[...side.querySelectorAll('a[href],button,input,select,textarea,[tabindex]')].filter(node=>!node.disabled&&node.tabIndex>=0&&node.getClientRects().length&&!node.closest('[inert]'));
     nodes[nodes.length-1].focus();return {first:nodes[0].outerHTML,last:nodes[nodes.length-1].outerHTML};
