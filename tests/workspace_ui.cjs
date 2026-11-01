@@ -188,5 +188,7 @@ module.exports=async function reviewUI(page,width,base){
   await page.setViewportSize({width,height:900});
  }
  await page.evaluate(()=>{SaathiTheme.apply('light');return SaathiI18n.setLanguage('en')});
+ await require('./notes_mobile.cjs')(page,width,base,true);
+ await require('./notes_mobile.cjs')(page,width,base);
  console.log(`PASS: UI ${width}px, 13 workspace views, light/dark map contrast, EN/GU/HI chat, short mobile viewport`);
 };
