@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-10-20-workspace-ui"
+RELEASE_ID = "2026-11-01-trust-polish"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -1155,18 +1155,22 @@ def internal_server_error(_error):
 
 @app.route("/api/health")
 def health():
+    # A release name alone cannot distinguish two deploys of the same release.
+    revision = os.environ.get("RENDER_GIT_COMMIT", "")
+    metadata = {"release": RELEASE_ID,
+                "revision": revision.lower() if re.fullmatch(r"[0-9a-fA-F]{40}", revision) else None}
     if not DATABASE_URL:
-        return jsonify({"status": "configuration_required", "release": RELEASE_ID}), 503
+        return jsonify({"status": "configuration_required", **metadata}), 503
     try:
         conn = get_db()
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.close()
         conn.close()
-        return jsonify({"status": "ok", "release": RELEASE_ID})
+        return jsonify({"status": "ok", **metadata})
     except Exception:
         app.logger.exception("Health check failed")
-        return jsonify({"status": "unavailable", "release": RELEASE_ID}), 503
+        return jsonify({"status": "unavailable", **metadata}), 503
 
 
 @app.route("/api/support", methods=["POST"])

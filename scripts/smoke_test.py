@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-EXPECTED_RELEASE = "2026-10-20-workspace-ui"
+EXPECTED_RELEASE = "2026-11-01-trust-polish"
 
 
 def fetch(base_url, path, timeout):
@@ -23,7 +23,7 @@ def fetch(base_url, path, timeout):
         return error.code, error.read(), error.headers
 
 
-def run(base_url, timeout, expected_release=EXPECTED_RELEASE):
+def run(base_url, timeout, expected_release=EXPECTED_RELEASE, expected_revision=None):
     failures = []
 
     for path in ("/", "/privacy", "/terms", "/limitations", "/support"):
@@ -44,6 +44,11 @@ def run(base_url, timeout, expected_release=EXPECTED_RELEASE):
         failures.append(
             f"/api/health returned release={health.get('release')!r}, "
             f"expected {expected_release!r}"
+        )
+    if expected_revision and health.get("revision") != expected_revision:
+        failures.append(
+            f"/api/health returned revision={health.get('revision')!r}, "
+            f"expected {expected_revision!r}"
         )
 
     status, body, _headers = fetch(base_url, "/api/plans", timeout)
@@ -71,9 +76,10 @@ def main():
         default=EXPECTED_RELEASE,
         help="Release ID expected from /api/health (use an empty value to skip this check)",
     )
+    parser.add_argument("--expected-revision", help="Exact deployed Git SHA expected from /api/health")
     args = parser.parse_args()
     try:
-        failures = run(args.base_url, args.timeout, args.expected_release)
+        failures = run(args.base_url, args.timeout, args.expected_release, args.expected_revision)
     except (URLError, TimeoutError) as error:
         print(f"Smoke test could not connect: {error}", file=sys.stderr)
         return 1

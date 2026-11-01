@@ -146,13 +146,19 @@ def classroom_read(text):
 
 
 def classroom_request(messages):
-    """Resolve a short follow-up from user turns, never from assistant prose."""
+    """Resolve bounded consecutive follow-ups from user turns, never AI prose."""
     if not messages or messages[-1].get('attachments'):return {}
     text=command(messages[-1].get('content'))
     query=classroom_read(text);detail=bool(classroom_detail(text));reference=''
-    if len(messages)>=3 and messages[-2].get('role')=='assistant' and messages[-3].get('role')=='user' and not messages[-3].get('attachments'):
-        previous=messages[-3].get('content','')
+    # Generic follow-ups do not replace the original user-selected title.
+    # Stop at any unrelated turn, refusal, attachment or non-dialogue row.
+    for index in range(len(messages)-3, max(-1, len(messages)-13), -2):
+        prior=messages[index]
+        if messages[index+1].get('role')!='assistant' or prior.get('role')!='user' or prior.get('attachments'):break
+        previous=prior.get('content','')
+        if classroom_detail(previous,contextual=True) and classroom_referential(previous):continue
         if classroom_read(previous):reference=previous
+        break
     if not query and reference and classroom_detail(text,contextual=True):query=text;detail=True
     if not query:return {}
     return dict(classroom_query=query,classroom_detail=detail,classroom_reference=reference if detail else '')

@@ -368,3 +368,10 @@ body.study-desk :is(h1,h2)[tabindex="-1"]:focus { outline:none; }
 body.study-desk .quick-notes-dialog .qn-editor input { font-size:clamp(19px,2vw,23px); font-weight:500; }
 
 @media(max-width:540px) and (max-height:600px){.study-desk .qn-header p{display:none}.study-desk .qn-note :is(span,small){display:none}}
+
+/* Short screens must leave a usable History list, rather than shrink it away. */
+@media(max-width:900px) and (max-height:600px){
+ .chat-polish.study-desk .sidebar{overflow-y:auto;overscroll-behavior:contain}
+ .chat-polish.study-desk .sidebar>*{flex-shrink:0}
+ .chat-polish.study-desk .sidebar .history{flex:1 0 128px;min-height:128px}
+}

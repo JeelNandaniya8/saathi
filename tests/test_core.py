@@ -233,12 +233,23 @@ def test_health_reports_release_without_exposing_configuration(backend, monkeypa
 
     monkeypatch.setattr(backend, "DATABASE_URL", "configured")
     monkeypatch.setattr(backend, "get_db", lambda: Connection())
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "ABCDEF1234" * 4)
     response = backend.app.test_client().get("/api/health")
     assert response.status_code == 200
     assert response.get_json() == {
         "status": "ok",
         "release": backend.RELEASE_ID,
+        "revision": "abcdef1234" * 4,
     }
+
+
+@pytest.mark.parametrize("revision", ["", "private-invalid-value", "a" * 39, "a" * 41])
+def test_health_does_not_echo_arbitrary_revision_configuration(backend, monkeypatch, revision):
+    monkeypatch.setattr(backend, "DATABASE_URL", None)
+    monkeypatch.setenv("RENDER_GIT_COMMIT", revision)
+    response = backend.app.test_client().get("/api/health")
+    assert response.status_code == 503
+    assert response.json == {"status": "configuration_required", "release": backend.RELEASE_ID, "revision": None}
 
 
 @pytest.mark.parametrize(
