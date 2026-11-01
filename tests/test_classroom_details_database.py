@@ -63,9 +63,12 @@ def test_named_and_contextual_details_persist_with_sources_and_replay_without_ai
     assert readback['content'] == reply and readback['id'] == result['assistant_message']['id']
     next_reply = request(client, cid, followup, stream, str(uuid4()))['assistant_message']['content']
     assert heading in next_reply and 'synthetic passage' in next_reply
+    repeated = request(client, cid, followup, stream, str(uuid4()))['assistant_message']
+    assert heading in repeated['content'] and 'synthetic passage' in repeated['content']
+    assert client.get(f'/api/conversations/{cid}/messages').json['messages'][-1]['id'] == repeated['id']
     assert client.post(f'/api/conversations/{cid}/regenerate', json={'request_id': str(uuid4())}).status_code == 409
     assert len(calls) == 2
-    assert one(connect, 'SELECT COUNT(*) n FROM messages WHERE conversation_id=%s', (cid,))['n'] == 6
+    assert one(connect, 'SELECT COUNT(*) n FROM messages WHERE conversation_id=%s', (cid,))['n'] == 8
     assert one(connect, 'SELECT COUNT(*) n FROM ai_usage_events')['n'] == 0
     for table in ['tasks', 'reminders', 'quick_notes']:
         assert one(connect, 'SELECT COUNT(*) n FROM ' + table)['n'] == 0

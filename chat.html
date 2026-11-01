@@ -531,7 +531,24 @@ let toastTimer;
 function toastTone(message,tone){if(tone&&tone!=='auto')return tone;const copy=String(message||'').toLowerCase();if(/error|wrong|could not|cannot|failed|unavailable|not supported|log in/.test(copy))return'error';if(/deleted|removed|saved|added|updated|created|enabled|accepted|changed|copied|pinned|archived|restored|export ready/.test(copy))return'success';if(/stopped|permission|expired|warning|blocked/.test(copy))return'warning';return'info'}
 function showToast(message,tone='auto',href=null){clearTimeout(toastTimer);const kind=toastTone(message,tone);el.toast.className='toast '+kind;document.getElementById('toastIcon').textContent={success:'✓',warning:'!',error:'×',info:'i'}[kind];const copy=document.getElementById('toastMessage');copy.textContent=window.SaathiI18n?.t(message)||message;if(href&&/^\/dashboard\?(task|reminder)=[1-9]\d*#(tasks|reminders)$/.test(href)){const link=document.createElement('a');link.href=href;link.textContent=window.SaathiI18n?.t('View or edit')||'View or edit';link.style.color='inherit';link.style.textDecoration='underline';copy.append(' ',link);link.onfocus=()=>clearTimeout(toastTimer);link.onblur=()=>{toastTimer=setTimeout(()=>el.toast.classList.remove('show'),3200)}}el.toast.setAttribute('role',kind==='error'?'alert':'status');el.toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');requestAnimationFrame(()=>el.toast.classList.add('show'));toastTimer=setTimeout(()=>el.toast.classList.remove('show'),href?10000:3200)}
 const chatSidebarMedia=matchMedia('(max-width:900px)');
-function setChatSidebar(open){const mobile=chatSidebarMedia.matches;el.sidebar.hidden=!open;el.sidebar.inert=!open;el.sidebar.classList.toggle('open',open);document.querySelector('.app').classList.toggle('sidebar-collapsed',!open);el.scrim.classList.toggle('show',mobile&&open);document.getElementById('openSidebar').setAttribute('aria-expanded',String(open));document.querySelector('.main').inert=mobile&&open}
+function setChatSidebar(open,moveFocus=false){
+  const mobile=chatSidebarMedia.matches,hadFocus=el.sidebar.contains(document.activeElement),trigger=document.getElementById('openSidebar');
+  el.sidebar.hidden=!open;el.sidebar.inert=!open;el.sidebar.classList.toggle('open',open);
+  document.querySelector('.app').classList.toggle('sidebar-collapsed',!open);el.scrim.classList.toggle('show',mobile&&open);
+  trigger.setAttribute('aria-expanded',String(open));document.querySelector('.main').inert=mobile&&open;
+  if(mobile&&open){el.sidebar.setAttribute('role','dialog');el.sidebar.setAttribute('aria-modal','true')}
+  else{el.sidebar.removeAttribute('role');el.sidebar.removeAttribute('aria-modal')}
+  if(open&&moveFocus)document.getElementById('closeSidebar').focus();
+  else if(!open&&hadFocus)trigger.focus();
+}
+// The mobile History drawer is modal; keep keyboard focus with its controls.
+el.sidebar.addEventListener('keydown',event=>{
+  if(event.key!=='Tab'||!chatSidebarMedia.matches||el.sidebar.hidden)return;
+  const controls=Array.from(el.sidebar.querySelectorAll('a[href],button,input,select,textarea,[tabindex]')).filter(node=>!node.disabled&&node.tabIndex>=0&&node.getClientRects().length&&!node.closest('[inert]'));
+  const first=controls[0],last=controls[controls.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
+});
 function closeSide(){if(chatSidebarMedia.matches)setChatSidebar(false)}
 function openSide(){setChatSidebar(true)}
 chatSidebarMedia.addEventListener('change',()=>setChatSidebar(!chatSidebarMedia.matches));setChatSidebar(!chatSidebarMedia.matches);
@@ -1011,7 +1028,7 @@ function applyTheme(theme){SaathiTheme.apply(theme)}
 function toggleTheme(){SaathiTheme.toggle()}
 
 document.getElementById('newChat').addEventListener('click',createConversation);
-document.getElementById('openSidebar').addEventListener('click',()=>setChatSidebar(el.sidebar.hidden));document.getElementById('closeSidebar').addEventListener('click',()=>{setChatSidebar(false);document.getElementById('openSidebar').focus()});document.getElementById('searchConversations').onclick=()=>el.search.focus();el.scrim.addEventListener('click',closeSide);
+document.getElementById('openSidebar').addEventListener('click',()=>setChatSidebar(el.sidebar.hidden,true));document.getElementById('closeSidebar').addEventListener('click',()=>{setChatSidebar(false);document.getElementById('openSidebar').focus()});document.getElementById('searchConversations').onclick=()=>el.search.focus();el.scrim.addEventListener('click',closeSide);
 el.attach.addEventListener('click',()=>el.fileInput.click());el.fileInput.addEventListener('change',()=>chooseFiles(el.fileInput.files));
 el.mode.addEventListener('change',updateModeDescription);
 ['dragenter','dragover'].forEach(type=>el.composer.addEventListener(type,event=>{event.preventDefault();if(!state.sending)el.composer.classList.add('dragging')}));
@@ -1019,7 +1036,7 @@ el.composer.addEventListener('dragleave',event=>{if(!el.composer.contains(event.
 el.composer.addEventListener('drop',event=>{event.preventDefault();el.composer.classList.remove('dragging');if(!state.sending)chooseFiles(event.dataTransfer?.files)});
 el.input.addEventListener('paste',event=>{const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);if(files.length){event.preventDefault();chooseFiles(files)}});
 el.fileOnly.addEventListener('change',()=>{state.draftRequestId=null;saveChatDraft()});
-el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){stopCurrentRequest();return}if(!state.cancelling)sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
+el.composer.addEventListener('submit',event=>{event.preventDefault();if(state.sending){stopCurrentRequest();return}if(!state.cancelling)sendContent(el.input.value)});el.input.addEventListener('input',()=>{state.draftRequestId=null;updateComposer();saveChatDraft()});window.addEventListener('pagehide',saveChatDraft);el.input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!event.shiftKey&&!state.sending){event.preventDefault();el.composer.requestSubmit()}});
 el.search.addEventListener('input',()=>{historyLoadSequence++;el.searchWrap.classList.toggle('has-value',Boolean(el.search.value));clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>loadConversations(el.search.value.trim()),260)});
 document.getElementById('searchClear').addEventListener('click',()=>{el.search.value='';el.searchWrap.classList.remove('has-value');loadConversations();el.search.focus()});
 document.getElementById('archiveToggle').addEventListener('click',()=>{if(state.sending)return;state.showArchived=!state.showArchived;state.activeId=null;state.messages=[];state.hasMore=false;updateComposer();document.getElementById('archiveToggle').classList.toggle('active',state.showArchived);document.getElementById('archiveLabel').textContent=state.showArchived?'Back to conversations':'Archived conversations';loadConversations()});
@@ -1028,7 +1045,7 @@ document.getElementById('pinAction').addEventListener('click',()=>updateConversa
 document.getElementById('taskForm').addEventListener('submit',saveTask);document.getElementById('reminderForm').addEventListener('submit',saveReminder);
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.close).close()));
 document.addEventListener('click',event=>{if(!el.conversationMenu.contains(event.target))closeConversationMenu();if(!el.accountMenu.contains(event.target)&&event.target.id!=='accountMenuButton')el.accountMenu.classList.remove('open')});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeSide();if('speechSynthesis'in window)window.speechSynthesis.cancel()}if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='o'){event.preventDefault();createConversation()}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();el.search.focus();openSide()}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!event.defaultPrevented&&!document.querySelector('dialog[open]'))closeSide();if('speechSynthesis'in window)window.speechSynthesis.cancel()}if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='o'){event.preventDefault();createConversation()}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();if(!document.querySelector('dialog[open]')){openSide();el.search.focus()}}});
 window.addEventListener('pagehide',()=>{clearInterval(state.revealTimer);if('speechSynthesis'in window)speechSynthesis.cancel();state.selectedFiles.forEach(releaseSelection);state.messages.forEach(releaseLocalPreviews)});
 el.messages.addEventListener('scroll',()=>{const distance=el.messages.scrollHeight-el.messages.scrollTop-el.messages.clientHeight;el.scrollBottom.classList.toggle('show',distance>260)});el.scrollBottom.addEventListener('click',()=>scrollToLatest(false));
 

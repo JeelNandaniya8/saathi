@@ -24,6 +24,7 @@ node tests/recovery.cjs
 node tests/chat_recovery.cjs
 node tests/chat_loading.cjs
 node tests/chat_editing.cjs
+node tests/chat_keyboard.cjs
 node tests/chat_record_saves.cjs
 
 node --check personal-context.js
