@@ -106,7 +106,7 @@
     });
   }
   function connect(options){Object.assign(state,options);document.querySelectorAll('[data-workspace-search]').forEach(el=>el.onclick=search);document.querySelectorAll('[data-focus-session]').forEach(el=>el.onclick=()=>focus());}
-  document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();search()}});
+  document.addEventListener('keydown',event=>{if(!document.getElementById('chatInput')&&(event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();search()}});
   window.SaathiHub={connect,search,focus,renderToday,viewChanged};
 })();
 

@@ -3,6 +3,7 @@ const assert=require('node:assert/strict'),path=require('node:path');
 module.exports=async(page,width,base)=>{
  await page.goto(base+'/chat?conversation=7');
  await page.waitForFunction(()=>state.ready&&!state.loadingMessages);
+ if(width<=390)await page.setViewportSize({width,height:520});
  for(const language of ['en','gu','hi']){
   await page.evaluate(lang=>SaathiI18n.setLanguage(lang),language);
   const draft={en:'My unfinished study question',gu:'મારો અધૂરો અભ્યાસ પ્રશ્ન',hi:'मेरा अधूरा पढ़ाई का सवाल'}[language];
@@ -42,6 +43,11 @@ module.exports=async(page,width,base)=>{
    assert.ok(await page.locator('#openSidebar').evaluate(node=>document.activeElement===node),'Escape restores the History trigger');
    await page.locator('#openSidebar').click();
    assert.ok(await page.locator('#closeSidebar').evaluate(node=>document.activeElement===node),'Opening History moves focus into the drawer');
+   await page.locator('#sidebar [data-quick-notes]').click();
+   await page.locator('.quick-notes-dialog[open]').waitFor();
+   await page.keyboard.press('Escape');
+   assert.ok(await page.locator('.quick-notes-dialog').isHidden());
+   assert.ok(await page.locator('#sidebar').isVisible(),'Escape closes Notes without dismissing its underlying History');
    await page.locator('#closeSidebar').click();
   }else await page.locator('#closeSidebar').click();
   assert.equal(await page.locator('#chatInput').inputValue(),draft,'History changes keep the exact composer draft');

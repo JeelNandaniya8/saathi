@@ -17,11 +17,17 @@ test('Ordinary Enter submits once',()=>{
  assert.equal(submits,1);
 });
 test('Search shortcut opens History before focusing its hidden input',()=>{
- let handler,hidden=true,focused=false;
- const document={addEventListener(type,fn){handler=fn},querySelector(){return null}};
+ const handlers=[];let hidden=true,focused=false,workspaceOpens=0;
+ const document={addEventListener(type,fn){handlers.push(fn)},querySelector(){return null},getElementById(){return {}}};
  const el={search:{focus(){if(!hidden)focused=true}}};
+ const shared=fs.readFileSync('workspace-hub.js','utf8').split("  document.addEventListener('keydown',")[1].split('\n  window.SaathiHub')[0];
+ vm.runInNewContext("document.addEventListener('keydown',"+shared,{document,search(){workspaceOpens++}});
  vm.runInNewContext(shortcut,{document,window:{},el,openSide(){hidden=false},closeSide(){},createConversation(){}});
- handler({key:'k',ctrlKey:true,preventDefault(){}});
+ for(const handler of handlers)handler({key:'k',ctrlKey:true,preventDefault(){}});
+ assert.equal(workspaceOpens,0,'Only History owns this shortcut on Chat');
  assert.equal(hidden,false);assert.equal(focused,true);
+ hidden=true;focused=false;document.getElementById=()=>null;
+ handlers[0]({key:'k',ctrlKey:true,preventDefault(){}});
+ assert.equal(workspaceOpens,1,'Dashboard retains its workspace search shortcut');
 });
 if(failures)process.exitCode=1;

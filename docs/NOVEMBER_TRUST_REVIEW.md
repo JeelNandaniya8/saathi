@@ -11,6 +11,9 @@ source permissions, attachment/retry controllers and saved-object handlers stay.
   These two checks failed; Shift+Enter and ordinary Enter behaved correctly.
 - Ctrl/Cmd+K focused a still-hidden History search before opening the drawer;
   the registered-handler test failed to obtain focus.
+- The first Chromium run also caught shared workspace search competing for
+  that shortcut. Chat now owns History search; Dashboard keeps workspace search,
+  and Chat's explicit workspace search button stays available.
 - Repeated assignment-detail follow-ups lost the original user-selected title
   in English, Gujarati and Hindi (three failing tests). English became an
   ambiguous generic assignment reference; Gujarati/Hindi left the local reader.
