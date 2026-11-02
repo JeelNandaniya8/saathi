@@ -375,3 +375,11 @@ body.study-desk .quick-notes-dialog .qn-editor input { font-size:clamp(19px,2vw,
  .chat-polish.study-desk .sidebar>*{flex-shrink:0}
  .chat-polish.study-desk .sidebar .history{flex:1 0 128px;min-height:128px}
 }
+
+@media(max-width:900px){
+ .chat-polish.study-desk :is(.app,.main,.sidebar){height:var(--chat-viewport-height,100dvh)}
+ html.chat-keyboard-open .chat-polish.study-desk .main:has(.message-list>.empty){display:flex;overflow:hidden}
+ html.chat-keyboard-open .chat-polish.study-desk .messages:has(.empty){display:block;flex:1;min-height:0;overflow:auto}
+ html.chat-keyboard-open .chat-polish.study-desk .empty{display:none}
+ html.chat-keyboard-open .chat-polish.study-desk .main:has(.message-list>.empty)>.composer-zone{width:100%;margin:0;padding:8px 12px max(12px,env(safe-area-inset-bottom))}
+}

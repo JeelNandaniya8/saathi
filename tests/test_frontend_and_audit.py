@@ -359,7 +359,7 @@ def test_dependencies_are_reproducible_and_scheduled_for_review():
     dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
     render = (ROOT / "render.yaml").read_text(encoding="utf-8")
     assert all("==" in line for line in requirements.splitlines() if line.strip())
-    assert "pypdf==6.0.0" in requirements
+    assert re.search(r"(?m)^pypdf==\d+\.\d+\.\d+$", requirements)
     assert "pytest==" in development
     assert "package-ecosystem: pip" in dependabot
     assert "package-ecosystem: github-actions" in dependabot

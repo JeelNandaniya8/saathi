@@ -83,7 +83,7 @@ app.config.update(
 DATABASE_URL = os.environ.get("DATABASE_URL")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 PROJECT_ROOT = Path(__file__).resolve().parent
-RELEASE_ID = "2026-11-01-trust-polish"
+RELEASE_ID = "2026-11-02-maintenance"
 OTP_LIFETIME = timedelta(minutes=10)
 
 # Google OAuth integration (optional — enabled when client id configured)
@@ -1088,6 +1088,7 @@ def public_styles():
 @app.get("/classroom-file-draft.js")
 @app.get("/recovery.js")
 @app.get("/workspace-hub.js")
+@app.get("/chat-viewport.js")
 @app.get("/lazy-tools.js")
 @app.get("/workspace-hub.css")
 @app.get("/study-desk.css")
@@ -3779,10 +3780,20 @@ def require_user_id():
         return None
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language, COALESCE((SELECT timezone FROM workspace_preferences WHERE user_id=users.id),'Asia/Kolkata') AS workspace_timezone FROM users WHERE id = %s", (user_id,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
+    try:
+        # One fresh statement is enough for auth. Avoid BEGIN/ROLLBACK network
+        # overhead, then restore transactional behavior before returning the lease.
+        conn.autocommit = True
+        cur.execute("SELECT session_version, plan, plan_status, subscription_end_at, language, COALESCE((SELECT timezone FROM workspace_preferences WHERE user_id=users.id),'Asia/Kolkata') AS workspace_timezone FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+    finally:
+        try:
+            cur.close()
+        finally:
+            try:
+                conn.autocommit = False
+            finally:
+                conn.close()
     if not user or user["session_version"] != session_version:
         session.clear()
         g.authenticated_user_id = None
