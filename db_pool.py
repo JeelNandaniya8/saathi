@@ -58,6 +58,16 @@ class Lease:
         return getattr(self._conn, name)
 
     @property
+    def autocommit(self):
+        return self.__getattr__('autocommit')
+
+    @autocommit.setter
+    def autocommit(self, value):
+        if self._conn is None:
+            raise psycopg2.InterfaceError('Connection is closed')
+        self._conn.autocommit = value
+
+    @property
     def closed(self):
         return self._conn.closed if self._conn is not None else 1
 
@@ -79,6 +89,8 @@ class Lease:
         broken = bool(conn.closed)
         try:
             if not broken:
+                if getattr(conn, 'autocommit', False):
+                    conn.autocommit = False
                 conn.rollback()
                 # A successful rollback also proves transport health. Keep
                 # burst reuse cheap while still pinging after five idle seconds.

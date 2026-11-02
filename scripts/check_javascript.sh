@@ -6,6 +6,8 @@ for page in account.html chat.html dashboard.html saathi.html support.html; do
 done
 
 node --check service-worker.js
+node --check chat-viewport.js
+node tests/chat_viewport.cjs
 node --check theme.js
 node --check workspace.js
 node --check chat-study.js

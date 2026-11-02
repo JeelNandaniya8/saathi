@@ -191,5 +191,6 @@ module.exports=async function reviewUI(page,width,base){
  await require('./notes_mobile.cjs')(page,width,base,true);
  await require('./notes_mobile.cjs')(page,width,base);
  await require('./chat_keyboard_ui.cjs')(page,width,base);
+ await require('./mobile_viewport_ui.cjs')(page,width,base);
  console.log(`PASS: UI ${width}px, 13 workspace views, light/dark map contrast, EN/GU/HI chat, short mobile viewport`);
 };

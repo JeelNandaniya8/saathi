@@ -34,6 +34,15 @@ def test_private_data_and_service_worker_are_not_compressed_or_cached(backend):
         assert 'Content-Encoding' not in response.headers
         assert 'max-age=3600' not in response.headers.get('Cache-Control', '')
 
+
+def test_keyboard_viewport_asset_is_available_without_reading_account_data(backend, monkeypatch):
+    def no_database():
+        raise AssertionError('A public layout controller must not read account data')
+    monkeypatch.setattr(backend, 'get_db', no_database)
+    response = backend.app.test_client().get('/chat-viewport.js?v=test')
+    assert response.status_code == 200 and response.mimetype == 'text/javascript'
+    assert 'max-age=3600' in response.headers['Cache-Control']
+
 def test_user_context_is_reused_only_in_same_authenticated_request(backend, monkeypatch):
     class Cursor:
         def __init__(self): self.calls = []
